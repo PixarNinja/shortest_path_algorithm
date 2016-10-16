@@ -237,15 +237,13 @@ void construct_neighbors(int **neighbors, struct point_t *point, int size, FILE 
         l += k;
         j = 0;
         /* runs from the previous k value to the next k value */
-        while(m <= l) {
+        while(m < l) {
             neighbors[m][0] = tmp[j][0];
             neighbors[m][1] = tmp[j][1];
             printf("neighbors[%d]: %d, %d\n", m, neighbors[m][0], neighbors[m][1]);
             m++;
             j++;
         }
-        /* stores previous k value */
-        m--;
     }
     /* plot */
     fprintf(gnu_files[0], "'./gnu_files/lines.tmp' with lines ls 1 title \"neighbors\",");

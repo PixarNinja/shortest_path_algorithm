@@ -17,7 +17,6 @@ int **construct_contour(struct point_t *points, int size, FILE *plot)
     double theta = DBL_MAX;
     double tmp = 0.0;
     int **neighbors = calloc(size + 1, sizeof(int *) * (size + 1));
-    int *visited = calloc(size, sizeof(int) * (size + 1));
     int global_count = 0;
     int n = 0;
     int i = 0;
@@ -26,6 +25,11 @@ int **construct_contour(struct point_t *points, int size, FILE *plot)
     int count = 0;
     int total_size = size - 1;
     int num_points;
+    for(i = 0; i <= size; i++) {
+        neighbors[i] = malloc(sizeof(int) * 2);
+        neighbors[i][0] = size + 1;
+        neighbors[i][1] = size + 1;
+    }
     best.x = DBL_MAX;
     best.y = DBL_MAX;
     best.tao_d = DBL_MAX;
@@ -47,8 +51,6 @@ int **construct_contour(struct point_t *points, int size, FILE *plot)
     initial.point[1].y = start.y + initial.j;
     initial.point[1].index = INT_MAX;
     initial.length = length_v(initial);
-    /* store start index in a visted-array */
-    visited[start.index] = 1;
     /* initializing structure curr */
     struct point_t *curr = malloc(sizeof(struct point_t) * (size + 1));
     for(i = 0; i <= size; i++) {
@@ -104,9 +106,7 @@ int **construct_contour(struct point_t *points, int size, FILE *plot)
     k.T2.point[0].x = start.x;
     k.T2.point[0].y = start.y;
     k.T2.point[0].index = start.index;
-    /* stores visted points */
-    visited[start.index] = 1;
-    index = start.index;
+    index = 0;
     /* plot */
     fprintf(plot, "%lf %lf %d\n", start.x, start.y, start.index);
     /* outer loop, calculates total distance */
@@ -161,6 +161,7 @@ int **construct_contour(struct point_t *points, int size, FILE *plot)
             i++;
             count++;
         }
+        neighbors[index][0] = prev.index;
         /* sets the previous point as the previous best point */
         prev = best;
         /* find point with the lowest tao-distance */
@@ -173,101 +174,7 @@ int **construct_contour(struct point_t *points, int size, FILE *plot)
                 n = i;
             }
         }
-        /* if the best point is a point that has already been visited */
-        if(visited[n] == 1) {
-            /* plot */
-            fprintf(plot, "%lf %lf %d\n", best.x, best.y, best.index);
-            fprintf(plot, "\n");
-            /* finds starting point of the next curve */
-            for(j = 0; j <= size; j++) {
-                if(visited[j] == 0) {
-                    start = points[j];
-                    break;
-                }
-            }
-            /* sets new ending point */
-            end = start;
-            fprintf(plot, "%lf %lf %d\n", start.x, start.y, start.index);
-            /* calculate new average point */
-            sum_x = 0;
-            sum_y = 0;
-            num_points = 0;
-            for(j = 0; j <= size; j++) {
-                if(visited[j] == 0) {
-                    sum_x += points[j].x;
-                    sum_y += points[j].y;
-                    num_points++;
-                }
-            }
-            center.x = sum_x / num_points;
-            center.y = sum_y / num_points;
-            visited[start.index] = 1;
-            /* initialize initial vector */
-            initial.point[0].x = start.x;
-            initial.point[0].y = start.y;
-            initial.point[0].index = start.index;
-            initial.i = (start.x - center.x) / distance_p(start, center);
-            initial.j = (start.y - center.y) / distance_p(start, center);
-            initial.point[1].x = start.x + initial.i;
-            initial.point[1].y = start.y + initial.j;
-            initial.point[1].index = INT_MAX;
-            initial.length = length_v(initial);
-            /* initializing point 1 data for structure k
-            -- initializing vector V */
-            k.V.point[0].x = start.x;
-            k.V.point[0].y = start.y;
-            k.V.point[0].index = start.index;
-            k.V.i = 0;
-            k.V.j = 0;
-            k.V.length = 0;
-            /* -- initializing vector T1 */
-            k.T1.point[0].x = start.x;
-            k.T1.point[0].y = start.y;
-            k.T1.point[0].index = start.index;
-            /* checks for the point with the smallest deviation in angle from
-               the position vector of the starting point (selects the "second"
-               point) */
-            theta = DBL_MAX;
-            for(j = 0; j <= size; j++) {
-                /* skip the starting point and the previous point */
-                if((points[j].index != start.index) || (points[j].index != prev.index)) {
-                    /* only check unvisited points */
-                    if(visited[j] == 0) {
-                        check.point[0].x = start.x;
-                        check.point[0].y = start.y;
-                        check.point[0].index = start.index;
-                        check.point[1].x = points[j].x;
-                        check.point[1].y = points[j].y;
-                        check.point[1].index = points[j].index;
-                        check.i = check.point[1].x - check.point[0].x;
-                        check.j = check.point[1].y - check.point[0].y;
-                        check.length = length_v(check);
-                        tmp = angle_v(initial, check);
-                        if(tmp < theta) {
-                            theta = tmp;
-                            index = j;
-                        }
-                    }
-                }
-            }
-            /* points T1 in the direction of the "second point" */
-            k.T1.i = (points[index].x - start.x) / distance_p(points[index], start);
-            k.T1.j = (points[index].y - start.y) / distance_p(points[index], start);
-            k.T1.point[1].x = start.x + k.T1.i;
-            k.T1.point[1].y = start.y + k.T1.j;
-            k.T1.point[1].index = INT_MAX;
-            k.T1.length = 1;
-            /* -- initializing vector T2 */
-            k.T2.point[0].x = start.x;
-            k.T2.point[0].y = start.y;
-            k.T2.point[0].index = start.index;
-            /* stores index of the starting point */
-            index = start.index;
-            count = 0;
-            global_count++;
-            continue;
-        }
-        visited[n] = 1;
+        neighbors[index][1] = best.index;
         total += distance_p(start, best);
         /* plot */
         fprintf(plot, "%lf %lf %d\n", best.x, best.y, best.index);
@@ -313,7 +220,10 @@ int **construct_contour(struct point_t *points, int size, FILE *plot)
         k.V.length = 0;
         count = 0;
         global_count++;
+        index++;
     }
+    neighbors[0][0] = best.index;
+    neighbors[0][0] = best.index;
     /* final point */
     fprintf(plot, "%lf %lf %d\n", end.x, end.y, end.index);
     fprintf(plot, "\n");
