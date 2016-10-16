@@ -133,7 +133,7 @@ void construct_neighbors(int **neighbors, struct point_t *point, int size, FILE 
     double sum_x = 0;
     double sum_y = 0;
     int **curve = malloc(sizeof(int *) * (size + 1));
-    int **tmp = malloc(sizeof(struct point_t) * (size + 1));
+    int **tmp = malloc(sizeof(int *) * (size + 1));
     int i = 0;
     int j = 0;
     int k = 0;
@@ -227,21 +227,25 @@ void construct_neighbors(int **neighbors, struct point_t *point, int size, FILE 
         }
         for(j = 0; j < k; j++) {
             printf("contour_point[%d]: %d\n", j, contour_point[j].index);
+            tmp[j] = malloc(sizeof(int) * 2);
+            tmp[j][0] = 0;
+            tmp[j][1] = 0;
         }
-        //tmp = construct_contour(contour_point, k, gnu_files[2]);
-        neighbors = construct_contour(contour_point, k, gnu_files[2]);
-        /* finds next k value
+        tmp = construct_contour(contour_point, k, gnu_files[2]);
+        //neighbors = construct_contour(contour_point, k, gnu_files[2]);
+        /* finds next k value */
         l += k;
         j = 0;
-        /* runs from the previous k value to the next k value
+        /* runs from the previous k value to the next k value */
         while(m <= l) {
-            neighbors[m] = tmp[j];
-            printf("neighbors[%d]: %d\n", m, neighbors[m][0], neighbors[m][1]);
+            neighbors[m][0] = tmp[j][0];
+            neighbors[m][1] = tmp[j][1];
+            printf("neighbors[%d]: %d, %d\n", m, neighbors[m][0], neighbors[m][1]);
             m++;
             j++;
         }
-        /* stores previous k value
-        m--;*/
+        /* stores previous k value */
+        m--;
     }
     /* plot */
     fprintf(gnu_files[0], "'./gnu_files/lines.tmp' with lines ls 1 title \"neighbors\",");
