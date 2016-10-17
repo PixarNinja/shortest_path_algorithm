@@ -98,7 +98,7 @@ double path(struct point_t *point, int size, FILE *gnu_files[FILE_NUM])
         neighbors[i][1] = size + 1;
     }
     construct_neighbors(neighbors, point, size, gnu_files);
-    /* printing for debug */
+    /* printing for debug
     printf("NEIGHBORS ARRAY:\n");
     for(i = 0; i <= size; i++) {
         printf("node %d: %d, %d\n", i, neighbors[i][0], neighbors[i][1]);
@@ -113,7 +113,7 @@ double path(struct point_t *point, int size, FILE *gnu_files[FILE_NUM])
             fprintf(gnu_files[2], "%lf %lf\n", point[neighbors[i][1]].x, point[neighbors[i][1]].y);
         }
         fprintf(gnu_files[2], "\n");
-    }
+    }*/
     return total;
 }
 

@@ -109,6 +109,11 @@ int **construct_contour(struct point_t *points, int size, FILE *plot)
     index = 0;
     /* plot */
     fprintf(plot, "%lf %lf %d\n", start.x, start.y, start.index);
+    /* remove the start point from the list */
+    for(i = 0; i <= size; i++) {
+        points[i] = points[i + 1];
+    }
+    size--;
     /* outer loop, calculates total distance */
     while(global_count <= total_size) {
         i = 0;
@@ -116,14 +121,7 @@ int **construct_contour(struct point_t *points, int size, FILE *plot)
         best.tao_d = DBL_MAX;
         best.index = start.index;
         /* loops through all possible indices from start */
-        while(count <= size) {
-            /* skip current index and previous index */
-            if((points[i].index == best.index) || (points[i].index == prev.index)) {
-                curr[i].tao_d = DBL_MAX;
-                i++;
-                count++;
-                continue;
-            }
+        while(count < size) {
             /* initializing point 2 data for structure k
                -- initializing vector V */
             k.V.point[1].x = points[i].x;
@@ -172,6 +170,16 @@ int **construct_contour(struct point_t *points, int size, FILE *plot)
                 best.index = curr[i].index;
                 best.tao_d = curr[i].tao_d;
                 n = i;
+            }
+        }
+        /* remove the best point from the list */
+        for(i = 0; i <= size; i++) {
+            if(curr[i].index == best.index) {
+                for(j = i; j <= size; j++) {
+                    points[j] = points[j + 1];
+                }
+                size--;
+                break;
             }
         }
         neighbors[index][1] = best.index;
