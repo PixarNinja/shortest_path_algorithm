@@ -2,7 +2,7 @@
 
 /* calculates the contour path and returns it in an array
  * of neighbors for each point */
-int **construct_contour(struct point_t *points, int size, FILE *plot)
+int **construct_contour(struct point_t *points, int size)
 {
     struct vector_t initial;
     struct vector_t check;
@@ -107,8 +107,6 @@ int **construct_contour(struct point_t *points, int size, FILE *plot)
     k.T2.point[0].y = start.y;
     k.T2.point[0].index = start.index;
     index = 0;
-    /* plot */
-    fprintf(plot, "%lf %lf %d\n", start.x, start.y, start.index);
     /* remove the start point from the list */
     for(i = 0; i <= size; i++) {
         points[i] = points[i + 1];
@@ -182,10 +180,8 @@ int **construct_contour(struct point_t *points, int size, FILE *plot)
                 break;
             }
         }
-        neighbors[index][1] = best.index;
         total += distance_p(start, best);
-        /* plot */
-        fprintf(plot, "%lf %lf %d\n", best.x, best.y, best.index);
+        neighbors[index][1] = best.index;
         /* reinitializing structure k
            -- reinitializing vector V */
         k.V.point[1].x = best.x;
@@ -230,11 +226,9 @@ int **construct_contour(struct point_t *points, int size, FILE *plot)
         global_count++;
         index++;
     }
+    index--;
     neighbors[0][0] = best.index;
-    neighbors[0][0] = best.index;
-    /* final point */
-    fprintf(plot, "%lf %lf %d\n", end.x, end.y, end.index);
-    fprintf(plot, "\n");
+    neighbors[index][1] = end.index;
     total += distance_p(best, end);
     return neighbors;
 }

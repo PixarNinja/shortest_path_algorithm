@@ -98,22 +98,12 @@ double path(struct point_t *point, int size, FILE *gnu_files[FILE_NUM])
         neighbors[i][1] = size + 1;
     }
     construct_neighbors(neighbors, point, size, gnu_files);
-    /* printing for debug
-    printf("NEIGHBORS ARRAY:\n");
     for(i = 0; i <= size; i++) {
-        printf("node %d: %d, %d\n", i, neighbors[i][0], neighbors[i][1]);
-        if(neighbors[i][0] == (size + 1)) {
-            fprintf(gnu_files[2], "%lf %lf\n", point[neighbors[i][1]].x, point[neighbors[i][1]].y);
-            fprintf(gnu_files[2], "%lf %lf\n", point[i].x, point[i].y);
-            fprintf(gnu_files[2], "%lf %lf\n", point[neighbors[i][1]].x, point[neighbors[i][1]].y);
-        }
-        else {
-            fprintf(gnu_files[2], "%lf %lf\n", point[neighbors[i][0]].x, point[neighbors[i][0]].y);
-            fprintf(gnu_files[2], "%lf %lf\n", point[i].x, point[i].y);
-            fprintf(gnu_files[2], "%lf %lf\n", point[neighbors[i][1]].x, point[neighbors[i][1]].y);
-        }
+        fprintf(gnu_files[2], "%lf %lf\n", point[neighbors[i][1]].x, point[neighbors[i][1]].y);
+        fprintf(gnu_files[2], "%lf %lf\n", point[i].x, point[i].y);
+        fprintf(gnu_files[2], "%lf %lf\n", point[neighbors[i][1]].x, point[neighbors[i][1]].y);
         fprintf(gnu_files[2], "\n");
-    }*/
+    }
     return total;
 }
 
@@ -200,7 +190,7 @@ void construct_neighbors(int **neighbors, struct point_t *point, int size, FILE 
         fprintf(gnu_files[0], "%lf*sin(t) + %lf notitle ls %d,", circles[i], center.x, 2);
         fprintf(gnu_files[0], "%lf*cos(t) + %lf notitle ls %d,", circles[i], center.y, 2);
     }
-    /* printing for debug */
+    /* printing for debug
     for(i = 0; i < division_number; i++) {
         printf("curve[%d]: ", i);
         for(j = 0; j <= size; j++) {
@@ -209,13 +199,9 @@ void construct_neighbors(int **neighbors, struct point_t *point, int size, FILE 
             }
         }
         printf("\n");
-    }//*/
+    }*/
     /* fills neighbors in a 2D array of length (size x 2)
-       with the indices of the two neighbors (index of size + 1 means
-       a neighbor wasn't found)
-       -- runs the contour construction algorithm on a set of points in a curve,
-       and stores each point's neighbors
-       -- goes through each curve */
+       with the indices of the two neighbors */
     for(i = 0; i < division_number; i++) {
         k = 0;
         /* obtains all points in the current curve */
@@ -226,13 +212,11 @@ void construct_neighbors(int **neighbors, struct point_t *point, int size, FILE 
             }
         }
         for(j = 0; j < k; j++) {
-            printf("contour_point[%d]: %d\n", j, contour_point[j].index);
             tmp[j] = malloc(sizeof(int) * 2);
             tmp[j][0] = 0;
             tmp[j][1] = 0;
         }
-        tmp = construct_contour(contour_point, k, gnu_files[2]);
-        //neighbors = construct_contour(contour_point, k, gnu_files[2]);
+        tmp = construct_contour(contour_point, k);
         /* finds next k value */
         l += k;
         j = 0;
@@ -240,7 +224,6 @@ void construct_neighbors(int **neighbors, struct point_t *point, int size, FILE 
         while(m < l) {
             neighbors[m][0] = tmp[j][0];
             neighbors[m][1] = tmp[j][1];
-            printf("neighbors[%d]: %d, %d\n", m, neighbors[m][0], neighbors[m][1]);
             m++;
             j++;
         }
