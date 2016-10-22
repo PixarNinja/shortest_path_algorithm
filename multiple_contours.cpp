@@ -27,7 +27,7 @@ struct vector_t {
     double j;
 };
 
-double shortest_path(struct point_t start, int n, struct point_t *search, int size, FILE *gnu_files[NUM_FILES]);
+double shortest_path(int **recorded, struct point_t begin, int n, struct point_t *points, int size, FILE *gnu_files[NUM_FILES]);
 double calculate_curvature(struct vector_t T1, struct vector_t T2, double tao);
 double calculate_theta(double tao);
 double tao_distance(struct vector_t V, double curvature, double theta);
@@ -46,20 +46,30 @@ int main(int argc, char *argv[])
     struct point_t *point;
     char buf[1024];
     double range = 0.0;
+    int **recorded;
     int size = 0;
     int permutations = 0;
     int i = 0;
+    int j = 0;
     gnu_files[0] = fopen ("./gnu_files/commands.tmp", "w+");
     gnu_files[1] = fopen("./gnu_files/points.tmp", "w+");
     gnu_files[2] = fopen("./gnu_files/lines.tmp", "w+");
     gnu_files[3] = fopen("./gnu_files/tmp.tmp", "w+");
-    data = fopen("./datapoints/test4.dat", "r");
+    data = fopen("./datapoints/test2.dat", "r");
     while(fgets(buf, 1024, data)) {
         size++;
     }
     fclose(data);
     point = new struct point_t [size];
-    data = fopen("./datapoints/test4.dat", "r");
+    recorded = new int * [size];
+    for(i = 0; i < size; i++) {
+        recorded[i] = new int [size];
+        for (j = 0; j < size; j++) {
+            recorded[i][j] = 0;
+        }
+    }
+    i = 0;
+    data = fopen("./datapoints/test2.dat", "r");
     while(fscanf(data, "%d: (%lf, %lf)", &point[i].index, &point[i].x, &point[i].y) > 0) {
         if(fabs(point[i].x) > range) {
             range = fabs(point[i].x);
@@ -83,7 +93,7 @@ int main(int argc, char *argv[])
     fprintf(gnu_files[0], "set style line 1 lc rgb \"black\" lw 1\n");
     /* runs tao-distance algorithm on data */
     for(i = 0; i < size; i++) {
-        permutations += shortest_path(point[i], i, point, size, gnu_files);
+        permutations += shortest_path(recorded, point[i], i, point, size, gnu_files);
     }
     printf("\n");
     printf("Total Permutations: %d\n", permutations);
@@ -98,7 +108,7 @@ int main(int argc, char *argv[])
 }
 
 /* calculates the shortest path */
-double shortest_path(struct point_t begin, int n, struct point_t *points, int size, FILE *gnu_files[NUM_FILES])
+double shortest_path(int **recorded, struct point_t begin, int n, struct point_t *points, int size, FILE *gnu_files[NUM_FILES])
 {
     struct vector_t V;
     struct vector_t T1;
@@ -118,9 +128,9 @@ double shortest_path(struct point_t begin, int n, struct point_t *points, int si
     double sum_y = 0.0;
     double theta = DBL_MAX;
     double tmp = 0.0;
+    int **segments = new int * [size];
     int *visited = new int [size];
     int *contoured_points = new int [size];
-    int **segments = new int * [size];
     int count = 0;
     int permutations = 0;
     int total_size = size;
@@ -385,13 +395,6 @@ double shortest_path(struct point_t begin, int n, struct point_t *points, int si
         segments[k][0] = start.index;
         segments[k][1] = best.index;
         k++;
-        /* calculates the smallest segments for each contour
-        if(distance_p(start, best) <= segment_distance) {
-            smallest_segments[k][0] = start.index;
-            smallest_segments[k][1] = best.index;
-            k++;
-            segment_distance = distance_p(start, best);
-        }*/
         visited[n] = 1;
         /* reinitializing vector V */
         V.point[1].x = best.x;
@@ -436,11 +439,16 @@ double shortest_path(struct point_t begin, int n, struct point_t *points, int si
         permutations++;
     }
     for(j = 0; j < k; j++) {
+        /* skips over already-recorded segments */
+        if(recorded[segments[j][0]][segments[j][1]] == 1) {
+            continue;   
+        }
         fprintf(gnu_files[2], "%lf %lf %d\n", points[segments[j][0]].x, points[segments[j][0]].y, points[segments[j][0]].index);
         fprintf(gnu_files[2], "%lf %lf %d\n", points[segments[j][1]].x, points[segments[j][1]].y, points[segments[j][1]].index);
         fprintf(gnu_files[2], "\n");
+        recorded[segments[j][0]][segments[j][1]] = 1;
         /* book-keeping */
-        printf("<%d,%d>\n", points[segments[j][0]].index, points[segments[j][1]].index);
+        printf("%d = (%d, %d): <%d,%d>\n", j, segments[j][0], segments[j][1], points[segments[j][0]].index, points[segments[j][1]].index);
     }
     /* final point
     fprintf(gnu_files[2], "%lf %lf %d\n", end.x, end.y, end.index);*/
