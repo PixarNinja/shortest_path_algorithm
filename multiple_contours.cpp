@@ -55,7 +55,7 @@ int main(int argc, char *argv[])
     gnu_files[1] = fopen("./gnu_files/points.tmp", "w+");
     gnu_files[2] = fopen("./gnu_files/lines.tmp", "w+");
     gnu_files[3] = fopen("./gnu_files/tmp.tmp", "w+");
-    data = fopen("./datapoints/test2.dat", "r");
+    data = fopen("./datapoints/test5.dat", "r");
     while(fgets(buf, 1024, data)) {
         size++;
     }
@@ -69,7 +69,7 @@ int main(int argc, char *argv[])
         }
     }
     i = 0;
-    data = fopen("./datapoints/test2.dat", "r");
+    data = fopen("./datapoints/test5.dat", "r");
     while(fscanf(data, "%d: (%lf, %lf)", &point[i].index, &point[i].x, &point[i].y) > 0) {
         if(fabs(point[i].x) > range) {
             range = fabs(point[i].x);
@@ -122,13 +122,16 @@ double shortest_path(int **recorded, struct point_t begin, int n, struct point_t
     struct point_t start = begin;
     struct point_t end = begin;
     struct point_t prev = begin;
+    struct point_t save_start = start;
+    struct point_t save_prev = prev;
+    struct point_t save_best = best;
     struct point_t center;
     double current_distance = DBL_MAX;
     double sum_x = 0.0;
     double sum_y = 0.0;
     double theta = DBL_MAX;
     double tmp = 0.0;
-    int **segments = new int * [size];
+    int **segments = new int * [size + 1];
     int *visited = new int [size];
     int *contoured_points = new int [size];
     int count = 0;
@@ -139,6 +142,7 @@ double shortest_path(int **recorded, struct point_t begin, int n, struct point_t
     int i = 0;
     int j = 0;
     int k = 0;
+    int m = INT_MAX;
     /* initialization of arrays */
     for(i = 0; i < size; i++) {
         curr[i].x = DBL_MAX;
@@ -153,6 +157,9 @@ double shortest_path(int **recorded, struct point_t begin, int n, struct point_t
         segments[i][0] = INT_MAX;
         segments[i][1] = INT_MAX;
     }
+    segments[i] = new int [2];
+    segments[i][0] = INT_MAX;
+    segments[i][1] = INT_MAX;
     best.x = DBL_MAX;
     best.y = DBL_MAX;
     best.tao_distance = DBL_MAX;
@@ -174,8 +181,6 @@ double shortest_path(int **recorded, struct point_t begin, int n, struct point_t
     initial.point[1].y = start.y + initial.j;
     initial.point[1].index = INT_MAX;
     initial.length = length_v(initial);
-    /* store start index in a visted-array */
-    visited[start.index] = 1;
     /* initializing vector V */
     V.point[0].x = start.x;
     V.point[0].y = start.y;
@@ -187,6 +192,8 @@ double shortest_path(int **recorded, struct point_t begin, int n, struct point_t
     T1.point[0].x = start.x;
     T1.point[0].y = start.y;
     T1.point[0].index = start.index;
+    /* store start index in visted-array */
+    visited[start.index] = 1;
     /* checks for the point with the smallest deviation in angle from
        the position vector of the starting point */
     for(i = 0; i < size; i ++) {
@@ -225,74 +232,99 @@ double shortest_path(int **recorded, struct point_t begin, int n, struct point_t
     index = start.index;
     /* outer loop, calculates total distance */
     while(permutations <= total_size) {
-        i = 0;
-        /* refreshing best index */
-        best.tao_distance = DBL_MAX;
-        best.index = start.index;
-        /* loops through all possible indices from start */
-        while(count < size) {
-            /* skip current index, previous index, and contoured points */
-            if((search[i].index == best.index) || (search[i].index == prev.index) || (contoured_points[i] == 1)) {
-                curr[i].tao_distance = DBL_MAX;
+        /* if there is symmetry along V, run the loop for the other point */
+        if(m != INT_MAX) {
+            printf("perm: %d\n", permutations);
+            start = save_start;
+            prev = save_prev;
+            best = save_best;
+            n = m;
+            count--;
+            m = INT_MAX;
+        }
+        else {
+            i = 0;
+            /* refreshing best index */
+            best.tao_distance = DBL_MAX;
+            best.index = start.index;
+            /* loops through all possible indices from start */
+            while(count < size) {
+                /* skip current index, previous index, and contoured points */
+                if((search[i].index == best.index) || (search[i].index == prev.index) || (contoured_points[i] == 1)) {
+                    curr[i].tao_distance = DBL_MAX;
+                    i++;
+                    count++;
+                    continue;
+                }
+                /* initializing vector V */
+                V.point[1].x = search[i].x;
+                V.point[1].y = search[i].y;
+                V.point[1].index = search[i].index;
+                V.i = V.point[1].x - V.point[0].x;
+                V.j = V.point[1].y - V.point[0].y;
+                V.length = length_v(V);
+                /* initializing vector T2 */
+                T2.point[1].x = V.point[1].x;
+                T2.point[1].y = V.point[1].y;
+                T2.point[1].index = INT_MAX;
+                T2.i = (T2.point[1].x - T2.point[0].x) / V.length;
+                T2.j = (T2.point[1].y - T2.point[0].y) / V.length;
+                T2.point[1].x = V.point[0].x + T2.i;
+                T2.point[1].y = V.point[0].y + T2.j;
+                T2.length = length_v(T2);
+                /* initializing tao, theta, and curvature */
+                curr[i].tao = (dot_product(T1, T2)); //length of T1 and T2 is always 1
+                if(curr[i].tao <= -1.0) {
+                    curr[i].tao = -1.0;
+                }
+                else if(curr[i].tao >= 1.0) {
+                    curr[i].tao = 1.0;
+                }
+                curr[i].x = V.point[1].x;
+                curr[i].y = V.point[1].y;
+                curr[i].index = V.point[1].index;
+                curr[i].theta = calculate_theta(curr[i].tao);
+                curr[i].curvature = calculate_curvature(T1, T2, curr[i].tao);
+                curr[i].tao_distance = tao_distance(V, curr[i].curvature, curr[i].theta);
+                V.point[1].tao_distance = curr[i].tao_distance;
+                /* for debugging tao-distance function */
+                print(V, T1, T2, curr[i].curvature, curr[i].theta, curr[i].tao);
                 i++;
                 count++;
-                continue;
             }
-            /* initializing vector V */
-            V.point[1].x = search[i].x;
-            V.point[1].y = search[i].y;
-            V.point[1].index = search[i].index;
-            V.i = V.point[1].x - V.point[0].x;
-            V.j = V.point[1].y - V.point[0].y;
-            V.length = length_v(V);
-            /* initializing vector T2 */
-            T2.point[1].x = V.point[1].x;
-            T2.point[1].y = V.point[1].y;
-            T2.point[1].index = INT_MAX;
-            T2.i = (T2.point[1].x - T2.point[0].x) / V.length;
-            T2.j = (T2.point[1].y - T2.point[0].y) / V.length;
-            T2.point[1].x = V.point[0].x + T2.i;
-            T2.point[1].y = V.point[0].y + T2.j;
-            T2.length = length_v(T2);
-            /* initializing tao, theta, and curvature */
-            curr[i].tao = (dot_product(T1, T2)); //length of T1 and T2 is always 1
-            if(curr[i].tao <= -1.0) {
-                curr[i].tao = -1.0;
-            }
-            else if(curr[i].tao >= 1.0) {
-                curr[i].tao = 1.0;
-            }
-            curr[i].x = V.point[1].x;
-            curr[i].y = V.point[1].y;
-            curr[i].index = V.point[1].index;
-            curr[i].theta = calculate_theta(curr[i].tao);
-            curr[i].curvature = calculate_curvature(T1, T2, curr[i].tao);
-            curr[i].tao_distance = tao_distance(V, curr[i].curvature, curr[i].theta);
-            V.point[1].tao_distance = curr[i].tao_distance;
-            /* for debugging tao-distance function
-            print(V, T1, T2, curr[i].curvature, curr[i].theta, curr[i].tao);*/
-            i++;
-            count++;
-        }
-        /* sets the previous point as the previous best point */
-        prev = best;
-        /* find point with the lowest tao-distance */
-        for(i = 0; i < size; i++) {
-            if(best.tao_distance > curr[i].tao_distance) {
-                best.x = curr[i].x;
-                best.y = curr[i].y;
-                best.index = curr[i].index;
-                best.theta = curr[i].theta;
-                best.curvature = curr[i].curvature;
-                best.tao_distance = curr[i].tao_distance;
-                n = i;
+            /* sets the previous point as the previous best point */
+            prev = best;
+            /* find point with the lowest tao-distance */
+            for(i = 0; i < size; i++) {
+                /* if found tao_distances are equal */
+                if((curr[i].index != INT_MAX) && (best.tao_distance == curr[i].tao_distance)) {
+                    m = i;
+                    save_best.x = curr[i].x;
+                    save_best.y = curr[i].y;
+                    save_best.index = curr[i].index;
+                    save_best.theta = curr[i].theta;
+                    save_best.curvature = curr[i].curvature;
+                    save_best.tao_distance = curr[i].tao_distance;
+                    save_start = start;
+                }
+                if(best.tao_distance > curr[i].tao_distance) {
+                    best.x = curr[i].x;
+                    best.y = curr[i].y;
+                    best.index = curr[i].index;
+                    best.theta = curr[i].theta;
+                    best.curvature = curr[i].curvature;
+                    best.tao_distance = curr[i].tao_distance;
+                    n = i;
+                }
             }
         }
+        /* record segment */
+        segments[k][0] = start.index;
+        segments[k][1] = best.index;
+        k++;
         /* if the best point is a point that has already been
            visited or if the angle is greater than 90 degrees */
         if((visited[n] == 1) || ((int)(best.theta * 180 / M_PI) > 89)) {
-            /* debug message
-            printf("\nIF STATEMENT ENTERED\n");*/
             if ((int)(best.theta * 180 / M_PI) <= 89) {
                 visited[n] = 1;
             }
@@ -391,10 +423,6 @@ double shortest_path(int **recorded, struct point_t begin, int n, struct point_t
             permutations++;
             continue;
         }
-        /* calculates the all segments for each contour */
-        segments[k][0] = start.index;
-        segments[k][1] = best.index;
-        k++;
         visited[n] = 1;
         /* reinitializing vector V */
         V.point[1].x = best.x;
@@ -438,6 +466,7 @@ double shortest_path(int **recorded, struct point_t begin, int n, struct point_t
         count = 0;
         permutations++;
     }
+    /* calculates the all segments for each contour */
     for(j = 0; j < k; j++) {
         /* skips over already-recorded segments */
         if(recorded[segments[j][0]][segments[j][1]] == 1) {
