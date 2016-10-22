@@ -213,8 +213,6 @@ double shortest_path(struct point_t begin, int n, struct point_t *points, int si
     /* stores visted points */
     visited[start.index] = 1;
     index = start.index;
-    /* plot
-    fprintf(gnu_files[2], "%lf %lf %d\n", start.x, start.y, start.index);*/
     /* outer loop, calculates total distance */
     while(permutations <= total_size) {
         i = 0;
@@ -286,12 +284,8 @@ double shortest_path(struct point_t begin, int n, struct point_t *points, int si
             /* debug message
             printf("\nIF STATEMENT ENTERED\n");*/
             if ((int)(best.theta * 180 / M_PI) <= 89) {
-                /* plot
-                fprintf(gnu_files[2], "%lf %lf %d\n", best.x, best.y, best.index);*/
                 visited[n] = 1;
             }
-            /* plot
-            fprintf(gnu_files[2], "\n");*/
             /* finds starting point of the next curve */
             remaining_points = 0;
             for(j = 0; j < size; j++) {
@@ -303,8 +297,6 @@ double shortest_path(struct point_t begin, int n, struct point_t *points, int si
                 }
             }
             current_distance = DBL_MAX;
-            /* plot
-            fprintf(gnu_files[2], "%lf %lf %d\n", search[n].x, search[n].y, search[n].index);*/
             if(remaining_points == 0) {
                 count = size;
                 permutations = total_size + 1;
@@ -318,8 +310,6 @@ double shortest_path(struct point_t begin, int n, struct point_t *points, int si
             }
             /* sets new ending point */
             end = start;
-            /* plot
-            fprintf(gnu_files[2], "%lf %lf %d\n", start.x, start.y, start.index);*/
             /* calculate new average point */
             sum_x = 0;
             sum_y = 0;
@@ -403,8 +393,6 @@ double shortest_path(struct point_t begin, int n, struct point_t *points, int si
             segment_distance = distance_p(start, best);
         }*/
         visited[n] = 1;
-        /* plot
-        fprintf(gnu_files[2], "%lf %lf %d\n", best.x, best.y, best.index);*/
         /* reinitializing vector V */
         V.point[1].x = best.x;
         V.point[1].y = best.y;
