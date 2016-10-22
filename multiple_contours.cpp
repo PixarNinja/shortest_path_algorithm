@@ -55,7 +55,7 @@ int main(int argc, char *argv[])
     gnu_files[1] = fopen("./gnu_files/points.tmp", "w+");
     gnu_files[2] = fopen("./gnu_files/lines.tmp", "w+");
     gnu_files[3] = fopen("./gnu_files/tmp.tmp", "w+");
-    data = fopen("./datapoints/test5.dat", "r");
+    data = fopen("./datapoints/test7.dat", "r");
     while(fgets(buf, 1024, data)) {
         size++;
     }
@@ -69,7 +69,7 @@ int main(int argc, char *argv[])
         }
     }
     i = 0;
-    data = fopen("./datapoints/test5.dat", "r");
+    data = fopen("./datapoints/test7.dat", "r");
     while(fscanf(data, "%d: (%lf, %lf)", &point[i].index, &point[i].x, &point[i].y) > 0) {
         if(fabs(point[i].x) > range) {
             range = fabs(point[i].x);
@@ -232,17 +232,6 @@ double shortest_path(int **recorded, struct point_t begin, int n, struct point_t
     index = start.index;
     /* outer loop, calculates total distance */
     while(permutations <= total_size) {
-        /* if there is symmetry along V, run the loop for the other point */
-        if(m != INT_MAX) {
-            printf("perm: %d\n", permutations);
-            start = save_start;
-            prev = save_prev;
-            best = save_best;
-            n = m;
-            count--;
-            m = INT_MAX;
-        }
-        else {
             i = 0;
             /* refreshing best index */
             best.tao_distance = DBL_MAX;
@@ -296,17 +285,6 @@ double shortest_path(int **recorded, struct point_t begin, int n, struct point_t
             prev = best;
             /* find point with the lowest tao-distance */
             for(i = 0; i < size; i++) {
-                /* if found tao_distances are equal */
-                if((curr[i].index != INT_MAX) && (best.tao_distance == curr[i].tao_distance)) {
-                    m = i;
-                    save_best.x = curr[i].x;
-                    save_best.y = curr[i].y;
-                    save_best.index = curr[i].index;
-                    save_best.theta = curr[i].theta;
-                    save_best.curvature = curr[i].curvature;
-                    save_best.tao_distance = curr[i].tao_distance;
-                    save_start = start;
-                }
                 if(best.tao_distance > curr[i].tao_distance) {
                     best.x = curr[i].x;
                     best.y = curr[i].y;
@@ -316,8 +294,18 @@ double shortest_path(int **recorded, struct point_t begin, int n, struct point_t
                     best.tao_distance = curr[i].tao_distance;
                     n = i;
                 }
+                /* if found tao_distances are equal */
+                if((curr[i].index != INT_MAX) && (isgreaterequal(best.tao_distance, curr[i].tao_distance) && islessequal(best.tao_distance, curr[i].tao_distance))) {
+                    m = i;
+                    save_best.x = curr[i].x;
+                    save_best.y = curr[i].y;
+                    save_best.index = curr[i].index;
+                    save_best.theta = curr[i].theta;
+                    save_best.curvature = curr[i].curvature;
+                    save_best.tao_distance = curr[i].tao_distance;
+                    save_start = start;
+                }
             }
-        }
         /* record segment */
         segments[k][0] = start.index;
         segments[k][1] = best.index;
@@ -405,6 +393,15 @@ double shortest_path(int **recorded, struct point_t begin, int n, struct point_t
                         }
                     }
                 }
+            }
+            /* if there is symmetry along V, run the loop for the other point */
+            if(m != INT_MAX) {
+                printf("perm: %d\n", permutations);
+                start = save_start;
+                prev = save_prev;
+                best = save_best;
+                n = m;
+                m = INT_MAX;
             }
             /* points T1 in the direction of the "second point" */
             T1.i = (search[index].x - start.x) / distance_p(search[index], start);
