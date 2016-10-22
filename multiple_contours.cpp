@@ -30,7 +30,7 @@ struct vector_t {
 double shortest_path(struct point_t start, int n, struct point_t *search, int size, FILE *gnu_files[NUM_FILES]);
 double calculate_curvature(struct vector_t T1, struct vector_t T2, double tao);
 double calculate_theta(double tao);
-double tao_distance(struct vector_t V, double curvature);
+double tao_distance(struct vector_t V, double curvature, double theta);
 double angle_v(struct vector_t V1, struct vector_t V2);
 double distance_p(struct point_t start, struct point_t end);
 double distance_v(struct vector_t V1, struct vector_t V2);
@@ -53,13 +53,13 @@ int main(int argc, char *argv[])
     gnu_files[1] = fopen("./gnu_files/points.tmp", "w+");
     gnu_files[2] = fopen("./gnu_files/lines.tmp", "w+");
     gnu_files[3] = fopen("./gnu_files/tmp.tmp", "w+");
-    data = fopen("./datapoints/datapoints.dat", "r");
+    data = fopen("./datapoints/test4.dat", "r");
     while(fgets(buf, 1024, data)) {
         size++;
     }
     fclose(data);
     point = new struct point_t [size];
-    data = fopen("./datapoints/datapoints.dat", "r");
+    data = fopen("./datapoints/test4.dat", "r");
     while(fscanf(data, "%d: (%lf, %lf)", &point[i].index, &point[i].x, &point[i].y) > 0) {
         if(fabs(point[i].x) > range) {
             range = fabs(point[i].x);
@@ -120,13 +120,16 @@ double shortest_path(struct point_t begin, int n, struct point_t *points, int si
     double tmp = 0.0;
     int *visited = new int [size];
     int *contoured_points = new int [size];
+    int **segments = new int * [size];
     int count = 0;
     int permutations = 0;
     int total_size = size;
-    int index;
-    int remaining_points;
-    int i;
-    int j;
+    int index = n;
+    int remaining_points = 0;
+    int i = 0;
+    int j = 0;
+    int k = 0;
+    /* initialization of arrays */
     for(i = 0; i < size; i++) {
         curr[i].x = DBL_MAX;
         curr[i].y = DBL_MAX;
@@ -136,6 +139,9 @@ double shortest_path(struct point_t begin, int n, struct point_t *points, int si
         search[i].y = points[i].y;
         search[i].tao_distance = points[i].tao_distance;
         search[i].index = points[i].index;
+        segments[i] = new int [2];
+        segments[i][0] = INT_MAX;
+        segments[i][1] = INT_MAX;
     }
     best.x = DBL_MAX;
     best.y = DBL_MAX;
@@ -207,8 +213,8 @@ double shortest_path(struct point_t begin, int n, struct point_t *points, int si
     /* stores visted points */
     visited[start.index] = 1;
     index = start.index;
-    /* plot */
-    fprintf(gnu_files[2], "%lf %lf %d\n", start.x, start.y, start.index);
+    /* plot
+    fprintf(gnu_files[2], "%lf %lf %d\n", start.x, start.y, start.index);*/
     /* outer loop, calculates total distance */
     while(permutations <= total_size) {
         i = 0;
@@ -253,10 +259,10 @@ double shortest_path(struct point_t begin, int n, struct point_t *points, int si
             curr[i].index = V.point[1].index;
             curr[i].theta = calculate_theta(curr[i].tao);
             curr[i].curvature = calculate_curvature(T1, T2, curr[i].tao);
-            curr[i].tao_distance = tao_distance(V, curr[i].curvature);
+            curr[i].tao_distance = tao_distance(V, curr[i].curvature, curr[i].theta);
             V.point[1].tao_distance = curr[i].tao_distance;
-            /* for debugging tao-distance function */
-            print(V, T1, T2, curr[i].curvature, curr[i].theta, curr[i].tao);
+            /* for debugging tao-distance function
+            print(V, T1, T2, curr[i].curvature, curr[i].theta, curr[i].tao);*/
             i++;
             count++;
         }
@@ -280,11 +286,12 @@ double shortest_path(struct point_t begin, int n, struct point_t *points, int si
             /* debug message
             printf("\nIF STATEMENT ENTERED\n");*/
             if ((int)(best.theta * 180 / M_PI) <= 89) {
-                /* plot */
-                fprintf(gnu_files[2], "%lf %lf %d\n", best.x, best.y, best.index);
+                /* plot
+                fprintf(gnu_files[2], "%lf %lf %d\n", best.x, best.y, best.index);*/
                 visited[n] = 1;
             }
-            fprintf(gnu_files[2], "\n");
+            /* plot
+            fprintf(gnu_files[2], "\n");*/
             /* finds starting point of the next curve */
             remaining_points = 0;
             for(j = 0; j < size; j++) {
@@ -295,6 +302,9 @@ double shortest_path(struct point_t begin, int n, struct point_t *points, int si
                     contoured_points[j] = 1;
                 }
             }
+            current_distance = DBL_MAX;
+            /* plot
+            fprintf(gnu_files[2], "%lf %lf %d\n", search[n].x, search[n].y, search[n].index);*/
             if(remaining_points == 0) {
                 count = size;
                 permutations = total_size + 1;
@@ -308,7 +318,8 @@ double shortest_path(struct point_t begin, int n, struct point_t *points, int si
             }
             /* sets new ending point */
             end = start;
-            fprintf(gnu_files[2], "%lf %lf %d\n", start.x, start.y, start.index);
+            /* plot
+            fprintf(gnu_files[2], "%lf %lf %d\n", start.x, start.y, start.index);*/
             /* calculate new average point */
             sum_x = 0;
             sum_y = 0;
@@ -380,9 +391,20 @@ double shortest_path(struct point_t begin, int n, struct point_t *points, int si
             permutations++;
             continue;
         }
+        /* calculates the all segments for each contour */
+        segments[k][0] = start.index;
+        segments[k][1] = best.index;
+        k++;
+        /* calculates the smallest segments for each contour
+        if(distance_p(start, best) <= segment_distance) {
+            smallest_segments[k][0] = start.index;
+            smallest_segments[k][1] = best.index;
+            k++;
+            segment_distance = distance_p(start, best);
+        }*/
         visited[n] = 1;
-        /* plot */
-        fprintf(gnu_files[2], "%lf %lf %d\n", best.x, best.y, best.index);
+        /* plot
+        fprintf(gnu_files[2], "%lf %lf %d\n", best.x, best.y, best.index);*/
         /* reinitializing vector V */
         V.point[1].x = best.x;
         V.point[1].y = best.y;
@@ -425,8 +447,15 @@ double shortest_path(struct point_t begin, int n, struct point_t *points, int si
         count = 0;
         permutations++;
     }
-    /* final point */
-    fprintf(gnu_files[2], "%lf %lf %d\n", end.x, end.y, end.index);
+    for(j = 0; j < k; j++) {
+        fprintf(gnu_files[2], "%lf %lf %d\n", points[segments[j][0]].x, points[segments[j][0]].y, points[segments[j][0]].index);
+        fprintf(gnu_files[2], "%lf %lf %d\n", points[segments[j][1]].x, points[segments[j][1]].y, points[segments[j][1]].index);
+        fprintf(gnu_files[2], "\n");
+        /* book-keeping */
+        printf("<%d,%d>\n", points[segments[j][0]].index, points[segments[j][1]].index);
+    }
+    /* final point
+    fprintf(gnu_files[2], "%lf %lf %d\n", end.x, end.y, end.index);*/
     /* plot */
     fprintf(gnu_files[0], "plot './gnu_files/lines.tmp' using 1:2 with lines ls 1 title \"shortest path\",");
     fprintf(gnu_files[0], "'./gnu_files/points.tmp' using 1:2 with points pt 7 notitle,");
@@ -447,9 +476,10 @@ double calculate_theta(double tao)
 }
 
 /* calculates distance given index and structure */
-double tao_distance(struct vector_t V, double curvature)
+double tao_distance(struct vector_t V, double curvature, double theta)
 {
-    return (V.length + curvature);
+    //return (V.length + curvature);
+    return (V.length + curvature + theta);
 }
 
 /* calculates angle between two vectors */
