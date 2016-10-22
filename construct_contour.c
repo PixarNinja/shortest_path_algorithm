@@ -2,7 +2,7 @@
 
 /* calculates the contour path and returns it in an array
  * of neighbors for each point */
-int **construct_contour(struct point_t *points, int size)
+int **construct_contour(struct point_t *points, int size, int total_num)
 {
     struct vector_t initial;
     struct vector_t check;
@@ -16,16 +16,15 @@ int **construct_contour(struct point_t *points, int size)
     double sum_y = 0.0;
     double theta = DBL_MAX;
     double tmp = 0.0;
+    //int **neighbors = calloc(total_num + 1, sizeof(int *) * (total_num + 1));
     int **neighbors = calloc(size + 1, sizeof(int *) * (size + 1));
     int global_count = 0;
-    int n = 0;
     int i = 0;
     int j = 0;
     int index = 0;
     int count = 0;
     int total_size = size - 1;
-    int num_points;
-    for(i = 0; i <= size; i++) {
+    for(i = 0; i <= total_num; i++) {
         neighbors[i] = malloc(sizeof(int) * 2);
         neighbors[i][0] = size + 1;
         neighbors[i][1] = size + 1;
@@ -106,15 +105,17 @@ int **construct_contour(struct point_t *points, int size)
     k.T2.point[0].x = start.x;
     k.T2.point[0].y = start.y;
     k.T2.point[0].index = start.index;
-    index = 0;
     /* remove the start point from the list */
     for(i = 0; i <= size; i++) {
         points[i] = points[i + 1];
     }
     size--;
+    index = 0;
     /* outer loop, calculates total distance */
     while(global_count <= total_size) {
         i = 0;
+        count = 0;
+        //index = start.index;
         /* refreshing best index */
         best.tao_d = DBL_MAX;
         best.index = start.index;
@@ -154,6 +155,7 @@ int **construct_contour(struct point_t *points, int size)
             /* calculating tao-distance */
             curr[i].tao_d = tao_distance(k);
             k.V.point[1].tao_d = curr[i].tao_d;
+            print_k(k);
             i++;
             count++;
         }
@@ -167,21 +169,25 @@ int **construct_contour(struct point_t *points, int size)
                 best.y = curr[i].y;
                 best.index = curr[i].index;
                 best.tao_d = curr[i].tao_d;
-                n = i;
             }
         }
+        printf("best.index = %d\n", best.index);
+        neighbors[index][1] = best.index;
         /* remove the best point from the list */
+        printf("NEW: ", best.index);
         for(i = 0; i <= size; i++) {
-            if(curr[i].index == best.index) {
-                for(j = i; j <= size; j++) {
+            if(points[i].index == best.index) {
+                for(j = i; j < size - 1; j++) {
                     points[j] = points[j + 1];
+                    printf("!%d ", points[j].index);
                 }
                 size--;
-                break;
+                printf(", size = %d\n", size);
+                i = size + 1;
             }
+            printf("%d ", points[i].index);
         }
         total += distance_p(start, best);
-        neighbors[index][1] = best.index;
         /* reinitializing structure k
            -- reinitializing vector V */
         k.V.point[1].x = best.x;
@@ -222,12 +228,12 @@ int **construct_contour(struct point_t *points, int size)
         k.V.i = 0;
         k.V.j = 0;
         k.V.length = 0;
-        count = 0;
         global_count++;
         index++;
     }
     index--;
     neighbors[0][0] = best.index;
+    //index = prev.index;
     neighbors[index][1] = end.index;
     total += distance_p(best, end);
     return neighbors;

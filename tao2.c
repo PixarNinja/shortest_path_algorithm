@@ -4,7 +4,7 @@
 #include <float.h>
 #include "construct_contour.h"
 
-#define FILE_NUM 6
+#define FILE_NUM 4
 
 struct function_t {
     struct point_t point1;
@@ -26,7 +26,7 @@ int global_count = 0;
 
 double path(struct point_t *point, int size, FILE *gnu_files[FILE_NUM]);
 void construct_neighbors(int **neighbors, struct point_t *point, int size, FILE *gnu_files[FILE_NUM]);
-struct triangle_t *construct_triangles(struct point_t **curve, int size, int divisions);
+struct triangle_t *construct_triangles(struct point_t **curve, int size, int division_number);
 
 int main(void)
 {
@@ -34,9 +34,7 @@ int main(void)
     gnu_files[0] = fopen ("./gnu_files/commands.tmp", "w+");
     gnu_files[1] = fopen("./gnu_files/points.tmp", "w+");
     gnu_files[2] = fopen("./gnu_files/lines.tmp", "w+");
-    gnu_files[3] = fopen("./gnu_files/vectors_t.tmp", "w+");
-    gnu_files[4] = fopen("./gnu_files/vectors_n.tmp", "w+");
-    gnu_files[5] = fopen("./gnu_files/tmp.tmp", "w+");
+    gnu_files[3] = fopen("./gnu_files/tmp.tmp", "w+");
     FILE *data = fopen("./datapoints/datapoints.dat", "r");
     struct point_t *point;
     char buf[1024];
@@ -79,8 +77,6 @@ int main(void)
     fclose(gnu_files[0]);
     fclose(gnu_files[1]);
     fclose(gnu_files[2]);
-    fclose(gnu_files[3]);
-    fclose(gnu_files[4]);
     system("gnuplot -persistent ./gnu_files/commands.tmp");
     return 0;
 }
@@ -99,7 +95,8 @@ double path(struct point_t *point, int size, FILE *gnu_files[FILE_NUM])
     }
     construct_neighbors(neighbors, point, size, gnu_files);
     for(i = 0; i <= size; i++) {
-        fprintf(gnu_files[2], "%lf %lf\n", point[neighbors[i][1]].x, point[neighbors[i][1]].y);
+        printf("node: %d, [%d, %d]\n", i, point[neighbors[i][0]].index, point[neighbors[i][1]].index);
+        fprintf(gnu_files[2], "%lf %lf\n", point[neighbors[i][0]].x, point[neighbors[i][0]].y);
         fprintf(gnu_files[2], "%lf %lf\n", point[i].x, point[i].y);
         fprintf(gnu_files[2], "%lf %lf\n", point[neighbors[i][1]].x, point[neighbors[i][1]].y);
         fprintf(gnu_files[2], "\n");
@@ -111,6 +108,7 @@ double path(struct point_t *point, int size, FILE *gnu_files[FILE_NUM])
 void construct_neighbors(int **neighbors, struct point_t *point, int size, FILE *gnu_files[FILE_NUM])
 {
     struct point_t *contour_point = malloc(sizeof(struct point_t) * (size + 1));
+    struct point_t *buf = malloc(sizeof(struct point_t) * (size + 1));
     struct point_t center;
     struct vector_t *position = malloc(sizeof(struct vector_t) * (size + 1));
     double *distance = malloc(sizeof(double) * (size + 1));
@@ -124,12 +122,10 @@ void construct_neighbors(int **neighbors, struct point_t *point, int size, FILE 
     double sum_y = 0;
     int **curve = malloc(sizeof(int *) * (size + 1));
     int **tmp = malloc(sizeof(int *) * (size + 1));
+    int division_number = 0;
     int i = 0;
     int j = 0;
     int k = 0;
-    int l = 0;
-    int m = 0;
-    int division_number = 0;
     /* calculate average point */
     for(i = 0; i <= size; i++) {
         sum_x += point[i].x;
@@ -190,7 +186,7 @@ void construct_neighbors(int **neighbors, struct point_t *point, int size, FILE 
         fprintf(gnu_files[0], "%lf*sin(t) + %lf notitle ls %d,", circles[i], center.x, 2);
         fprintf(gnu_files[0], "%lf*cos(t) + %lf notitle ls %d,", circles[i], center.y, 2);
     }
-    /* printing for debug
+    /* printing for debug */
     for(i = 0; i < division_number; i++) {
         printf("curve[%d]: ", i);
         for(j = 0; j <= size; j++) {
@@ -199,7 +195,12 @@ void construct_neighbors(int **neighbors, struct point_t *point, int size, FILE 
             }
         }
         printf("\n");
-    }*/
+    }
+    for(j = 0; j <= size; j++) {
+        tmp[j] = malloc(sizeof(int) * 2);
+        tmp[j][0] = size + 1;
+        tmp[j][1] = size + 1;
+    }
     /* fills neighbors in a 2D array of length (size x 2)
        with the indices of the two neighbors */
     for(i = 0; i < division_number; i++) {
@@ -208,24 +209,18 @@ void construct_neighbors(int **neighbors, struct point_t *point, int size, FILE 
         for(j = 0; j <= size; j++) {
             if(curve[i][j] != size + 1) {
                 contour_point[k] = point[curve[i][j]];
+                printf("contour_point[%d].index = %d\n", k, contour_point[k].index);
                 k++;
             }
         }
         for(j = 0; j < k; j++) {
-            tmp[j] = malloc(sizeof(int) * 2);
-            tmp[j][0] = 0;
-            tmp[j][1] = 0;
+            buf[j] = contour_point[j];
         }
-        tmp = construct_contour(contour_point, k);
-        /* finds next k value */
-        l += k;
-        j = 0;
-        /* runs from the previous k value to the next k value */
-        while(m < l) {
-            neighbors[m][0] = tmp[j][0];
-            neighbors[m][1] = tmp[j][1];
-            m++;
-            j++;
+        tmp = construct_contour(contour_point, k, size);
+        for(j = 0; j < k; j++) {
+            printf("tmp_point[%d].index = %d, ", j, buf[j].index);
+            printf("tmp[%d] = [%d, %d]\n", j, tmp[j][0], tmp[j][1]);
+            neighbors[buf[j].index] = tmp[j];
         }
     }
     /* plot */
@@ -240,8 +235,11 @@ void construct_neighbors(int **neighbors, struct point_t *point, int size, FILE 
 }
 
 /* constructs triangles given the curve they are on*/
-struct triangle_t *construct_triangles(struct point_t **curve, int size,int divisions)
+struct triangle_t *construct_triangles(struct point_t **curve, int size, int division_number)
 {
-    struct triangle_t *triangle = malloc(sizeof(struct triangle_t) * 100);
+    struct triangle_t *triangle = malloc(sizeof(struct triangle_t) * (size * division_number));
+    int i = 0;
+    for(i = 0; i < division_number; i++) {
+    }
     return triangle;
 }

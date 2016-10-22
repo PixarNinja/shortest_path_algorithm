@@ -30,7 +30,7 @@ struct curvature_t {
 };
 
 
-int **construct_contour(struct point_t *points, int size);
+int **construct_contour(struct point_t *points, int size, int total_num);
 double calculate_curvature(struct curvature_t k);
 double calculate_theta(struct curvature_t k);
 double tao_distance(struct curvature_t k);
