@@ -2,12 +2,13 @@ set xrange [-5.000000:5.000000]
 set yrange [-5.000000:5.000000]
 set size ratio 1
 set grid
-set title "Contour Construction Algorithm"
+set title "DATA POINTS"
 set style line 1 lc rgb "black" lw 1
-plot './gnu_files/lines.tmp' using 1:2 with lines ls 1 title "shortest path",'./gnu_files/points.tmp' using 1:2 with points pt 7 notitle,'' using 1:2:3 with labels point pt 7 offset char -1,-1 notitle
-plot './gnu_files/lines.tmp' using 1:2 with lines ls 1 title "shortest path",'./gnu_files/points.tmp' using 1:2 with points pt 7 notitle,'' using 1:2:3 with labels point pt 7 offset char -1,-1 notitle
-plot './gnu_files/lines.tmp' using 1:2 with lines ls 1 title "shortest path",'./gnu_files/points.tmp' using 1:2 with points pt 7 notitle,'' using 1:2:3 with labels point pt 7 offset char -1,-1 notitle
-plot './gnu_files/lines.tmp' using 1:2 with lines ls 1 title "shortest path",'./gnu_files/points.tmp' using 1:2 with points pt 7 notitle,'' using 1:2:3 with labels point pt 7 offset char -1,-1 notitle
-plot './gnu_files/lines.tmp' using 1:2 with lines ls 1 title "shortest path",'./gnu_files/points.tmp' using 1:2 with points pt 7 notitle,'' using 1:2:3 with labels point pt 7 offset char -1,-1 notitle
-plot './gnu_files/lines.tmp' using 1:2 with lines ls 1 title "shortest path",'./gnu_files/points.tmp' using 1:2 with points pt 7 notitle,'' using 1:2:3 with labels point pt 7 offset char -1,-1 notitle
-plot './gnu_files/lines.tmp' using 1:2 with lines ls 1 title "shortest path",'./gnu_files/points.tmp' using 1:2 with points pt 7 notitle,'' using 1:2:3 with labels point pt 7 offset char -1,-1 notitle
+set style line 2 lc rgb "grey"
+set style line 3 lc rgb "orange"
+set style line 4 lc rgb "cyan"
+set style arrow 1 head filled size screen 0.025,20,35 ls 3
+set style arrow 2 head filled size screen 0.025,20,35 ls 4
+set parametric
+plot 0.849837*sin(t) + 0.166667 notitle ls 2,0.849837*cos(t) + 0.833333 notitle ls 2,2.343396*sin(t) + 0.166667 notitle ls 2,2.343396*cos(t) + 0.833333 notitle ls 2,'./gnu_files/lines.tmp' with lines ls 1 title "neighbors",'./gnu_files/points.tmp' using 1:2 with points pt 7 notitle,'' using 1:2:3 with labels point pt 7 offset char -1,-1 notitle
+set noparametric

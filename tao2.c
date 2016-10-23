@@ -35,19 +35,26 @@ int main(void)
     gnu_files[1] = fopen("./gnu_files/points.tmp", "w+");
     gnu_files[2] = fopen("./gnu_files/lines.tmp", "w+");
     gnu_files[3] = fopen("./gnu_files/tmp.tmp", "w+");
-    FILE *data = fopen("./datapoints/datapoints.dat", "r");
+    FILE *data = fopen("./datapoints/test7.dat", "r");
     struct point_t *point;
     char buf[1024];
     double distance = 0;
+    double range = 0;
     int size = 0;
     int i = 0;
     while(fgets(buf, 1024, data)) {
         size++;
     }
     fclose(data);
-    data = fopen("./datapoints/datapoints.dat", "r");
+    data = fopen("./datapoints/test7.dat", "r");
     point = malloc(sizeof(struct point_t) * size);
     while(fscanf(data, "%d: (%lf, %lf)", &point[i].index, &point[i].x, &point[i].y) > 0) {
+        if(fabs(point[i].x) > range) {
+            range = fabs(point[i].x);
+        }
+        if(fabs(point[i].y) > range) {
+            range = fabs(point[i].y);
+        }
         i++;
     }
     fclose(data);
@@ -56,8 +63,8 @@ int main(void)
         fprintf(gnu_files[1], "%lf %lf %d\n", point[i].x, point[i].y, point[i].index);
     }
     /* plot setup */
-    fprintf(gnu_files[0], "set xrange [-8:8]\n");
-    fprintf(gnu_files[0], "set yrange [-8:8]\n");
+    fprintf(gnu_files[0], "set xrange [%lf:%lf]\n", -(range + 1), range + 1);
+    fprintf(gnu_files[0], "set yrange [%lf:%lf]\n", -(range + 1), range + 1);
     fprintf(gnu_files[0], "set size ratio 1\n");
     fprintf(gnu_files[0], "set grid\n");
     fprintf(gnu_files[0], "set title \"DATA POINTS\"\n");
