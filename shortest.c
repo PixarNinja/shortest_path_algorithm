@@ -3,7 +3,7 @@
 #include <math.h>
 #include <float.h>
 
-#define SIZE 13
+#define SIZE 7
 
 struct point_t {
     double x;
@@ -17,24 +17,30 @@ void permute(struct point_t *point, struct point_t *shortest, int index, int n);
 double distance(struct point_t *point, int first, int last);
 int factorial(int n);
 
-char global_shortest[SIZE + 2] = {'\0'};
+int *global_shortest;
 int global_count = 0;
 
 int main(void)
 {
-    FILE *data = fopen("./datapoints/datapoints.dat", "r");
+    FILE *data = fopen("./datapoints/test6.dat", "r");
     struct point_t *point;
-    struct point_t *shortest = malloc(sizeof(struct point_t) * SIZE);
+    struct point_t *shortest;
     char buf[1024];
     int start = 0;
-    int n = SIZE - 1;
+    int n;
     int size = 0;
     int i = 0;
     while(fgets(buf, 1024, data)) {
         size++;
     }
+    n = size - 1;
+    global_shortest = malloc(sizeof(int) * (size + 1));
+    for(i = 0; i < size; i++) {
+        global_shortest[i] = size;
+    }
+    i = 0;
     fclose(data);
-    data = fopen("./datapoints/datapoints.dat", "r");
+    data = fopen("./datapoints/test6.dat", "r");
     point = malloc(sizeof(struct point_t) * size);
     while(fscanf(data, "%d: (%lf, %lf)", &point[i].index, &point[i].x, &point[i].y) > 0) {
         point[i].curr = DBL_MAX;
@@ -45,11 +51,14 @@ int main(void)
     /* fills array with permutations */
     permute(point, shortest, start, n);
     printf("\n");
-    printf("Total Permutations: %d\n\n", global_count);
-    printf("Shortest Path: %s\n", global_shortest);
+    printf("Shortest Path: %d->", global_shortest[0]);
+    for(i = 0; i < n; i++) {
+        printf("%d->", global_shortest[i + 1]);
+    }
+    printf("%d\n", global_shortest[i + 1]);
+    printf("Total Permutations: %d\n", global_count);
     printf("Distance: %lf\n", shortest[0].curr);
     printf("\n");
-    fclose(data);
     return 0;
 }
 
@@ -90,10 +99,9 @@ void permute(struct point_t *point, struct point_t *shortest, int index, int n)
            the current shortest length */
         if(total < curr) {
             point[0].curr = total;
-            /* storing new shortest path */
             global_shortest[0] = shortest[n].index;
             for(i = 0; i <= n; i++) {
-            	global_shortest[i + 1] = shortest[i].index;
+                global_shortest[i + 1] = shortest[i].index;
             }
             shortest = point;
             curr = total;
@@ -101,9 +109,9 @@ void permute(struct point_t *point, struct point_t *shortest, int index, int n)
     }
     else {
         for(i = index; i <= n; i++) {
-            swap(point+index, point+i);
-            permute(point, shortest, index+1, n);
-            swap(point+index, point+i); //backtrack
+            swap(point + index, point + i);
+            permute(point, shortest, index + 1, n);
+            swap(point + index, point + i); //backtrack
         }
     }
 }
