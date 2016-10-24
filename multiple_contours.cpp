@@ -55,7 +55,7 @@ int main(int argc, char *argv[])
     gnu_files[1] = fopen("./gnu_files/points.tmp", "w+");
     gnu_files[2] = fopen("./gnu_files/lines.tmp", "w+");
     gnu_files[3] = fopen("./gnu_files/tmp.tmp", "w+");
-    data = fopen("./datapoints/test6.dat", "r");
+    data = fopen("./datapoints/test4.dat", "r");
     while(fgets(buf, 1024, data)) {
         size++;
     }
@@ -69,7 +69,7 @@ int main(int argc, char *argv[])
         }
     }
     i = 0;
-    data = fopen("./datapoints/test6.dat", "r");
+    data = fopen("./datapoints/test4.dat", "r");
     while(fscanf(data, "%d: (%lf, %lf)", &point[i].index, &point[i].x, &point[i].y) > 0) {
         if(fabs(point[i].x) > range) {
             range = fabs(point[i].x);
@@ -401,7 +401,9 @@ double shortest_path(int **recorded, struct point_t begin, int n, struct point_t
                 prev = save_prev;
                 best = save_best;
                 n = m;
+                i = n;
                 m = INT_MAX;
+                continue;
             }
             /* points T1 in the direction of the "second point" */
             T1.i = (search[index].x - start.x) / distance_p(search[index], start);
