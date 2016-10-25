@@ -35,7 +35,7 @@ int main(void)
     gnu_files[1] = fopen("./gnu_files/points.tmp", "w+");
     gnu_files[2] = fopen("./gnu_files/lines.tmp", "w+");
     gnu_files[3] = fopen("./gnu_files/tmp.tmp", "w+");
-    FILE *data = fopen("./datapoints/test7.dat", "r");
+    FILE *data = fopen("./datapoints/tree.dat", "r");
     struct point_t *point;
     char buf[1024];
     double distance = 0;
@@ -46,7 +46,7 @@ int main(void)
         size++;
     }
     fclose(data);
-    data = fopen("./datapoints/test7.dat", "r");
+    data = fopen("./datapoints/tree.dat", "r");
     point = malloc(sizeof(struct point_t) * size);
     while(fscanf(data, "%d: (%lf, %lf)", &point[i].index, &point[i].x, &point[i].y) > 0) {
         if(fabs(point[i].x) > range) {

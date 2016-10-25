@@ -22,7 +22,7 @@ int global_count = 0;
 
 int main(void)
 {
-    FILE *data = fopen("./datapoints/test6.dat", "r");
+    FILE *data = fopen("./datapoints/tree.dat", "r");
     struct point_t *point;
     struct point_t *shortest;
     char buf[1024];
@@ -40,7 +40,7 @@ int main(void)
     }
     i = 0;
     fclose(data);
-    data = fopen("./datapoints/test6.dat", "r");
+    data = fopen("./datapoints/tree.dat", "r");
     point = malloc(sizeof(struct point_t) * size);
     while(fscanf(data, "%d: (%lf, %lf)", &point[i].index, &point[i].x, &point[i].y) > 0) {
         point[i].curr = DBL_MAX;
