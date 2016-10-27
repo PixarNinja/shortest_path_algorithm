@@ -129,6 +129,7 @@ double shortest_path(int **recorded, struct point_t begin, int n, struct point_t
     double theta = DBL_MAX;
     double tmp = 0.0;
     int **segments = new int * [size + 1];
+    int **loop = new int * [size];
     int *visited = new int [size];
     int *contoured_points = new int [size];
     int count = 0;
@@ -139,6 +140,8 @@ double shortest_path(int **recorded, struct point_t begin, int n, struct point_t
     int i = 0;
     int j = 0;
     int k = 0;
+    int l = 0;
+    int m = 0;
     /* initialization of arrays */
     for(i = 0; i < size; i++) {
         curr[i].x = DBL_MAX;
@@ -152,6 +155,7 @@ double shortest_path(int **recorded, struct point_t begin, int n, struct point_t
         segments[i] = new int [2];
         segments[i][0] = INT_MAX;
         segments[i][1] = INT_MAX;
+        loop[i] = new int [size];
     }
     segments[i] = new int [2];
     segments[i][0] = INT_MAX;
@@ -226,6 +230,7 @@ double shortest_path(int **recorded, struct point_t begin, int n, struct point_t
     /* stores visted points */
     visited[start.index] = 1;
     index = start.index;
+    loop[l][m++] = size;
     /* outer loop, calculates total distance */
     while(permutations <= total_size) {
             i = 0;
@@ -234,8 +239,8 @@ double shortest_path(int **recorded, struct point_t begin, int n, struct point_t
             best.index = start.index;
             /* loops through all possible indices from start */
             while(count < size) {
-                /* skip current index, previous index, and contoured points */
-                if((search[i].index == best.index) || (search[i].index == prev.index) || (contoured_points[i] == 1)) {
+                /* skip current index and previous index */
+                if((search[i].index == best.index) || (search[i].index == prev.index)) {
                     curr[i].tao_distance = DBL_MAX;
                     i++;
                     count++;
@@ -272,8 +277,9 @@ double shortest_path(int **recorded, struct point_t begin, int n, struct point_t
                 curr[i].curvature = calculate_curvature(T1, T2, curr[i].tao);
                 curr[i].tao_distance = tao_distance(V, curr[i].curvature, curr[i].theta);
                 V.point[1].tao_distance = curr[i].tao_distance;
-                /* for debugging tao-distance function */
+                /* for debugging tao-distance function
                 print(V, T1, T2, curr[i].curvature, curr[i].theta, curr[i].tao);
+                */
                 i++;
                 count++;
             }
@@ -295,12 +301,91 @@ double shortest_path(int **recorded, struct point_t begin, int n, struct point_t
         segments[k][0] = start.index;
         segments[k][1] = best.index;
         k++;
-        /* if the best point is a point that has already been
-           visited or if the angle is greater than 90 degrees */
-        if((visited[n] == 1) || ((int)(best.theta * 180 / M_PI) > 89)) {
-            if ((int)(best.theta * 180 / M_PI) <= 89) {
-                visited[n] = 1;
+        /* record loops */
+        loop[l][m++] = best.index;
+        /* if the best point has been visited before */
+        if(visited[n] == 1) {
+            loop[l][m] = loop[l][1];
+            /* prints the loop for debugging */
+                printf("Loop %d: ", l);
+            for(j = 0; j < m; j++) {
+                printf("%d->", loop[l][j]);
             }
+            printf("%d\n", loop[l][m]);
+            if(loop[l][0] == size) {
+                /* don't reinitialize the initial vector */
+            }
+            else {
+                /* initialize initial vector */
+                for(j = 0; j < size; j++) {
+                    if(loop[l][0] == search[j].index)
+                        break;
+                }
+                initial.point[0].x = search[j].x;
+                initial.point[0].y = search[j].y;
+                initial.point[0].index = search[j].index;
+                initial.i = (search[j].x - best.x) / distance_p(best, search[j]);
+                initial.j = (search[j].y - best.x) / distance_p(best, search[j]);
+                initial.point[1].x = search[j].x + initial.i;
+                initial.point[1].y = search[j].y + initial.j;
+                initial.point[1].index = size;
+                initial.length = length_v(initial);
+            }
+            /* initializing vector V */
+            V.point[0].x = search[j].x;
+            V.point[0].y = search[j].y;
+            V.point[0].index = search[j].index;
+            V.i = 0;
+            V.j = 0;
+            V.length = 0;
+            /* -- initializing vector T1 */
+            T1.point[0].x = search[j].x;
+            T1.point[0].y = search[j].y;
+            T1.point[0].index = search[j].index;
+            /* checks for the point with the smallest deviation in angle from
+               the position vector of the starting point (selects the "second"
+               point) */
+            theta = DBL_MAX;
+            for(j = 0; j < size; j++) {
+                /* only check unvisited points */
+                if(visited[j] == 0) {
+                    check.point[0].x = start.x;
+                    check.point[0].y = start.y;
+                    check.point[0].index = start.index;
+                    check.point[1].x = search[j].x;
+                    check.point[1].y = search[j].y;
+                    check.point[1].index = search[j].index;
+                    check.i = check.point[1].x - check.point[0].x;
+                    check.j = check.point[1].y - check.point[0].y;
+                    check.length = length_v(check);
+                    tmp = angle_v(T2, check);
+                    if(tmp < theta) {
+                        theta = tmp;
+                        index = j;
+                    }
+                }
+            }
+            /* points T1 in the direction of the "second point" */
+            T1.i = (search[index].x - start.x) / distance_p(search[index], start);
+            T1.j = (search[index].y - start.y) / distance_p(search[index], start);
+            T1.point[1].x = start.x + T1.i;
+            T1.point[1].y = start.y + T1.j;
+            T1.point[1].index = INT_MAX;
+            T1.length = 1;
+            /* -- initializing vector T2 */
+            T2.point[0].x = start.x;
+            T2.point[0].y = start.y;
+            T2.point[0].index = start.index;
+            /* stores index of the starting point */
+            index = start.index;
+            count = 0;
+            permutations++;
+            m = 0;
+            loop[l++][m++] = size;
+            continue;
+        }
+        /* if the loop is compete TODO: finish implementation */
+        if(0) {
             /* finds starting point of the next curve */
             remaining_points = 0;
             for(j = 0; j < size; j++) {
