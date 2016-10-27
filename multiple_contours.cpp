@@ -55,7 +55,7 @@ int main(int argc, char *argv[])
     gnu_files[1] = fopen("./gnu_files/points.tmp", "w+");
     gnu_files[2] = fopen("./gnu_files/lines.tmp", "w+");
     gnu_files[3] = fopen("./gnu_files/tmp.tmp", "w+");
-    data = fopen("./datapoints/test4.dat", "r");
+    data = fopen("./datapoints/circle.dat", "r");
     while(fgets(buf, 1024, data)) {
         size++;
     }
@@ -69,7 +69,7 @@ int main(int argc, char *argv[])
         }
     }
     i = 0;
-    data = fopen("./datapoints/test4.dat", "r");
+    data = fopen("./datapoints/circle.dat", "r");
     while(fscanf(data, "%d: (%lf, %lf)", &point[i].index, &point[i].x, &point[i].y) > 0) {
         if(fabs(point[i].x) > range) {
             range = fabs(point[i].x);
@@ -276,8 +276,9 @@ double shortest_path(int **recorded, struct point_t begin, int n, struct point_t
                 curr[i].curvature = calculate_curvature(T1, T2, curr[i].tao);
                 curr[i].tao_distance = tao_distance(V, curr[i].curvature, curr[i].theta);
                 V.point[1].tao_distance = curr[i].tao_distance;
-                /* for debugging tao-distance function */
+                /* for debugging tao-distance function
                 print(V, T1, T2, curr[i].curvature, curr[i].theta, curr[i].tao);
+                */
                 i++;
                 count++;
             }
@@ -502,8 +503,7 @@ double calculate_theta(double tao)
 /* calculates distance given index and structure */
 double tao_distance(struct vector_t V, double curvature, double theta)
 {
-    //return (V.length + curvature);
-    return (V.length + curvature + theta);
+    return (V.length + curvature + (theta * 4 / M_PI) - 1);
 }
 
 /* calculates angle between two vectors */
