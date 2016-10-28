@@ -27,7 +27,7 @@ struct vector_t {
     double j;
 };
 
-double shortest_path(int **recorded, struct point_t begin, int n, struct point_t *points, int size, FILE *gnu_files[NUM_FILES]);
+double shortest_path(struct point_t *points, int size, FILE *gnu_files[NUM_FILES]);
 double calculate_curvature(struct vector_t T1, struct vector_t T2, double tao);
 double calculate_theta(double tao);
 double tao_distance(struct vector_t V, double curvature, double theta);
@@ -46,7 +46,6 @@ int main(int argc, char *argv[])
     struct point_t *point;
     char buf[1024];
     double range = 0.0;
-    int **recorded;
     int size = 0;
     int permutations = 0;
     int i = 0;
@@ -61,13 +60,6 @@ int main(int argc, char *argv[])
     }
     fclose(data);
     point = new struct point_t [size];
-    recorded = new int * [size];
-    for(i = 0; i < size; i++) {
-        recorded[i] = new int [size];
-        for (j = 0; j < size; j++) {
-            recorded[i][j] = 0;
-        }
-    }
     i = 0;
     data = fopen("./datapoints/test3.dat", "r");
     while(fscanf(data, "%d: (%lf, %lf)", &point[i].index, &point[i].x, &point[i].y) > 0) {
@@ -92,9 +84,7 @@ int main(int argc, char *argv[])
     fprintf(gnu_files[0], "set title \"Contour Construction Algorithm\"\n");
     fprintf(gnu_files[0], "set style line 1 lc rgb \"black\" lw 1\n");
     /* runs tao-distance algorithm on data */
-    for(i = 0; i < size; i++) {
-        permutations += shortest_path(recorded, point[i], i, point, size, gnu_files);
-    }
+    permutations += shortest_path(point, size, gnu_files);
     printf("\n");
     printf("Total Permutations: %d\n", permutations);
     printf("\n");
@@ -108,7 +98,7 @@ int main(int argc, char *argv[])
 }
 
 /* calculates the shortest path */
-double shortest_path(int **recorded, struct point_t begin, int n, struct point_t *points, int size, FILE *gnu_files[NUM_FILES])
+double shortest_path(struct point_t *points, int size, FILE *gnu_files[NUM_FILES])
 {
     struct vector_t V;
     struct vector_t T1;
@@ -119,9 +109,9 @@ double shortest_path(int **recorded, struct point_t begin, int n, struct point_t
     struct point_t *unvisited_points = new struct point_t [size];
     struct point_t *search = new struct point_t [size];
     struct point_t best;
-    struct point_t start = begin;
-    struct point_t end = begin;
-    struct point_t prev = begin;
+    struct point_t start;
+    struct point_t end;
+    struct point_t prev;
     struct point_t center;
     double current_distance = DBL_MAX;
     double sum_x = 0.0;
@@ -129,19 +119,21 @@ double shortest_path(int **recorded, struct point_t begin, int n, struct point_t
     double theta = DBL_MAX;
     double tmp = 0.0;
     int **segments = new int * [size + 1];
+    int ** recorded = new int * [size];
     int **loop = new int * [size];
     int *visited = new int [size];
     int *contoured_points = new int [size];
     int count = 0;
     int permutations = 0;
     int total_size = size;
-    int index = n;
+    int index;
     int remaining_points = 0;
     int i = 0;
     int j = 0;
     int k = 0;
     int l = 0;
     int m = 0;
+    int n = 0;
     /* initialization of arrays */
     for(i = 0; i < size; i++) {
         curr[i].x = DBL_MAX;
@@ -155,6 +147,10 @@ double shortest_path(int **recorded, struct point_t begin, int n, struct point_t
         segments[i] = new int [2];
         segments[i][0] = INT_MAX;
         segments[i][1] = INT_MAX;
+        recorded[i] = new int [size];
+        for(j = 0; j < size; j++) {
+            recorded[i][j] = 0;
+        }
         loop[i] = new int [size];
     }
     segments[i] = new int [2];
@@ -171,6 +167,15 @@ double shortest_path(int **recorded, struct point_t begin, int n, struct point_t
     }
     center.x = sum_x / size;
     center.y = sum_y / size;
+    for(i = 0; i < size; i++) {
+        if(distance_p(points[i], center) < tmp) {
+            start = points[i];
+            end = points[i];
+            prev = points[i];
+            tmp = distance_p(points[i], center);
+            index = points[i].index;
+        }
+    }
     /* initialize initial vector */
     initial.point[0].x = start.x;
     initial.point[0].y = start.y;
