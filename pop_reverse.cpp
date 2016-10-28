@@ -43,38 +43,42 @@ int main(int argc, char *argv[])
 {
     FILE *data;
     FILE *gnu_files[NUM_FILES];
-    struct point_t *point;
+    struct point_t *points;
     char buf[1024];
     double range = 0.0;
     int size = 0;
     int permutations = 0;
     int i = 0;
     int j = 0;
+    if(argc == 1) {
+        printf("\n\nPlease enter the path of the .dat file to read from. Exiting Program. Good Day.\n\n");
+    }
     gnu_files[0] = fopen ("./gnu_files/commands.tmp", "w+");
     gnu_files[1] = fopen("./gnu_files/points.tmp", "w+");
     gnu_files[2] = fopen("./gnu_files/lines.tmp", "w+");
     gnu_files[3] = fopen("./gnu_files/tmp.tmp", "w+");
-    data = fopen("./datapoints/test3.dat", "r");
+    printf("%s\n", argv[1]);
+    data = fopen(argv[1], "r");
     while(fgets(buf, 1024, data)) {
         size++;
     }
     fclose(data);
-    point = new struct point_t [size];
+    points = new struct point_t [size];
     i = 0;
-    data = fopen("./datapoints/test3.dat", "r");
-    while(fscanf(data, "%d: (%lf, %lf)", &point[i].index, &point[i].x, &point[i].y) > 0) {
-        if(fabs(point[i].x) > range) {
-            range = fabs(point[i].x);
+    data = fopen(argv[1], "r");
+    while(fscanf(data, "%d: (%lf, %lf)", &points[i].index, &points[i].x, &points[i].y) > 0) {
+        if(fabs(points[i].x) > range) {
+            range = fabs(points[i].x);
         }
-        if(fabs(point[i].y) > range) {
-            range = fabs(point[i].y);
+        if(fabs(points[i].y) > range) {
+            range = fabs(points[i].y);
         }
         i++;
     }
     fclose(data);
     /* stores data for gnu_points */
     for(i = 0; i < size; i++) {
-        fprintf(gnu_files[1], "%lf %lf %d\n", point[i].x, point[i].y, point[i].index);
+        fprintf(gnu_files[1], "%lf %lf %d\n", points[i].x, points[i].y, points[i].index);
     }
     /* plot setup */
     fprintf(gnu_files[0], "set xrange [%lf:%lf]\n", -(range + 1), range + 1);
@@ -84,7 +88,7 @@ int main(int argc, char *argv[])
     fprintf(gnu_files[0], "set title \"Contour Construction Algorithm\"\n");
     fprintf(gnu_files[0], "set style line 1 lc rgb \"black\" lw 1\n");
     /* runs tao-distance algorithm on data */
-    permutations += shortest_path(point, size, gnu_files);
+    permutations += shortest_path(points, size, gnu_files);
     printf("\n");
     printf("Total Permutations: %d\n", permutations);
     printf("\n");
@@ -109,6 +113,7 @@ double shortest_path(struct point_t *points, int size, FILE *gnu_files[NUM_FILES
     struct point_t *unvisited_points = new struct point_t [size];
     struct point_t *search = new struct point_t [size];
     struct point_t best;
+    struct point_t begin;
     struct point_t start;
     struct point_t end;
     struct point_t prev;
@@ -117,7 +122,7 @@ double shortest_path(struct point_t *points, int size, FILE *gnu_files[NUM_FILES
     double sum_x = 0.0;
     double sum_y = 0.0;
     double theta = DBL_MAX;
-    double tmp = 0.0;
+    double tmp = DBL_MAX;
     int **segments = new int * [size + 1];
     int ** recorded = new int * [size];
     int **loop = new int * [size];
@@ -169,13 +174,21 @@ double shortest_path(struct point_t *points, int size, FILE *gnu_files[NUM_FILES
     center.y = sum_y / size;
     for(i = 0; i < size; i++) {
         if(distance_p(points[i], center) < tmp) {
-            start = points[i];
-            end = points[i];
-            prev = points[i];
+            begin.x = points[i].x;
+            begin.y = points[i].y;
+            begin.index = points[i].index;
             tmp = distance_p(points[i], center);
-            index = points[i].index;
         }
     }
+    start.x = begin.x;
+    start.y = begin.y;
+    start.index = begin.index;
+    end.x = begin.x;
+    end.y = begin.y;
+    end.index = begin.index;
+    prev.x = begin.x;
+    prev.y = begin.y;
+    prev.index = begin.index;
     /* initialize initial vector */
     initial.point[0].x = start.x;
     initial.point[0].y = start.y;
@@ -283,8 +296,8 @@ double shortest_path(struct point_t *points, int size, FILE *gnu_files[NUM_FILES
                 curr[i].tao_distance = tao_distance(V, curr[i].curvature, curr[i].theta);
                 V.point[1].tao_distance = curr[i].tao_distance;
                 /* for debugging tao-distance function
-                print(V, T1, T2, curr[i].curvature, curr[i].theta, curr[i].tao);
-                */
+                print(V, T1, T2, curr[i].curvature, curr[i].theta, curr[i].tao);*/
+                
                 i++;
                 count++;
             }
@@ -312,11 +325,16 @@ double shortest_path(struct point_t *points, int size, FILE *gnu_files[NUM_FILES
         if(visited[n] == 1) {
             loop[l][m] = loop[l][1];
             /* prints the loop for debugging */
-                printf("Loop %d: ", l);
+            printf("Loop %d: ", l);
             for(j = 0; j < m; j++) {
                 printf("%d->", loop[l][j]);
             }
             printf("%d\n", loop[l][m]);
+            /* checks if the loop has ended */
+            if(begin.index == points[n].index) {
+                permutations++;
+                continue;
+            }
             if(loop[l][0] == size) {
                 /* don't reinitialize the initial vector */
             }
@@ -566,7 +584,8 @@ double calculate_theta(double tao)
 /* calculates distance given index and structure */
 double tao_distance(struct vector_t V, double curvature, double theta)
 {
-    return (V.length + curvature + (theta * 4 / M_PI) - 1);
+    //return (V.length + curvature + theta);
+    return (V.length + curvature - (cos(theta) * V.length));
 }
 
 /* calculates angle between two vectors */
