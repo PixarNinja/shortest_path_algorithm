@@ -2,7 +2,7 @@ CC=gcc
 CPP=g++
 CFLAGS=-g -Wall
 
-all: multiple shortest tao2 pop recursive
+all: multiple shortest tao2 pop tessellate
 
 shortest: shortest.c
 	$(CC) $(CFLAGS) shortest.c -o shortest -lm
@@ -17,8 +17,8 @@ multiple: multiple_contours.cpp
 pop: pop_reverse.cpp
 	$(CPP) $(CFLAGS) pop_reverse.cpp -o pop_reverse -lm
 
-recursive: recursive.cpp
-	$(CPP) $(CFLAGS) recursive.cpp -o recursive -lm
+tessellate: tessellate.cpp
+	$(CPP) $(CFLAGS) tessellate.cpp -o tessellate -lm
 
 clean: 
-	rm shortest multiple tao2 pop_reverse recursive
+	rm shortest multiple_contours tao2 pop_reverse tessellate
