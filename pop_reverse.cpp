@@ -174,12 +174,14 @@ double shortest_path(struct point_t *points, int size, FILE *gnu_files[NUM_FILES
     center.y = sum_y / size;
     for(i = 0; i < size; i++) {
         if(distance_p(points[i], center) < tmp) {
+            printf("data.[%d] < ", i);
             begin.x = points[i].x;
             begin.y = points[i].y;
             begin.index = points[i].index;
             tmp = distance_p(points[i], center);
         }
     }
+    printf("\n");
     start.x = begin.x;
     start.y = begin.y;
     start.index = begin.index;
@@ -189,132 +191,99 @@ double shortest_path(struct point_t *points, int size, FILE *gnu_files[NUM_FILES
     prev.x = begin.x;
     prev.y = begin.y;
     prev.index = begin.index;
-    /* initialize initial vector */
-    initial.point[0].x = start.x;
-    initial.point[0].y = start.y;
-    initial.point[0].index = start.index;
-    initial.i = (start.x - center.x) / distance_p(start, center);
-    initial.j = (start.y - center.y) / distance_p(start, center);
-    initial.point[1].x = start.x + initial.i;
-    initial.point[1].y = start.y + initial.j;
-    initial.point[1].index = INT_MAX;
-    initial.length = length_v(initial);
-    /* initializing vector V */
-    V.point[0].x = start.x;
-    V.point[0].y = start.y;
-    V.point[0].index = start.index;
-    V.i = 0;
-    V.j = 0;
-    V.length = 0;
     /* initializing vector T1 */
     T1.point[0].x = start.x;
     T1.point[0].y = start.y;
     T1.point[0].index = start.index;
-    /* store start index in visted-array */
-    visited[start.index] = 1;
-    /* checks for the point with the smallest deviation in angle from
-       the position vector of the starting point */
-    for(i = 0; i < size; i ++) {
-        /* skip the starting point */
-        if(search[i].index == start.index) {
-            continue;
-        }
-        check.point[0].x = start.x;
-        check.point[0].y = start.y;
-        check.point[0].index = start.index;
-        check.point[1].x = search[i].x;
-        check.point[1].y = search[i].y;
-        check.point[1].index = search[i].index;
-        check.i = check.point[1].x - check.point[0].x;
-        check.j = check.point[1].y - check.point[0].y;
-        check.length = length_v(check);
-        tmp = angle_v(initial, check);
-        if(tmp < theta) {
-            theta = tmp;
-            index = i;
-        }
-    }
-    /* points T1 in the direction of the closest calculated point */
-    T1.i = (search[index].x - start.x) / distance_p(search[index], start);
-    T1.j = (search[index].y - start.y) / distance_p(search[index], start);
+    T1.i = (center.x - start.x) / distance_p(center, start);
+    T1.j = (center.y - start.y) / distance_p(center, start);
     T1.point[1].x = start.x + T1.i;
     T1.point[1].y = start.y + T1.j;
     T1.point[1].index = INT_MAX;
-    T1.length = 1;
-    /* -- initializing vector T2 */
-    T2.point[0].x = start.x;
-    T2.point[0].y = start.y;
-    T2.point[0].index = start.index;
-    /* stores visted points */
-    visited[start.index] = 1;
-    index = start.index;
-    loop[l][m++] = size;
+    T1.length = length_v(T1);
+
     /* outer loop, calculates total distance */
     while(permutations <= total_size) {
-            i = 0;
-            /* refreshing best index */
-            best.tao_distance = DBL_MAX;
-            best.index = start.index;
-            /* loops through all possible indices from start */
-            while(count < size) {
-                /* skip current index and previous index */
-                if((search[i].index == best.index) || (search[i].index == prev.index)) {
-                    curr[i].tao_distance = DBL_MAX;
-                    i++;
-                    count++;
-                    continue;
-                }
-                /* initializing vector V */
-                V.point[1].x = search[i].x;
-                V.point[1].y = search[i].y;
-                V.point[1].index = search[i].index;
-                V.i = V.point[1].x - V.point[0].x;
-                V.j = V.point[1].y - V.point[0].y;
-                V.length = length_v(V);
-                /* initializing vector T2 */
-                T2.point[1].x = V.point[1].x;
-                T2.point[1].y = V.point[1].y;
-                T2.point[1].index = INT_MAX;
-                T2.i = (T2.point[1].x - T2.point[0].x) / V.length;
-                T2.j = (T2.point[1].y - T2.point[0].y) / V.length;
-                T2.point[1].x = V.point[0].x + T2.i;
-                T2.point[1].y = V.point[0].y + T2.j;
-                T2.length = length_v(T2);
-                /* initializing tao, theta, and curvature */
-                curr[i].tao = (dot_product(T1, T2)); //length of T1 and T2 is always 1
-                if(curr[i].tao <= -1.0) {
-                    curr[i].tao = -1.0;
-                }
-                else if(curr[i].tao >= 1.0) {
-                    curr[i].tao = 1.0;
-                }
-                curr[i].x = V.point[1].x;
-                curr[i].y = V.point[1].y;
-                curr[i].index = V.point[1].index;
-                curr[i].theta = calculate_theta(curr[i].tao);
-                curr[i].curvature = calculate_curvature(T1, T2, curr[i].tao);
-                curr[i].tao_distance = tao_distance(V, curr[i].curvature, curr[i].theta);
-                V.point[1].tao_distance = curr[i].tao_distance;
-                /* for debugging tao-distance function
-                print(V, T1, T2, curr[i].curvature, curr[i].theta, curr[i].tao);*/
-                
+        /* store start index in visted-array */
+        visited[start.index] = 1;
+        i = 0;
+        /* refreshing best index */
+        best.tao_distance = DBL_MAX;
+        best.index = start.index;
+        /* initializing vector T2 */
+        T2.point[0].x = start.x;
+        T2.point[0].y = start.y;
+        T2.point[0].index = start.index;
+        T2.i = 0;
+        T2.j = 0;
+        T2.length = 0;
+        /* initializing vector V */
+        V.point[0].x = start.x;
+        V.point[0].y = start.y;
+        V.point[0].index = start.index;
+        V.i = 0;
+        V.j = 0;
+        V.length = 0;
+        count = 0;
+        /* loops through all possible indices from start */
+        while(count < size) {
+            /* skip current index and previous index */
+            if((search[i].index == best.index) || (search[i].index == prev.index)) {
+                curr[i].tao_distance = DBL_MAX;
                 i++;
                 count++;
+                continue;
             }
-            /* sets the previous point as the previous best point */
-            prev = best;
-            /* find point with the lowest tao-distance */
-            for(i = 0; i < size; i++) {
-                if(best.tao_distance > curr[i].tao_distance) {
-                    best.x = curr[i].x;
-                    best.y = curr[i].y;
-                    best.index = curr[i].index;
-                    best.theta = curr[i].theta;
-                    best.curvature = curr[i].curvature;
-                    best.tao_distance = curr[i].tao_distance;
-                    n = i;
-                }
+            /* initializing vector V */
+            V.point[1].x = search[i].x;
+            V.point[1].y = search[i].y;
+            V.point[1].index = search[i].index;
+            V.i = V.point[1].x - V.point[0].x;
+            V.j = V.point[1].y - V.point[0].y;
+            V.length = length_v(V);
+            /* initializing vector T2 */
+            T2.point[1].x = V.point[1].x;
+            T2.point[1].y = V.point[1].y;
+            T2.point[1].index = INT_MAX;
+            T2.i = (T2.point[1].x - T2.point[0].x) / V.length;
+            T2.j = (T2.point[1].y - T2.point[0].y) / V.length;
+            T2.point[1].x = V.point[0].x + T2.i;
+            T2.point[1].y = V.point[0].y + T2.j;
+            T2.length = length_v(T2);
+            /* initializing tao, theta, and curvature */
+            curr[i].tao = (dot_product(T1, T2)); //length of T1 and T2 is always 1
+            if(curr[i].tao <= -1.0) {
+                curr[i].tao = -1.0;
             }
+            else if(curr[i].tao >= 1.0) {
+                curr[i].tao = 1.0;
+            }
+            curr[i].x = V.point[1].x;
+            curr[i].y = V.point[1].y;
+            curr[i].index = V.point[1].index;
+            curr[i].theta = calculate_theta(curr[i].tao);
+            curr[i].curvature = calculate_curvature(T1, T2, curr[i].tao);
+            curr[i].tao_distance = tao_distance(V, curr[i].curvature, curr[i].theta);
+            V.point[1].tao_distance = curr[i].tao_distance;
+            /* for debugging tao-distance function */
+            print(V, T1, T2, curr[i].curvature, curr[i].theta, curr[i].tao);
+            
+            i++;
+            count++;
+        }
+        /* sets the previous point as the previous best point */
+        prev = best;
+        /* find point with the lowest tao-distance */
+        for(i = 0; i < size; i++) {
+            if(best.tao_distance > curr[i].tao_distance) {
+                best.x = curr[i].x;
+                best.y = curr[i].y;
+                best.index = curr[i].index;
+                best.theta = curr[i].theta;
+                best.curvature = curr[i].curvature;
+                best.tao_distance = curr[i].tao_distance;
+            }
+        }
         /* record segment */
         segments[k][0] = start.index;
         segments[k][1] = best.index;
@@ -322,7 +291,7 @@ double shortest_path(struct point_t *points, int size, FILE *gnu_files[NUM_FILES
         /* record loops */
         loop[l][m++] = best.index;
         /* if the best point has been visited before */
-        if(visited[n] == 1) {
+        if(visited[best.index] == 1) {
             loop[l][m] = loop[l][1];
             /* prints the loop for debugging */
             printf("Loop %d: ", l);
@@ -371,7 +340,7 @@ double shortest_path(struct point_t *points, int size, FILE *gnu_files[NUM_FILES
             theta = DBL_MAX;
             for(j = 0; j < size; j++) {
                 /* only check unvisited points */
-                if(visited[j] == 0) {
+                if(visited[search[j].index] == 0) {
                     check.point[0].x = start.x;
                     check.point[0].y = start.y;
                     check.point[0].index = start.index;
@@ -395,7 +364,7 @@ double shortest_path(struct point_t *points, int size, FILE *gnu_files[NUM_FILES
             T1.point[1].y = start.y + T1.j;
             T1.point[1].index = INT_MAX;
             T1.length = 1;
-            /* -- initializing vector T2 */
+            /* initializing vector T2 */
             T2.point[0].x = start.x;
             T2.point[0].y = start.y;
             T2.point[0].index = start.index;
@@ -469,7 +438,7 @@ double shortest_path(struct point_t *points, int size, FILE *gnu_files[NUM_FILES
                 /* skip the starting point and the previous point */
                 if((search[j].index != start.index) || (search[j].index != prev.index)) {
                     /* only check unvisited points */
-                    if(visited[j] == 0) {
+                    if(visited[search[j].index] == 0) {
                         check.point[0].x = start.x;
                         check.point[0].y = start.y;
                         check.point[0].index = start.index;
@@ -504,7 +473,6 @@ double shortest_path(struct point_t *points, int size, FILE *gnu_files[NUM_FILES
             permutations++;
             continue;
         }
-        visited[n] = 1;
         /* reinitializing vector V */
         V.point[1].x = best.x;
         V.point[1].y = best.y;
@@ -579,13 +547,14 @@ double calculate_curvature(struct vector_t T1, struct vector_t T2, double tao)
 double calculate_theta(double tao)
 {
     return (acos(tao) + (M_PI / 180));
+    //return (acos(tao));
 }
 
 /* calculates distance given index and structure */
 double tao_distance(struct vector_t V, double curvature, double theta)
 {
-    //return (V.length + curvature + theta);
-    return (V.length + curvature - (cos(theta) * V.length));
+    return (V.length + curvature + theta);
+    //return (V.length + curvature + (cos(theta) * V.length));
 }
 
 /* calculates angle between two vectors */
