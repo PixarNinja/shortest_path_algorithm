@@ -28,7 +28,7 @@ struct vector_t {
     double j;
 };
 
-int shortest_path(struct point_t *points, struct point_t begin, int n, int size, FILE *gnu_files[NUM_FILES]);
+int shortest_path(int *mapped, struct point_t *points, struct point_t begin, int n, int size, FILE *gnu_files[NUM_FILES]);
 double calculate_curvature(struct vector_t T1, struct vector_t T2, double tao);
 double calculate_theta(double tao);
 double tao_distance(struct vector_t V, double curvature, double theta);
@@ -47,9 +47,12 @@ int main(int argc, char *argv[])
     struct point_t *points;
     char buf[1024];
     double range = 0.0;
+    int *mapped;
+    int keep_going = 0;
     int size = 0;
-    int permutations = 0;
+    int permutations = 1;
     int i = 0;
+    int j = 0;
     if(argc == 1) {
         printf("\n\nPlease enter the path of the .dat file to read from. Exiting Program. Good Day.\n\n");
     }
@@ -64,6 +67,11 @@ int main(int argc, char *argv[])
     }
     fclose(data);
     points = new struct point_t [size];
+    mapped = new int [size];
+    /* initializing array */
+    for(i = 0; i < size; i++) {
+        mapped[i] = 0;
+    }
     i = 0;
     data = fopen(argv[1], "r");
     while(fscanf(data, "%d: (%lf, %lf)", &points[i].index, &points[i].x, &points[i].y) > 0) {
@@ -88,9 +96,19 @@ int main(int argc, char *argv[])
     fprintf(gnu_files[0], "set title \"Contour Construction Algorithm\"\n");
     fprintf(gnu_files[0], "set style line 1 lc rgb \"black\" lw 1\n");
     /* runs tao-distance algorithm on data */
-    //permutations = shortest_path(points, size, size, gnu_files);
     for(i = 0; i < size; i++) {
-        permutations += shortest_path(points, points[i], i, size, gnu_files);
+        for(j = 0; j < size; j++) {
+            if(mapped[j] == 0) {
+                keep_going = 1;
+            }
+        }
+        if(keep_going == 1) {
+            permutations += shortest_path(mapped, points, points[i], i, size, gnu_files);
+            keep_going = 0;
+        }
+        else {
+            i = size;
+        }
     }
     /* plot */
     fprintf(gnu_files[0], "plot './gnu_files/lines.tmp' using 1:2 with lines ls 1 title \"shortest path\",");
@@ -108,7 +126,7 @@ int main(int argc, char *argv[])
 }
 
 /* calculates the shortest path */
-int shortest_path(struct point_t *points, struct point_t begin, int n, int size, FILE *gnu_files[NUM_FILES])
+int shortest_path(int *mapped, struct point_t *points, struct point_t begin, int n, int size, FILE *gnu_files[NUM_FILES])
 {
     struct vector_t V;
     struct vector_t T1;
@@ -281,60 +299,66 @@ int shortest_path(struct point_t *points, struct point_t begin, int n, int size,
         if(visited[best.index] == 1) {
             /* prints the loop for debugging */
             m--;
-            /* check if the loop has finished elsewhere */
-            if(loop[m] != loop[j]) {
-                for(j = m; j > 0; j--) {
-                    if(loop[j] != loop[0]) {
-                        m--;
-                    }
-                    else {
-                        break;
+            if(m == 0) {
+                ;
+            }
+            else {
+                /* check if the loop has finished elsewhere */
+                if(loop[m] != loop[j]) {
+                    for(j = m; j > 0; j--) {
+                        if(loop[j] != loop[0]) {
+                            m--;
+                        }
+                        else {
+                            break;
+                        }
                     }
                 }
-            }
-            for(j = 0; j < m; j++) {
-                printf("%d->", search[loop[j]].index);
-            }
-            printf("%d\n", search[loop[m]].index);
-            for(j = 0; j < m; j++) {
-                /* record segment */
-                segments[j][0] = loop[j];
-                segments[j][1] = loop[j + 1];
-            }
-            segments[m][0] = loop[m];
-            segments[m][1] = loop[0];
-            /*
-            l = 0;
-            new_size = size - m + 1;
-            new_search = new struct point_t [new_size];
-            for(i = 0; i < size; i++) {
                 for(j = 0; j < m; j++) {
-                    if(search[i].index == loop[j]) {
-                        flag = 1;
+                    printf("%d->", search[loop[j]].index);
+                    mapped[loop[j]] = 1;
+                }
+                printf("%d\n", search[loop[m]].index);
+                for(j = 0; j < m; j++) {
+                    /* record segment */
+                    segments[j][0] = loop[j];
+                    segments[j][1] = loop[j + 1];
+                }
+                segments[m][0] = loop[m];
+                segments[m][1] = loop[0];
+                /*
+                l = 0;
+                new_size = size - m + 1;
+                new_search = new struct point_t [new_size];
+                for(i = 0; i < size; i++) {
+                    for(j = 0; j < m; j++) {
+                        if(search[i].index == loop[j]) {
+                            flag = 1;
+                        }
                     }
+                    if(flag == 0) {
+                        new_search[l].x = search[i].x;
+                        new_search[l].y = search[i].y;
+                        new_search[l].index = search[i].index;
+                        l++;
+                        printf("new_search[%d] = %d\n", l - 1, new_search[l - 1].index);
+                    }
+                    flag = 0;
                 }
-                if(flag == 0) {
-                    new_search[l].x = search[i].x;
-                    new_search[l].y = search[i].y;
-                    new_search[l].index = search[i].index;
-                    l++;
-                    printf("new_search[%d] = %d\n", l - 1, new_search[l - 1].index);
+                */
+                /* calculates the all segments for each contour */
+                for(j = 0; j < m; j++) {
+                    /* skips over already-recorded segments */
+                    if(recorded[segments[j][0]][segments[j][1]] == 1) {
+                        continue;   
+                    }
+                    fprintf(gnu_files[2], "%lf %lf %d\n", points[segments[j][0]].x, points[segments[j][0]].y, points[segments[j][0]].index);
+                    fprintf(gnu_files[2], "%lf %lf %d\n", points[segments[j][1]].x, points[segments[j][1]].y, points[segments[j][1]].index);
+                    fprintf(gnu_files[2], "\n");
+                    recorded[segments[j][0]][segments[j][1]] = 1;
+                    /* book-keeping */
+                    printf("%d = (%d, %d): <%d,%d>\n", j, segments[j][0], segments[j][1], points[segments[j][0]].index, points[segments[j][1]].index);
                 }
-                flag = 0;
-            }
-            */
-            /* calculates the all segments for each contour */
-            for(j = 0; j < m; j++) {
-                /* skips over already-recorded segments */
-                if(recorded[segments[j][0]][segments[j][1]] == 1) {
-                    continue;   
-                }
-                fprintf(gnu_files[2], "%lf %lf %d\n", points[segments[j][0]].x, points[segments[j][0]].y, points[segments[j][0]].index);
-                fprintf(gnu_files[2], "%lf %lf %d\n", points[segments[j][1]].x, points[segments[j][1]].y, points[segments[j][1]].index);
-                fprintf(gnu_files[2], "\n");
-                recorded[segments[j][0]][segments[j][1]] = 1;
-                /* book-keeping */
-                printf("%d = (%d, %d): <%d,%d>\n", j, segments[j][0], segments[j][1], points[segments[j][0]].index, points[segments[j][1]].index);
             }
             return permutations;
         }
