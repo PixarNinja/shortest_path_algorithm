@@ -28,7 +28,7 @@ struct vector_t {
     double j;
 };
 
-int shortest_path(struct point_t *points, struct point_t begin, int size, FILE *gnu_files[NUM_FILES]);
+int shortest_path(struct point_t *points, struct point_t begin, int n, int size, FILE *gnu_files[NUM_FILES]);
 double calculate_curvature(struct vector_t T1, struct vector_t T2, double tao);
 double calculate_theta(double tao);
 double tao_distance(struct vector_t V, double curvature, double theta);
@@ -90,7 +90,7 @@ int main(int argc, char *argv[])
     /* runs tao-distance algorithm on data */
     //permutations = shortest_path(points, size, size, gnu_files);
     for(i = 0; i < size; i++) {
-        permutations += shortest_path(points, points[i], size, gnu_files);
+        permutations += shortest_path(points, points[i], i, size, gnu_files);
     }
     /* plot */
     fprintf(gnu_files[0], "plot './gnu_files/lines.tmp' using 1:2 with lines ls 1 title \"shortest path\",");
@@ -108,7 +108,7 @@ int main(int argc, char *argv[])
 }
 
 /* calculates the shortest path */
-int shortest_path(struct point_t *points, struct point_t begin, int size, FILE *gnu_files[NUM_FILES])
+int shortest_path(struct point_t *points, struct point_t begin, int n, int size, FILE *gnu_files[NUM_FILES])
 {
     struct vector_t V;
     struct vector_t T1;
@@ -165,18 +165,13 @@ int shortest_path(struct point_t *points, struct point_t begin, int size, FILE *
     }
     center.x = sum_x / size;
     center.y = sum_y / size;
-    /*
+    printf("begin = %d\n", begin.index);
+    /* printing for debug
     for(i = 0; i < size; i++) {
         printf("points[%d] = %d\n", i, points[i].index);
-        if(distance_p(points[i], center) < tmp) {
-            begin.x = points[i].x;
-            begin.y = points[i].y;
-            begin.index = points[i].index;
-            tmp = distance_p(points[i], center);
-        }
     }
-    printf("\n");
     */
+    printf("\n");
     start.x = begin.x;
     start.y = begin.y;
     start.index = begin.index;
@@ -186,6 +181,7 @@ int shortest_path(struct point_t *points, struct point_t begin, int size, FILE *
     best.x = begin.x;
     best.y = begin.y;
     best.index = begin.index;
+    loop[m++] = n;
     /* initializing vector T1 */
     T1.point[0].x = start.x;
     T1.point[0].y = start.y;
@@ -196,7 +192,6 @@ int shortest_path(struct point_t *points, struct point_t begin, int size, FILE *
     T1.point[1].y = start.y + T1.j;
     T1.point[1].index = INT_MAX;
     T1.length = length_v(T1);
-
     /* outer loop, calculates total distance */
     while(permutations <= total_size) {
         /* store start index in visted-array */
@@ -277,21 +272,37 @@ int shortest_path(struct point_t *points, struct point_t begin, int size, FILE *
                 best.theta = curr[i].theta;
                 best.curvature = curr[i].curvature;
                 best.tao_distance = curr[i].tao_distance;
+                k = i;
             }
         }
-        /* record segment */
-        segments[k][0] = start.index;
-        segments[k][1] = best.index;
-        k++;
-        /* record loop */
-        loop[m++] = best.index;
+        /* record path */
+        loop[m++] = k;
         /* if the best point has been visited before */
         if(visited[best.index] == 1) {
             /* prints the loop for debugging */
-            for(j = 0; j < m; j++) {
-                printf("%d->", loop[j]);
+            m--;
+            /* check if the loop has finished elsewhere */
+            if(loop[m] != loop[j]) {
+                for(j = m; j > 0; j--) {
+                    if(loop[j] != loop[0]) {
+                        m--;
+                    }
+                    else {
+                        break;
+                    }
+                }
             }
-            printf("%d\n", loop[0]);
+            for(j = 0; j < m; j++) {
+                printf("%d->", search[loop[j]].index);
+            }
+            printf("%d\n", search[loop[m]].index);
+            for(j = 0; j < m; j++) {
+                /* record segment */
+                segments[j][0] = loop[j];
+                segments[j][1] = loop[j + 1];
+            }
+            segments[m][0] = loop[m];
+            segments[m][1] = loop[0];
             /*
             l = 0;
             new_size = size - m + 1;
@@ -313,7 +324,7 @@ int shortest_path(struct point_t *points, struct point_t begin, int size, FILE *
             }
             */
             /* calculates the all segments for each contour */
-            for(j = 0; j < k; j++) {
+            for(j = 0; j < m; j++) {
                 /* skips over already-recorded segments */
                 if(recorded[segments[j][0]][segments[j][1]] == 1) {
                     continue;   
