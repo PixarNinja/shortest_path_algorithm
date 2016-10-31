@@ -9,6 +9,8 @@
 #include <new>
 #include <vector>
 
+using namespace std;
+
 #define NUM_FILES 4
 
 struct point_t {
@@ -28,7 +30,7 @@ struct vector_t {
     double j;
 };
 
-int shortest_path(int *mapped, struct point_t *points, struct point_t begin, int n, int size, FILE *gnu_files[NUM_FILES]);
+int tessellate(struct point_t *points, struct point_t begin, int n, int size, FILE *gnu_files[NUM_FILES], int *mapped, int **recorded, vector<vector<int> > polygons);
 double calculate_curvature(struct vector_t T1, struct vector_t T2, double tao);
 double calculate_theta(double tao);
 double tao_distance(struct vector_t V, double curvature, double theta);
@@ -47,6 +49,8 @@ int main(int argc, char *argv[])
     struct point_t *points;
     char buf[1024];
     double range = 0.0;
+    vector<vector<int> > polygons;
+    int **recorded;
     int *mapped;
     int keep_going = 0;
     int size = 0;
@@ -68,9 +72,14 @@ int main(int argc, char *argv[])
     fclose(data);
     points = new struct point_t [size];
     mapped = new int [size];
+    recorded = new int * [size];
     /* initializing array */
     for(i = 0; i < size; i++) {
         mapped[i] = 0;
+        recorded[i] = new int [size];
+        for(j = 0; j < size; j++) {
+            recorded[i][j] = 0;
+        }
     }
     i = 0;
     data = fopen(argv[1], "r");
@@ -103,12 +112,16 @@ int main(int argc, char *argv[])
             }
         }
         if(keep_going == 1) {
-            permutations += shortest_path(mapped, points, points[i], i, size, gnu_files);
+            permutations += tessellate(points, points[i], i, size, gnu_files, mapped, recorded, polygons);
             keep_going = 0;
         }
         else {
             i = size;
         }
+    }
+    printf("\nMAPPED ARRAY:\n");
+    for(j = 0; j < size; j++) {
+        printf("index %d: %d\n", j, mapped[j]);
     }
     /* plot */
     fprintf(gnu_files[0], "plot './gnu_files/lines.tmp' using 1:2 with lines ls 1 title \"shortest path\",");
@@ -126,7 +139,7 @@ int main(int argc, char *argv[])
 }
 
 /* calculates the shortest path */
-int shortest_path(int *mapped, struct point_t *points, struct point_t begin, int n, int size, FILE *gnu_files[NUM_FILES])
+int tessellate(struct point_t *points, struct point_t begin, int n, int size, FILE *gnu_files[NUM_FILES], int *mapped, int **recorded, vector<vector<int> > polygons)
 {
     struct vector_t V;
     struct vector_t T1;
@@ -140,7 +153,6 @@ int shortest_path(int *mapped, struct point_t *points, struct point_t begin, int
     double sum_x = 0.0;
     double sum_y = 0.0;
     int **segments = new int * [size + 1];
-    int ** recorded = new int * [size];
     int *loop = new int [size];
     int *visited = new int [size];
     int total_size = size;
@@ -164,10 +176,6 @@ int shortest_path(int *mapped, struct point_t *points, struct point_t begin, int
         segments[i] = new int [2];
         segments[i][0] = INT_MAX;
         segments[i][1] = INT_MAX;
-        recorded[i] = new int [size];
-        for(j = 0; j < size; j++) {
-            recorded[i][j] = 0;
-        }
     }
     segments[i] = new int [2];
     segments[i][0] = INT_MAX;
@@ -184,11 +192,6 @@ int shortest_path(int *mapped, struct point_t *points, struct point_t begin, int
     center.x = sum_x / size;
     center.y = sum_y / size;
     printf("begin = %d\n", begin.index);
-    /* printing for debug
-    for(i = 0; i < size; i++) {
-        printf("points[%d] = %d\n", i, points[i].index);
-    }
-    */
     printf("\n");
     start.x = begin.x;
     start.y = begin.y;
@@ -273,9 +276,6 @@ int shortest_path(int *mapped, struct point_t *points, struct point_t begin, int
             curr[i].curvature = calculate_curvature(T1, T2, curr[i].tao);
             curr[i].tao_distance = tao_distance(V, curr[i].curvature, curr[i].theta);
             V.point[1].tao_distance = curr[i].tao_distance;
-            /* for debugging tao-distance function
-            print(V, T1, T2, curr[i].curvature, curr[i].theta, curr[i].tao);
-            */
             i++;
             count++;
         }
@@ -297,7 +297,6 @@ int shortest_path(int *mapped, struct point_t *points, struct point_t begin, int
         loop[m++] = k;
         /* if the best point has been visited before */
         if(visited[best.index] == 1) {
-            /* prints the loop for debugging */
             m--;
             if(m == 0) {
                 ;
@@ -326,31 +325,15 @@ int shortest_path(int *mapped, struct point_t *points, struct point_t begin, int
                 }
                 segments[m][0] = loop[m];
                 segments[m][1] = loop[0];
-                /*
-                l = 0;
-                new_size = size - m + 1;
-                new_search = new struct point_t [new_size];
-                for(i = 0; i < size; i++) {
-                    for(j = 0; j < m; j++) {
-                        if(search[i].index == loop[j]) {
-                            flag = 1;
-                        }
-                    }
-                    if(flag == 0) {
-                        new_search[l].x = search[i].x;
-                        new_search[l].y = search[i].y;
-                        new_search[l].index = search[i].index;
-                        l++;
-                        printf("new_search[%d] = %d\n", l - 1, new_search[l - 1].index);
-                    }
-                    flag = 0;
-                }
-                */
                 /* calculates the all segments for each contour */
                 for(j = 0; j < m; j++) {
                     /* skips over already-recorded segments */
                     if(recorded[segments[j][0]][segments[j][1]] == 1) {
                         continue;   
+                    }
+                    /* check if polygon needs to be slit */
+                    if(0) {
+                        ;
                     }
                     fprintf(gnu_files[2], "%lf %lf %d\n", points[segments[j][0]].x, points[segments[j][0]].y, points[segments[j][0]].index);
                     fprintf(gnu_files[2], "%lf %lf %d\n", points[segments[j][1]].x, points[segments[j][1]].y, points[segments[j][1]].index);
