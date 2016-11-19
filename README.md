@@ -1,12 +1,15 @@
 Shortest Path Algorithm
+=======================
 
-BRIEF:
+Brief:
+------
 
 This algorithm calculates the shortest path between a set of data points
 using the Contour Construction Algorithm (https://github.com/pixarninja/contour_construction_algorithm) and principles
 of geometry.
 
 TODO:
+-----
 
 Finish implementing the algorithm; currently, the algorithm calculates
 "optimal shapes" within a set of datapoints. I will complete my work on
