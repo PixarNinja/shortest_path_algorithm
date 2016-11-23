@@ -8,10 +8,11 @@
 
 #include <new>
 #include <vector>
-
-using namespace std;
+#include <algorithm>
 
 #define NUM_FILES 4
+
+using namespace std;
 
 struct point_t {
     double x;
@@ -30,7 +31,7 @@ struct vector_t {
     double j;
 };
 
-int tessellate(struct point_t *points, struct point_t begin, int n, int size, FILE *gnu_files[NUM_FILES], int *mapped, int **recorded, vector<vector<int> > polygons);
+int tessellate(struct point_t *points, struct point_t begin, int n, int size, FILE *gnu_files[NUM_FILES], int *mapped, int **recorded, vector<int> *polygons, int *shape_count);
 double calculate_curvature(struct vector_t T1, struct vector_t T2, double tao);
 double calculate_theta(double tao);
 double tao_distance(struct vector_t V, double curvature, double theta);
@@ -49,9 +50,11 @@ int main(int argc, char *argv[])
     struct point_t *points;
     char buf[1024];
     double range = 0.0;
-    vector<vector<int> > polygons;
+    vector<int> *polygons;
     int **recorded;
     int *mapped;
+    int *shape_count = new int [1];
+    *shape_count = 0;
     int keep_going = 0;
     int size = 0;
     int permutations = 1;
@@ -60,10 +63,10 @@ int main(int argc, char *argv[])
     if(argc == 1) {
         printf("\n\nPlease enter the path of the .dat file to read from. Exiting Program. Good Day.\n\n");
     }
-    gnu_files[0] = fopen ("./gnu_files/commands.tmp", "w+");
-    gnu_files[1] = fopen("./gnu_files/points.tmp", "w+");
-    gnu_files[2] = fopen("./gnu_files/lines.tmp", "w+");
-    gnu_files[3] = fopen("./gnu_files/tmp.tmp", "w+");
+    gnu_files[0] = fopen ("./gnu_files/commands.polygons", "w+");
+    gnu_files[1] = fopen("./gnu_files/points.polygons", "w+");
+    gnu_files[2] = fopen("./gnu_files/lines.polygons", "w+");
+    gnu_files[3] = fopen("./gnu_files/polygons.polygons", "w+");
     printf("%s\n", argv[1]);
     data = fopen(argv[1], "r");
     while(fgets(buf, 1024, data)) {
@@ -72,6 +75,7 @@ int main(int argc, char *argv[])
     fclose(data);
     points = new struct point_t [size];
     mapped = new int [size];
+    polygons = new vector<int> [size];
     recorded = new int * [size];
     /* initializing array */
     for(i = 0; i < size; i++) {
@@ -112,7 +116,7 @@ int main(int argc, char *argv[])
             }
         }
         if(keep_going == 1) {
-            permutations += tessellate(points, points[i], i, size, gnu_files, mapped, recorded, polygons);
+            permutations += tessellate(points, points[i], i, size, gnu_files, mapped, recorded, polygons, shape_count);
             keep_going = 0;
         }
         else {
@@ -124,8 +128,8 @@ int main(int argc, char *argv[])
         printf("index %d: %d\n", j, mapped[j]);
     }
     /* plot */
-    fprintf(gnu_files[0], "plot './gnu_files/lines.tmp' using 1:2 with lines ls 1 title \"shortest path\",");
-    fprintf(gnu_files[0], "'./gnu_files/points.tmp' using 1:2 with points pt 7 notitle,");
+    fprintf(gnu_files[0], "plot './gnu_files/lines.polygons' using 1:2 with lines ls 1 title \"shortest path\",");
+    fprintf(gnu_files[0], "'./gnu_files/points.polygons' using 1:2 with points pt 7 notitle,");
     fprintf(gnu_files[0], "'' using 1:2:3 with labels point pt 7 offset char -1,-1 notitle\n");
     printf("\n");
     printf("Total Permutations: %d\n", permutations);
@@ -133,13 +137,13 @@ int main(int argc, char *argv[])
     fclose(gnu_files[0]);
     fclose(gnu_files[1]);
     fclose(gnu_files[2]);
-    system("gnuplot -persistent ./gnu_files/commands.tmp");
+    system("gnuplot -persistent ./gnu_files/commands.polygons");
     fclose(gnu_files[3]);
     return 0;
 }
 
 /* calculates the shortest path */
-int tessellate(struct point_t *points, struct point_t begin, int n, int size, FILE *gnu_files[NUM_FILES], int *mapped, int **recorded, vector<vector<int> > polygons)
+int tessellate(struct point_t *points, struct point_t begin, int n, int size, FILE *gnu_files[NUM_FILES], int *mapped, int **recorded, vector<int> *polygons, int *shape_count)
 {
     struct vector_t V;
     struct vector_t T1;
@@ -153,11 +157,13 @@ int tessellate(struct point_t *points, struct point_t begin, int n, int size, FI
     double sum_x = 0.0;
     double sum_y = 0.0;
     int **segments = new int * [size + 1];
+    vector<int> *shape_queue = new vector<int> [size];
     int *loop = new int [size];
     int *visited = new int [size];
     int total_size = size;
     int count = 0;
     int permutations = 0;
+    int found = 0;
     int i = 0;
     int j = 0;
     int k = 0;
@@ -298,10 +304,7 @@ int tessellate(struct point_t *points, struct point_t begin, int n, int size, FI
         /* if the best point has been visited before */
         if(visited[best.index] == 1) {
             m--;
-            if(m == 0) {
-                ;
-            }
-            else {
+            if(m != 0) {
                 /* check if the loop has finished elsewhere */
                 if(loop[m] != loop[j]) {
                     for(j = m; j > 0; j--) {
@@ -325,16 +328,71 @@ int tessellate(struct point_t *points, struct point_t begin, int n, int size, FI
                 }
                 segments[m][0] = loop[m];
                 segments[m][1] = loop[0];
-                /* calculates the all segments for each contour */
+                /* calculates the segments for each contour */
                 for(j = 0; j < m; j++) {
-                    /* skips over already-recorded segments */
+                    /* skips over recorded segments */
                     if(recorded[segments[j][0]][segments[j][1]] == 1) {
                         continue;   
                     }
-                    /* check if polygon needs to be slit */
-                    if(0) {
-                        ;
+                    for(k = 0; k < *shape_count; k++) {
+                        /* check if at least one of the connections is already in a shape */
+                        if((find(polygons[k].begin(), polygons[k].end(), segments[j][0]) != polygons[k].end()) || (find(polygons[k].begin(), polygons[k].end(), segments[j][1]) != polygons[k].end())) { //add to the shape queue
+                            found = 1;
+                            /* check if polygon needs to be split */
+                            if((find(polygons[k].begin(), polygons[k].end(), segments[j][0]) != polygons[k].end()) && (find(polygons[k].begin(), polygons[k].end(), segments[j][1]) != polygons[k].end())) { //split the shape in two
+                                printf("Entered if-statement\n");
+                                for(l = 0; l < m; l++) {
+                                    /* create first shape */
+                                    if(segments[l][0] == segments[j][0]) {
+                                        printf("Shape %d: ", k);
+                                        n = l;
+                                        while(segments[n][0] != segments[j][1]) {
+                                            polygons[k].push_back(segments[n][0]);
+                                            printf("%d ", segments[n][0]);
+                                            n++;
+                                            n %= m;
+                                        }
+                                        polygons[k].push_back(segments[n][0]);
+                                        printf("%d\n", segments[n][0]);
+                                        k++; //increments to next shape
+                                    }
+                                    /* create next shape */
+                                    if(segments[l][1] == segments[j][1]) {
+                                        printf("Shape %d: ", k);
+                                        n = l;
+                                        while(segments[n][1] != segments[j][0]) {
+                                            polygons[k].push_back(segments[n][1]);
+                                            printf("%d ", segments[n][1]);
+                                            n++;
+                                            n %= m;
+                                        }
+                                        polygons[k].push_back(segments[n][1]);
+                                        printf("%d\n", segments[n][1]);
+                                        *shape_count = *shape_count + 1; //increments to next shape
+                                    }
+                                }
+                            }
+                            /* find which point to add to queue */
+                            else if(find(polygons[k].begin(), polygons[k].end(), segments[j][0]) != polygons[k].end()) {
+                                shape_queue.push_back(segments[j][0]);
+                                printf("queued: %d\n", segments[j][0]);
+                            }
+                            else {
+                                shape_queue.push_back(segments[j][1]);
+                                printf("queued: %d\n", segments[j][1]);
+                            }
+                            printf("shape num = %d\n", *shape_count);
+                            /* exit loop */
+                            k = *shape_count;
+                        }
                     }
+                    /* check if the connection did not match any shape */
+                    if(found == 0) { //add both points to a new shape
+                        polygons[*shape_count].push_back(segments[j][0]);
+                        polygons[*shape_count].push_back(segments[j][1]);
+                        *shape_count = *shape_count + 1;
+                    }
+                    found = 0;
                     fprintf(gnu_files[2], "%lf %lf %d\n", points[segments[j][0]].x, points[segments[j][0]].y, points[segments[j][0]].index);
                     fprintf(gnu_files[2], "%lf %lf %d\n", points[segments[j][1]].x, points[segments[j][1]].y, points[segments[j][1]].index);
                     fprintf(gnu_files[2], "\n");
@@ -342,6 +400,8 @@ int tessellate(struct point_t *points, struct point_t begin, int n, int size, FI
                     /* book-keeping */
                     printf("%d = (%d, %d): <%d,%d>\n", j, segments[j][0], segments[j][1], points[segments[j][0]].index, points[segments[j][1]].index);
                 }
+                *shape_count = *shape_count + 1;
+                //polygons[l].push_back(polygons);
             }
             return permutations;
         }
