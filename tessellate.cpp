@@ -31,7 +31,11 @@ struct vector_t {
     double j;
 };
 
-int tessellate(struct point_t *points, struct point_t begin, int n, int size, FILE *gnu_files[NUM_FILES], int *mapped, int **recorded, vector<int *> *segments, int *segment_count);
+/* global variables */
+int permutations = 1;
+
+int construct_segments(struct point_t *points, struct point_t begin, int n, int size, FILE *gnu_files[NUM_FILES], int *mapped, int **recorded, vector<int *> *segments);
+int construct_polygons(vector<int *> *polygons, int size, vector<int *> *segments, int *segment_count);
 double calculate_curvature(struct vector_t T1, struct vector_t T2, double tao);
 double calculate_theta(double tao);
 double tao_distance(struct vector_t V, double curvature, double theta);
@@ -51,13 +55,12 @@ int main(int argc, char *argv[])
     char buf[1024];
     double range = 0.0;
     vector<int *> *segments = new vector<int *> [1];
+    vector<int *> *polygons = new vector<int *> [1];
     int **recorded;
     int *mapped;
-    int *segment_count = new int [1];
-    *segment_count = 0;
+    int segment_count = 0;
     int keep_going = 0;
     int size = 0;
-    int permutations = 1;
     int i = 0;
     int j = 0;
     if(argc == 1) {
@@ -115,7 +118,7 @@ int main(int argc, char *argv[])
             }
         }
         if(keep_going == 1) {
-            permutations += tessellate(points, points[i], i, size, gnu_files, mapped, recorded, segments, segment_count);
+            segment_count += construct_segments(points, points[i], i, size, gnu_files, mapped, recorded, segments);
             keep_going = 0;
         }
         else {
@@ -128,7 +131,7 @@ int main(int argc, char *argv[])
     }
     /* print segment information */
     printf("\nSEGMENTS:\n");
-    for(i = 0; i < *segment_count; i++) {
+    for(i = 0; i < segment_count; i++) {
         printf("%d: <%d,%d>\n", i, (*segments)[i][0], (*segments)[i][1]);
     }
     /* plot */
@@ -147,7 +150,7 @@ int main(int argc, char *argv[])
 }
 
 /* calculates the shortest path */
-int tessellate(struct point_t *points, struct point_t begin, int n, int size, FILE *gnu_files[NUM_FILES], int *mapped, int **recorded, vector<int *> *segments, int *segment_count)
+int construct_segments(struct point_t *points, struct point_t begin, int n, int size, FILE *gnu_files[NUM_FILES], int *mapped, int **recorded, vector<int *> *segments)
 {
     struct vector_t V;
     struct vector_t T1;
@@ -165,8 +168,9 @@ int tessellate(struct point_t *points, struct point_t begin, int n, int size, FI
     int *loop = new int [size];
     int *visited = new int [size];
     int total_size = size;
+    int segment_count = 0;
+    int visited_count = 0;
     int count = 0;
-    int permutations = 0;
     int i = 0;
     int j = 0;
     int k = 0;
@@ -222,7 +226,7 @@ int tessellate(struct point_t *points, struct point_t begin, int n, int size, FI
     T1.point[1].index = INT_MAX;
     T1.length = length_v(T1);
     /* outer loop, calculates total distance */
-    while(permutations <= total_size) {
+    while(visited_count <= total_size) {
         /* store start index in visted-array */
         visited[start.index] = 1;
         i = 0;
@@ -341,7 +345,7 @@ int tessellate(struct point_t *points, struct point_t begin, int n, int size, FI
                     pushed_segment[0] = tmp_segments[j][0];
                     pushed_segment[1] = tmp_segments[j][1];
                     segments->push_back(pushed_segment);
-                    *segment_count = *segment_count + 1;
+                    segment_count++;
                     /* plot */
                     fprintf(gnu_files[2], "%lf %lf %d\n", points[tmp_segments[j][0]].x, points[tmp_segments[j][0]].y, points[tmp_segments[j][0]].index);
                     fprintf(gnu_files[2], "%lf %lf %d\n", points[tmp_segments[j][1]].x, points[tmp_segments[j][1]].y, points[tmp_segments[j][1]].index);
@@ -351,7 +355,7 @@ int tessellate(struct point_t *points, struct point_t begin, int n, int size, FI
                     printf("%d = (%d, %d): <%d,%d>\n", j, tmp_segments[j][0], tmp_segments[j][1], points[tmp_segments[j][0]].index, points[tmp_segments[j][1]].index);
                 }
             }
-            return permutations;
+            return segment_count;
         }
         /* reinitializing vector V */
         V.point[1].x = best.x;
@@ -396,8 +400,16 @@ int tessellate(struct point_t *points, struct point_t begin, int n, int size, FI
         V.length = 0;
         count = 0;
         permutations++;
+        visited_count++;
     }
-    return permutations;
+    return segment_count;
+}
+
+/* calculate polygons given all contoured segments */
+int construct_polygons(vector<int *> *polygons, int size, vector<int *> *segments, int segment_count)
+{
+    int polygon_count = 0;
+    return polygon_count;
 }
 
 /* calculates curvature given structure k */
