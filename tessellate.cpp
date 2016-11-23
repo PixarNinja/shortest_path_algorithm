@@ -35,7 +35,7 @@ struct vector_t {
 int permutations = 1;
 
 int construct_segments(struct point_t *points, struct point_t begin, int n, int size, FILE *gnu_files[NUM_FILES], int *mapped, int **recorded, vector<int *> *segments);
-int construct_polygons(vector<int *> *polygons, int size, vector<int *> *segments, int *segment_count);
+int construct_polygons(vector<int *> *polygons, vector<int *> segments, int segment_count, int size);
 double calculate_curvature(struct vector_t T1, struct vector_t T2, double tao);
 double calculate_theta(double tao);
 double tao_distance(struct vector_t V, double curvature, double theta);
@@ -59,6 +59,7 @@ int main(int argc, char *argv[])
     int **recorded;
     int *mapped;
     int segment_count = 0;
+    int polygon_count = 0;
     int keep_going = 0;
     int size = 0;
     int i = 0;
@@ -125,6 +126,7 @@ int main(int argc, char *argv[])
             i = size;
         }
     }
+    polygon_count = construct_polygons(polygons, *segments, segment_count, size);
     printf("\nMAPPED ARRAY:\n");
     for(i = 0; i < size; i++) {
         printf("%d: %d\n", i, mapped[i]);
@@ -168,8 +170,8 @@ int construct_segments(struct point_t *points, struct point_t begin, int n, int 
     int *loop = new int [size];
     int *visited = new int [size];
     int total_size = size;
-    int segment_count = 0;
     int visited_count = 0;
+    int segment_count = 0;
     int count = 0;
     int i = 0;
     int j = 0;
@@ -406,9 +408,30 @@ int construct_segments(struct point_t *points, struct point_t begin, int n, int 
 }
 
 /* calculate polygons given all contoured segments */
-int construct_polygons(vector<int *> *polygons, int size, vector<int *> *segments, int segment_count)
+int construct_polygons(vector<int *> *polygons, vector<int *> segments, int segment_count, int size)
 {
+    /* queue stores lines waiting to be added */
+    vector<int> *queue = new vector<int> [size];
+    int i = 0;
     int polygon_count = 0;
+    for(i = 0; i < segment_count; i++) {
+        /* seach through all the queue entries */
+        for(j = 0; j < size; j++) {
+            if(queue[j].find(queue.begin(), queue.end(), segments[0][0]) != queue.end) {
+                printf("\nSTART FOUND\n");
+            }
+            else if(queue[j].find(queue.begin(), queue.end(), segments[0][1]) != queue.end) {
+                printf("\nEND FOUND\n");
+            }
+            else {
+                printf("\nNOT FOUND\n");
+                queue[m++].pushback();
+            }
+        }
+        /* remove the segment */
+        //printf("%d: <%d,%d>\n", i, segments[0][0], segments[0][1]);
+        segments.erase(segments.begin());
+    }
     return polygon_count;
 }
 
