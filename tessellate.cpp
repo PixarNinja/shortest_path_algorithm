@@ -37,7 +37,7 @@ int permutations = 1;
 
 void construct_segments(struct point_t *points, struct point_t begin, int n, int size, FILE *gnu_files[NUM_FILES], int *mapped, int **recorded, vector<int *> *segments);
 vector<vector<int> > construct_polygons(vector<int *> segments, int size);
-int polygon_search(vector<vector<int> > polygons, int n);
+int polygon_search(vector<int> polygons, int n);
 double calculate_curvature(struct vector_t T1, struct vector_t T2, double tao);
 double calculate_theta(double tao);
 double tao_distance(struct vector_t V, double curvature, double theta);
@@ -143,6 +143,7 @@ int main(int argc, char *argv[])
         for(j = 0; j < polygons[i].size(); j++) {
             printf("%d ", polygons[i][j]);
         }
+        printf("\n");
     }
     /* plot */
     fprintf(gnu_files[0], "plot './gnu_files/lines.polygons' using 1:2 with lines ls 1 title \"shortest path\",");
@@ -421,8 +422,12 @@ vector<vector<int> > construct_polygons(vector<int *> segments, int size)
     vector<vector<int> > polygons;
     deque<int> *queue = new deque<int> [size];
     vector<int> tmp;
+    int found_beginning[2];
+    int found_end[2];
     int i = 0;
     int j = 0;
+    int k = 0;
+    int l = 0;
     tmp.push_back(segments[0][0]);
     tmp.push_back(segments[0][1]);
     while(segments[1][1] != segments[0][0]) {
@@ -433,38 +438,75 @@ vector<vector<int> > construct_polygons(vector<int *> segments, int size)
     segments.erase(segments.begin(), segments.begin() + 2);
     /* loop through all segments */
     for(i = 0; i < segments.size(); i++) {
+        found_beginning[0] = INT_MAX;
+        found_end[0] = INT_MAX;
         /* check for split */
-        if((polygon_search(polygons, segments[i][0]) == 1) && (polygon_search(polygons, segments[i][1]) == 1)) {
-            printf("\nSPLIT\n");
+        for(k = 0; k < polygons.size(); k++) {
+            if(polygon_search(polygons[k], segments[i][0]) && polygon_search(polygons[k], segments[i][1])) {
+                printf("SPLIT %d with <%d,%d>\n", k, segments[i][0], segments[i][1]);
+            }
+            else if(polygon_search(polygons[k], segments[i][0])) {
+                found_beginning[0] = k;
+                found_beginning[1] = segments[i][0];
+            }
+            else if(polygon_search(polygons[k], segments[i][1])) {
+                found_end[0] = k;
+                found_end[1] = segments[i][1];
+            }
         }
-        /* check for addition
-           -- loop through the entire queue */
+        if((found_beginning[0] != INT_MAX) && (found_end[0] != INT_MAX)) {
+            printf("SPLIT %d and %d with <%d,%d>\n", found_beginning[0], found_end[0], found_beginning[1], found_end[1]);
+        }
+        /* update the queue */
         for(j = 0; j < size; j++) {
             /* add segment to the empty slot */
             if(queue[j].size() < 1) {
                 queue[j].push_back(segments[i][0]);
                 queue[j].push_back(segments[i][1]);
+                printf("add <%d,%d>\n", segments[i][0], segments[i][1]);
                 break;
             }
             /* add segments[i][1] to the front of the list */
-            else if(segments[i][0] == queue[j][0]) {
+            if(segments[i][0] == queue[j][0]) {
                 queue[j].push_front(segments[i][1]);
+                printf("add %d to front\n", segments[i][1]);
                 break;
             }
             /* add segments[i][0] to the front of the list */
-            else if(segments[i][1] == queue[j][0]) {
+            if(segments[i][1] == queue[j][0]) {
                 queue[j].push_front(segments[i][0]);
+                printf("add %d to front\n", segments[i][0]);
                 break;
             }
             /* add segments[i][1] to the back of the list */
-            else if(segments[i][0] == queue[j][queue[j].back()]) {
+            if(segments[i][0] == queue[j][queue[j].size() - 1]) {
                 queue[j].push_back(segments[i][1]);
+                printf("add %d to back\n", segments[i][1]);
                 break;
             }
             /* add segments[i][0] to the back of the list */
-            else if(segments[i][1] == queue[j][queue[j].back()]) {
+            if(segments[i][1] == queue[j][queue[j].size() - 1]) {
                 queue[j].push_back(segments[i][0]);
+                printf("add %d to back\n", segments[i][0]);
                 break;
+            }
+        }
+        /* check for addition */
+        for(j = 0; j < size; j++) {
+            if(queue[j].size() <= 1) {
+                continue;
+            }
+            for(k = 0; k < polygons.size(); k++) {
+                if(polygon_search(polygons[k], queue[j][0]) && polygon_search(polygons[k], queue[j][queue[j].size() - 1])) {
+                    printf("ADD to %d: <%d,%d>\n", k, queue[j][0], queue[j][queue[j].size() - 1]);
+                    tmp.clear();
+                    for(l = 0; l < queue[j].size(); l++) {
+                        tmp.push_back(queue[j][l]);
+                    }
+                    polygons.push_back(tmp);
+                    queue[j].erase(queue[j].begin(), queue[j].end());
+                    break;
+                }
             }
         }
     }
@@ -479,16 +521,15 @@ vector<vector<int> > construct_polygons(vector<int *> segments, int size)
     return polygons;
 }
 
-int polygon_search(vector<vector<int> > polygons, int n)
+int polygon_search(vector<int> polygon, int n)
 {
-    /* loop through all polygons */
-    for(int i = 0; i < polygons.size(); i++) {
-        /* check if the node is found */
-        if(find(polygons[i].begin(), polygons[i].end(), n) != polygons[i].end()) {
-            return i;
-        }
+    /* check if the node is found */
+    if(find(polygon.begin(), polygon.end(), n) != polygon.end()) {
+        return 1;
     }
-    return INT_MAX;
+    else {
+        return 0;
+    }
 }
 
 /* calculates curvature given structure k */
