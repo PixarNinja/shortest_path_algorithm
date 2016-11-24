@@ -35,8 +35,8 @@ struct vector_t {
 /* global variables */
 int permutations = 1;
 
-int construct_segments(struct point_t *points, struct point_t begin, int n, int size, FILE *gnu_files[NUM_FILES], int *mapped, int **recorded, vector<int *> *segments);
-int construct_polygons(vector<int *> *polygons, vector<int *> segments, int size);
+void construct_segments(struct point_t *points, struct point_t begin, int n, int size, FILE *gnu_files[NUM_FILES], int *mapped, int **recorded, vector<int *> *segments);
+vector<vector<int> > construct_polygons(vector<int *> segments, int size);
 double calculate_curvature(struct vector_t T1, struct vector_t T2, double tao);
 double calculate_theta(double tao);
 double tao_distance(struct vector_t V, double curvature, double theta);
@@ -55,12 +55,10 @@ int main(int argc, char *argv[])
     struct point_t *points;
     char buf[1024];
     double range = 0.0;
+    vector<vector<int> > polygons;
     vector<int *> *segments = new vector<int *> [1];
-    vector<int *> *polygons = new vector<int *> [1];
     int **recorded;
     int *mapped;
-    int segment_count = 0;
-    int polygon_count = 0;
     int keep_going = 0;
     int size = 0;
     int i = 0;
@@ -120,22 +118,30 @@ int main(int argc, char *argv[])
             }
         }
         if(keep_going == 1) {
-            segment_count += construct_segments(points, points[i], i, size, gnu_files, mapped, recorded, segments);
+            construct_segments(points, points[i], i, size, gnu_files, mapped, recorded, segments);
             keep_going = 0;
         }
         else {
             i = size;
         }
     }
-    polygon_count = construct_polygons(polygons, *segments, size);
+    polygons = construct_polygons(*segments, size);
     printf("\n\nMAPPED ARRAY:\n");
     for(i = 0; i < size; i++) {
         printf("%d: %d\n", i, mapped[i]);
     }
     /* print segment information */
     printf("\nSEGMENTS:\n");
-    for(i = 0; i < segment_count; i++) {
+    for(i = 0; i < (*segments).size(); i++) {
         printf("%d: <%d,%d>\n", i, (*segments)[i][0], (*segments)[i][1]);
+    }
+    /* print polygon information */
+    printf("\nPOLYGONS:\n");
+    for(i = 0; i < polygons.size(); i++) {
+        printf("%d: ", i);
+        for(j = 0; j < polygons[i].size(); j++) {
+            printf("%d ", polygons[i][j]);
+        }
     }
     /* plot */
     fprintf(gnu_files[0], "plot './gnu_files/lines.polygons' using 1:2 with lines ls 1 title \"shortest path\",");
@@ -153,7 +159,7 @@ int main(int argc, char *argv[])
 }
 
 /* calculates the shortest path */
-int construct_segments(struct point_t *points, struct point_t begin, int n, int size, FILE *gnu_files[NUM_FILES], int *mapped, int **recorded, vector<int *> *segments)
+void construct_segments(struct point_t *points, struct point_t begin, int n, int size, FILE *gnu_files[NUM_FILES], int *mapped, int **recorded, vector<int *> *segments)
 {
     struct vector_t V;
     struct vector_t T1;
@@ -345,8 +351,8 @@ int construct_segments(struct point_t *points, struct point_t begin, int n, int 
                     }
                     /* pushes new segments */
                     pushed_segment = new int [2];
-                    pushed_segment[0] = tmp_segments[j][0];
-                    pushed_segment[1] = tmp_segments[j][1];
+                    pushed_segment[0] = points[tmp_segments[j][0]].index;
+                    pushed_segment[1] = points[tmp_segments[j][1]].index;
                     segments->push_back(pushed_segment);
                     segment_count++;
                     /* plot */
@@ -358,7 +364,7 @@ int construct_segments(struct point_t *points, struct point_t begin, int n, int 
                     printf("%d = (%d, %d): <%d,%d>\n", j, tmp_segments[j][0], tmp_segments[j][1], points[tmp_segments[j][0]].index, points[tmp_segments[j][1]].index);
                 }
             }
-            return segment_count;
+            return;
         }
         /* reinitializing vector V */
         V.point[1].x = best.x;
@@ -405,27 +411,25 @@ int construct_segments(struct point_t *points, struct point_t begin, int n, int 
         permutations++;
         visited_count++;
     }
-    return segment_count;
+    return;
 }
 
 /* calculate polygons given all contoured segments */
-int construct_polygons(vector<int *> *polygons, vector<int *> segments, int size)
+vector<vector<int> > construct_polygons(vector<int *> segments, int size)
 {
-    /* queue stores lines waiting to be added */
-    int polygon_count = 0;
+    vector<vector<int> > polygons;
+    deque<int> *queue = new deque<int> [size];
+    vector<int> tmp;
     int i = 0;
     int j = 0;
-    deque<int> *queue = new deque<int> [size];
-    queue[0].push_back(segments[0][0]);
-    //printf("%d\n", queue[0].back());
-    queue[0].push_back(segments[0][1]);
-    //printf("%d\n", queue[0].back());
+    tmp.push_back(segments[0][0]);
+    tmp.push_back(segments[0][1]);
     while(segments[1][1] != segments[0][0]) {
-        queue[0].push_back(segments[1][1]);
-        //printf("%d\n", queue[0].back());
+        tmp.push_back(segments[1][1]);
         segments.erase(segments.begin() + 1);
     }
-    segments.erase(segments.begin());
+    polygons.push_back(tmp);
+    segments.erase(segments.begin(), segments.begin() + 2);
     /* loop through all segments */
     for(i = 0; i < segments.size(); i++) {
         /* loop through the entire queue */
@@ -466,7 +470,7 @@ int construct_polygons(vector<int *> *polygons, vector<int *> segments, int size
         }
         printf("\n");
     }
-    return polygon_count;
+    return polygons;
 }
 
 /* calculates curvature given structure k */
