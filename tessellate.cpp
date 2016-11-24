@@ -37,6 +37,7 @@ int permutations = 1;
 
 void construct_segments(struct point_t *points, struct point_t begin, int n, int size, FILE *gnu_files[NUM_FILES], int *mapped, int **recorded, vector<int *> *segments);
 vector<vector<int> > construct_polygons(vector<int *> segments, int size);
+int polygon_search(vector<vector<int> > polygons, int n);
 double calculate_curvature(struct vector_t T1, struct vector_t T2, double tao);
 double calculate_theta(double tao);
 double tao_distance(struct vector_t V, double curvature, double theta);
@@ -132,7 +133,7 @@ int main(int argc, char *argv[])
     }
     /* print segment information */
     printf("\nSEGMENTS:\n");
-    for(i = 0; i < (*segments).size(); i++) {
+    for(i = 0; i < segments->size(); i++) {
         printf("%d: <%d,%d>\n", i, (*segments)[i][0], (*segments)[i][1]);
     }
     /* print polygon information */
@@ -432,9 +433,14 @@ vector<vector<int> > construct_polygons(vector<int *> segments, int size)
     segments.erase(segments.begin(), segments.begin() + 2);
     /* loop through all segments */
     for(i = 0; i < segments.size(); i++) {
-        /* loop through the entire queue */
+        /* check for split */
+        if((polygon_search(polygons, segments[i][0]) == 1) && (polygon_search(polygons, segments[i][1]) == 1)) {
+            printf("\nSPLIT\n");
+        }
+        /* check for addition
+           -- loop through the entire queue */
         for(j = 0; j < size; j++) {
-            /* add pair to the empty slot */
+            /* add segment to the empty slot */
             if(queue[j].size() < 1) {
                 queue[j].push_back(segments[i][0]);
                 queue[j].push_back(segments[i][1]);
@@ -471,6 +477,18 @@ vector<vector<int> > construct_polygons(vector<int *> segments, int size)
         printf("\n");
     }
     return polygons;
+}
+
+int polygon_search(vector<vector<int> > polygons, int n)
+{
+    /* loop through all polygons */
+    for(int i = 0; i < polygons.size(); i++) {
+        /* check if the node is found */
+        if(find(polygons[i].begin(), polygons[i].end(), n) != polygons[i].end()) {
+            return i;
+        }
+    }
+    return INT_MAX;
 }
 
 /* calculates curvature given structure k */
