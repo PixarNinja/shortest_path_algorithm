@@ -8,6 +8,7 @@
 
 #include <new>
 #include <vector>
+#include <deque>
 #include <algorithm>
 
 #define NUM_FILES 4
@@ -35,7 +36,7 @@ struct vector_t {
 int permutations = 1;
 
 int construct_segments(struct point_t *points, struct point_t begin, int n, int size, FILE *gnu_files[NUM_FILES], int *mapped, int **recorded, vector<int *> *segments);
-int construct_polygons(vector<int *> *polygons, vector<int *> segments, int segment_count, int size);
+int construct_polygons(vector<int *> *polygons, vector<int *> segments, int size);
 double calculate_curvature(struct vector_t T1, struct vector_t T2, double tao);
 double calculate_theta(double tao);
 double tao_distance(struct vector_t V, double curvature, double theta);
@@ -126,8 +127,8 @@ int main(int argc, char *argv[])
             i = size;
         }
     }
-    polygon_count = construct_polygons(polygons, *segments, segment_count, size);
-    printf("\nMAPPED ARRAY:\n");
+    polygon_count = construct_polygons(polygons, *segments, size);
+    printf("\n\nMAPPED ARRAY:\n");
     for(i = 0; i < size; i++) {
         printf("%d: %d\n", i, mapped[i]);
     }
@@ -408,29 +409,62 @@ int construct_segments(struct point_t *points, struct point_t begin, int n, int 
 }
 
 /* calculate polygons given all contoured segments */
-int construct_polygons(vector<int *> *polygons, vector<int *> segments, int segment_count, int size)
+int construct_polygons(vector<int *> *polygons, vector<int *> segments, int size)
 {
     /* queue stores lines waiting to be added */
-    vector<int> *queue = new vector<int> [size];
-    int i = 0;
     int polygon_count = 0;
-    for(i = 0; i < segment_count; i++) {
-        /* seach through all the queue entries */
+    int i = 0;
+    int j = 0;
+    deque<int> *queue = new deque<int> [size];
+    queue[0].push_back(segments[0][0]);
+    //printf("%d\n", queue[0].back());
+    queue[0].push_back(segments[0][1]);
+    //printf("%d\n", queue[0].back());
+    while(segments[1][1] != segments[0][0]) {
+        queue[0].push_back(segments[1][1]);
+        //printf("%d\n", queue[0].back());
+        segments.erase(segments.begin() + 1);
+    }
+    segments.erase(segments.begin());
+    /* loop through all segments */
+    for(i = 0; i < segments.size(); i++) {
+        /* loop through the entire queue */
         for(j = 0; j < size; j++) {
-            if(queue[j].find(queue.begin(), queue.end(), segments[0][0]) != queue.end) {
-                printf("\nSTART FOUND\n");
+            /* add pair to the empty slot */
+            if(queue[j].size() < 1) {
+                queue[j].push_back(segments[i][0]);
+                queue[j].push_back(segments[i][1]);
+                break;
             }
-            else if(queue[j].find(queue.begin(), queue.end(), segments[0][1]) != queue.end) {
-                printf("\nEND FOUND\n");
+            /* add segments[i][1] to the front of the list */
+            else if(segments[i][0] == queue[j][0]) {
+                queue[j].push_front(segments[i][1]);
+                break;
             }
-            else {
-                printf("\nNOT FOUND\n");
-                queue[m++].pushback();
+            /* add segments[i][0] to the front of the list */
+            else if(segments[i][1] == queue[j][0]) {
+                queue[j].push_front(segments[i][0]);
+                break;
+            }
+            /* add segments[i][1] to the back of the list */
+            else if(segments[i][0] == queue[j][queue[j].back()]) {
+                queue[j].push_back(segments[i][1]);
+                break;
+            }
+            /* add segments[i][0] to the back of the list */
+            else if(segments[i][1] == queue[j][queue[j].back()]) {
+                queue[j].push_back(segments[i][0]);
+                break;
             }
         }
-        /* remove the segment */
-        //printf("%d: <%d,%d>\n", i, segments[0][0], segments[0][1]);
-        segments.erase(segments.begin());
+    }
+    printf("\nQUEUE:\n");
+    for(i = 0; i < size; i++) {
+        printf("%d: ", i);
+        for(j = 0; j < queue[i].size(); j++) {
+            printf("%d ", queue[i][j]);
+        }
+        printf("\n");
     }
     return polygon_count;
 }
