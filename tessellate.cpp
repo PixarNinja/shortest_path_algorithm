@@ -421,29 +421,68 @@ vector<vector<int> > construct_polygons(vector<int *> segments, int size)
 {
     vector<vector<int> > polygons;
     deque<int> *queue = new deque<int> [size];
-    vector<int> tmp;
+    vector<int> tmpshape_0;
+    vector<int> tmpshape_1;
+    vector<int> tmpshape_2;
     int found_beginning[2];
     int found_end[2];
     int i = 0;
     int j = 0;
     int k = 0;
     int l = 0;
-    tmp.push_back(segments[0][0]);
-    tmp.push_back(segments[0][1]);
+    int start = size;
+    int stop = size;
+    int split = 0;
+    tmpshape_0.push_back(segments[0][0]);
+    tmpshape_0.push_back(segments[0][1]);
     while(segments[1][1] != segments[0][0]) {
-        tmp.push_back(segments[1][1]);
+        tmpshape_0.push_back(segments[1][1]);
         segments.erase(segments.begin() + 1);
     }
-    polygons.push_back(tmp);
+    polygons.push_back(tmpshape_0);
     segments.erase(segments.begin(), segments.begin() + 2);
     /* loop through all segments */
     for(i = 0; i < segments.size(); i++) {
         found_beginning[0] = INT_MAX;
         found_end[0] = INT_MAX;
+        split = 0;
         /* check for split */
         for(k = 0; k < polygons.size(); k++) {
             if(polygon_search(polygons[k], segments[i][0]) && polygon_search(polygons[k], segments[i][1])) {
                 printf("SPLIT %d with <%d,%d>\n", k, segments[i][0], segments[i][1]);
+                tmpshape_1.clear();
+                tmpshape_2.clear();
+                l = distance(polygons[k].begin(), find(polygons[k].begin(), polygons[k].end(), segments[i][0]));
+                start = segments[i][0];
+                stop = segments[i][1];
+                tmpshape_1.push_back(polygons[k][l]);
+                /* leftward loop */
+                while(start != stop) {
+                    l--;
+                    if(l < 0) {
+                        l = polygons[k].size() - 1;
+                    }
+                    tmpshape_1.push_back(polygons[k][l]);
+                    start = polygons[k][l];
+                }
+                l = distance(polygons[k].begin(), find(polygons[k].begin(), polygons[k].end(), segments[i][0]));
+                start = segments[i][0];
+                stop = segments[i][1];
+                tmpshape_2.push_back(polygons[k][l]);
+                /* rightward loop */
+                while(start != stop) {
+                    l++;
+                    if(l > polygons[k].size() - 1) {
+                        l = 0;
+                    }
+                    tmpshape_2.push_back(polygons[k][l]);
+                    start = polygons[k][l];
+                }
+                polygons.push_back(tmpshape_1);
+                polygons.push_back(tmpshape_2);
+                polygons.erase(polygons.begin() + k);
+                split = 1;
+                k += 2;
             }
             else if(polygon_search(polygons[k], segments[i][0])) {
                 found_beginning[0] = k;
@@ -456,6 +495,10 @@ vector<vector<int> > construct_polygons(vector<int *> segments, int size)
         }
         if((found_beginning[0] != INT_MAX) && (found_end[0] != INT_MAX)) {
             printf("SPLIT %d and %d with <%d,%d>\n", found_beginning[0], found_end[0], found_beginning[1], found_end[1]);
+            split = 1;
+        }
+        if(split) {
+            continue;
         }
         /* update the queue */
         for(j = 0; j < size; j++) {
@@ -499,11 +542,11 @@ vector<vector<int> > construct_polygons(vector<int *> segments, int size)
             for(k = 0; k < polygons.size(); k++) {
                 if(polygon_search(polygons[k], queue[j][0]) && polygon_search(polygons[k], queue[j][queue[j].size() - 1])) {
                     printf("ADD to %d: <%d,%d>\n", k, queue[j][0], queue[j][queue[j].size() - 1]);
-                    tmp.clear();
+                    tmpshape_0.clear();
                     for(l = 0; l < queue[j].size(); l++) {
-                        tmp.push_back(queue[j][l]);
+                        tmpshape_0.push_back(queue[j][l]);
                     }
-                    polygons.push_back(tmp);
+                    polygons.push_back(tmpshape_0);
                     queue[j].erase(queue[j].begin(), queue[j].end());
                     break;
                 }
