@@ -39,7 +39,8 @@ void construct_segments(struct point_t *points, struct point_t begin, int n, int
 vector<vector<int> > construct_polygons(vector<int *> segments, int size);
 int shape_search(vector<int> shape, int vertex);
 int polygons_search(vector<vector<int> > polygons, int vertex);
-int segment_search(vector<int *> segments, int vertex);
+int segment_search(vector<int *> segments, int vertex, int *pos);
+int segment_match(vector<int *> segments, int beginning, int end);
 int duplicate_search(deque<int> queue, int vertex, int dups[2]);
 deque<int> *separate_shape(deque<int> *queue, int size, int n, int m);
 deque<int> *merge_queue(deque<int> *queue, int size);
@@ -431,10 +432,11 @@ vector<vector<int> > construct_polygons(vector<int *> segments, int size)
     vector<int> tmp_shape_0;
     vector<int> tmp_shape_1;
     vector<int> tmp_shape_2;
+    int *pos = new int [1];
     int *pushed_segment;
     int found_beginning[2];
     int found_end[2];
-    int dups[2] = {INT_MAX};
+    int dups[2] = {-1};
     int i = 0;
     int j = 0;
     int k = 0;
@@ -443,7 +445,12 @@ vector<vector<int> > construct_polygons(vector<int *> segments, int size)
     int n = 0;
     int start = size;
     int stop = size;
+    /* type flags
+       -- split means the polygon was split into 2 polygons
+       -- loop means the queue contained a loop
+       -- add means the polygon was added to */
     int split = 0;
+    int loop = 0;
     int add = 0;
 
     tmp_shape_0.push_back(segments[0][0]);
@@ -479,7 +486,7 @@ vector<vector<int> > construct_polygons(vector<int *> segments, int size)
     /* reorder the segments closest to the reordered segments */
     for(i = 0; i < segments.size(); i++) {
         /* add the segment if there is a matching vertex */
-        if((segment_search(tmp_segments, segments[i][0]) != INT_MAX) || (segment_search(tmp_segments, segments[i][1]) != INT_MAX)) {
+        if((segment_search(tmp_segments, segments[i][0], pos) != -1) || (segment_search(tmp_segments, segments[i][1], pos) != -1)) {
             pushed_segment = new int [2];
             pushed_segment[0] = segments[i][0];
             pushed_segment[1] = segments[i][1];
@@ -502,6 +509,7 @@ vector<vector<int> > construct_polygons(vector<int *> segments, int size)
         found_beginning[0] = INT_MAX;
         found_end[0] = INT_MAX;
         split = 0;
+        add = 0;
         /* check for a split */
         for(k = 0; k < polygons.size(); k++) {
             if(shape_search(polygons[k], segments[i][0]) && shape_search(polygons[k], segments[i][1])) {
@@ -597,58 +605,21 @@ vector<vector<int> > construct_polygons(vector<int *> segments, int size)
             if(queue[j].size() <= 1) {
                 continue;
             }
-            for(k = 0; k < polygons.size(); k++) {
-                /* check if the addition is complete */
-                if(shape_search(polygons[k], queue[j][0]) && shape_search(polygons[k], queue[j][queue[j].size() - 1])) {
-                    printf("ADD to %d: <%d,%d>\n", k, queue[j][0], queue[j][queue[j].size() - 1]);
-                    add = 1;
-                    /* add the new shape to free_segments */
-                    for(l = 0; l < queue[j].size() - 1; l++) {
-                        pushed_segment = new int [2];
-                        pushed_segment[0] = queue[j][l];
-                        pushed_segment[1] = queue[j][l + 1];
-                        free_segments.push_back(pushed_segment);
-                    }
-                    l = segment_search(free_segments, queue[j][queue[j].size() - 1]);
-                    free_segments.erase(free_segments.begin() + l);
-                    printf("\nFREE:\n");
-                    for(l = 0; l < free_segments.size(); l++) {
-                        printf("<%d,%d>\n", free_segments[l][0], free_segments[l][1]);
-                    }
-                    /* add the new shape */
-                    tmp_shape_0.clear();
-                    for(l = 0; l < queue[j].size(); l++) {
-                        tmp_shape_0.push_back(queue[j][l]);
-                    }
-                    polygons.push_back(tmp_shape_0);
-                    queue[j].erase(queue[j].begin(), queue[j].end());
-                    for(; j < size - 1; j++) {
-                        queue[j] = queue[j + 1];
-                    }
-                    queue[size - 1].clear();
-                    break;
-                }
-            }
-            /* check if the addition is a loop */
+            /* check for a loop in a queue entry */
             for(k = 0; k < queue[j].size(); k++) {
                 if(duplicate_search(queue[j], queue[j][k], dups)) {
-                    printf("ADD loop around %d\n", queue[j][k], queue[j][k]);
-                    add = 1;
+                    printf("ADD loop around %d\n", queue[j][k]);
+                    loop = 1;
                     /* add the new segments to free_segments */
                     n = dups[0];
                     m = dups[1];
-                    pushed_segment = new int [2];
-                    pushed_segment[0] = queue[j][n];
-                    pushed_segment[1] = queue[j][n + 1];
-                    free_segments.push_back(pushed_segment);
-                    for(; n < m; n++) {
+                    for(; n < m + 1; n++) {
                         pushed_segment = new int [2];
                         pushed_segment[0] = queue[j][n];
                         pushed_segment[1] = queue[j][n + 1];
                         free_segments.push_back(pushed_segment);
+                        //printf("pushed <%d,%d>... ", pushed_segment[0], pushed_segment[1]);
                     }
-                    l = segment_search(free_segments, queue[j][m]);
-                    free_segments.erase(free_segments.begin() + l);
                     printf("\nFREE:\n");
                     for(l = 0; l < free_segments.size(); l++) {
                         printf("<%d,%d>\n", free_segments[l][0], free_segments[l][1]);
@@ -672,16 +643,58 @@ vector<vector<int> > construct_polygons(vector<int *> segments, int size)
                     polygons.push_back(tmp_shape_1);
                 }
             }
-        }
-        if(add) {
-            continue;
+            for(k = 0; k < polygons.size(); k++) {
+                /* check for an end-to-end addition */
+                if(shape_search(polygons[k], queue[j][0]) && shape_search(polygons[k], queue[j][queue[j].size() - 1])) {
+                    if(loop) {
+                        queue[j].erase(queue[j].begin(), queue[j].end());
+                        for(; j < size - 1; j++) {
+                            queue[j] = queue[j + 1];
+                        }
+                        queue[size - 1].clear();
+                        break;
+                    }
+                    printf("ADD to %d: <%d,%d>\n", k, queue[j][0], queue[j][queue[j].size() - 1]);
+                    add = 1;
+                    /* add the new shape to free_segments */
+                    for(l = 0; l < queue[j].size() - 1; l++) {
+                        pushed_segment = new int [2];
+                        pushed_segment[0] = queue[j][l];
+                        pushed_segment[1] = queue[j][l + 1];
+                        free_segments.push_back(pushed_segment);
+                    }
+                    l = segment_match(free_segments, queue[j][0], queue[j][queue[j].size() - 1]);
+                    free_segments.erase(free_segments.begin() + l);
+                    printf("\nFREE:\n");
+                    for(l = 0; l < free_segments.size(); l++) {
+                        printf("<%d,%d>\n", free_segments[l][0], free_segments[l][1]);
+                    }
+                    /* add the new shape */
+                    tmp_shape_0.clear();
+                    for(l = 0; l < queue[j].size(); l++) {
+                        tmp_shape_0.push_back(queue[j][l]);
+                    }
+                    polygons.push_back(tmp_shape_0);
+                    queue[j].erase(queue[j].begin(), queue[j].end());
+                    for(; j < size - 1; j++) {
+                        queue[j] = queue[j + 1];
+                    }
+                    queue[size - 1].clear();
+                    break;
+                }
+            }
         }
         /* check for an addition accross multiple shapes */
         for(j = 0; j < size; j++) {
             if(queue[j].size() <= 1) {
                 continue;
             }
-            if(((n = polygons_search(polygons, queue[j][0])) != INT_MAX) && ((m = polygons_search(polygons, queue[j][queue[j].size() - 1])) != INT_MAX)) {
+            printf("checking %d: ", j);
+            for(k = 0; k < queue[j].size(); k++) {
+                printf("%d ", queue[j][k]);
+            }
+            printf("\n");
+            if(((n = polygons_search(polygons, queue[j][0])) != -1) && ((m = polygons_search(polygons, queue[j][queue[j].size() - 1])) != -1)) {
                 if(n == m) {
                     continue;
                 }
@@ -689,16 +702,17 @@ vector<vector<int> > construct_polygons(vector<int *> segments, int size)
                 /* use free_segments to find if a polygon exists between the points */
                 n = queue[j][0];
                 m = queue[j][queue[j].size() - 1];
+                /*
                 while(n != m) {
-                    /* if there is a match in find_segments */
-                    if((l = segment_search(free_segments, n)) != INT_MAX) {
-                        n = l;
+                    printf("n = %d, m = %d\n", n, m);
+                    if((l = segment_search(free_segments, n, pos)) != -1) {
+                        n = free_segments[l][*pos];
                     }
                     else {
                         printf("\nNO POLYGON\n");
                         break;
                     }
-                }
+                }*/
             }
         }
     }
@@ -741,19 +755,36 @@ int polygons_search(vector<vector<int> > polygons, int vertex)
             return i;
         }
     }
-    return INT_MAX;
+    return -1;
 }
 
-/* searches through a vector of segments for a matching vertex */
-int segment_search(vector<int *> segments, int vertex)
+/* searches through a vector of segments for a matching end or beginning */
+int segment_search(vector<int *> segments, int vertex, int *pos)
 {
     /* check if the segment is found */
     for(int i = 0; i < segments.size(); i++) {
-        if((segments[i][0] == vertex) || (segments[i][1] == vertex)) {
+        if(segments[i][0] == vertex) {
+            *pos = 1;
+            return i;
+        }
+        else if(segments[i][1] == vertex) {
+            *pos = 0;
             return i;
         }
     }
-    return INT_MAX;
+    return -1;
+}
+
+/* searches through a vector of segments for a matching segment */
+int segment_match(vector<int *> segments, int beginning, int end)
+{
+    /* check if the segment is found */
+    for(int i = 0; i < segments.size(); i++) {
+        if(((segments[i][0] == beginning) && (segments[i][1] == end)) || ((segments[i][0] == end) && (segments[i][1] == beginning))) {
+            return i;
+        }
+    }
+    return -1;
 }
 
 /* searches through a deque of vertices for a duplicate */
