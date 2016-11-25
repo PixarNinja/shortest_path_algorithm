@@ -40,6 +40,8 @@ vector<vector<int> > construct_polygons(vector<int *> segments, int size);
 int polygon_search(vector<int> polygon, int vertex);
 int segment_search(vector<int *> segments, int vertex);
 int duplicate_search(deque<int> queue, int vertex);
+deque<int> *separate_shape(deque<int> *queue, int size, int n, int m);
+deque<int> *merge_queue(deque<int> *queue, int size);
 double calculate_curvature(struct vector_t T1, struct vector_t T2, double tao);
 double calculate_theta(double tao);
 double tao_distance(struct vector_t V, double curvature, double theta);
@@ -423,7 +425,8 @@ vector<vector<int> > construct_polygons(vector<int *> segments, int size)
 {
     vector<vector<int> > polygons;
     vector<int *> tmp_segments;
-    deque<int> *queue = new deque<int> [size];
+    deque<int> *queue = new deque<int> [size]; //keeps track of adding and splitting
+    deque<int> added; //list of edges that are available for adding
     vector<int> tmp_shape_0;
     vector<int> tmp_shape_1;
     vector<int> tmp_shape_2;
@@ -434,17 +437,22 @@ vector<vector<int> > construct_polygons(vector<int *> segments, int size)
     int j = 0;
     int k = 0;
     int l = 0;
+    int m = 0;
+    int n = 0;
     int start = size;
     int stop = size;
     int split = 0;
     tmp_shape_0.push_back(segments[0][0]);
+    added.push_back(segments[0][0]);
     tmp_shape_0.push_back(segments[0][1]);
+    added.push_back(segments[0][1]);
     while(segments[1][1] != segments[0][0]) {
         tmp_shape_0.push_back(segments[1][1]);
+        added.push_back(segments[1][1]);
         segments.erase(segments.begin() + 1);
     }
     segments.erase(segments.begin(), segments.begin() + 2);
-    segments.erase(segments.begin() + 1);
+    //segments.erase(segments.begin() + 1);
     polygons.push_back(tmp_shape_0);
     /* reorder the segments closest to the first polygon */
     printf("\nNEW SEGMENTS:\n");
@@ -486,7 +494,7 @@ vector<vector<int> > construct_polygons(vector<int *> segments, int size)
         found_beginning[0] = INT_MAX;
         found_end[0] = INT_MAX;
         split = 0;
-        /* check for split */
+        /* check for a split */
         for(k = 0; k < polygons.size(); k++) {
             if(polygon_search(polygons[k], segments[i][0]) && polygon_search(polygons[k], segments[i][1])) {
                 printf("SPLIT %d with <%d,%d>\n", k, segments[i][0], segments[i][1]);
@@ -542,7 +550,7 @@ vector<vector<int> > construct_polygons(vector<int *> segments, int size)
         }
         /* update the queue */
         for(j = 0; j < size; j++) {
-            /* add segment to the empty slot */
+            /* add segment if the slot is empty */
             if(queue[j].size() < 1) {
                 queue[j].push_back(segments[i][0]);
                 queue[j].push_back(segments[i][1]);
@@ -574,27 +582,64 @@ vector<vector<int> > construct_polygons(vector<int *> segments, int size)
                 break;
             }
         }
-        /* check for addition */
+        /* merges queue elements if ends have a matching node */
+        queue = merge_queue(queue, size);
+        /* check for an addition */
         for(j = 0; j < size; j++) {
             if(queue[j].size() <= 1) {
                 continue;
             }
             for(k = 0; k < polygons.size(); k++) {
+                /* check if the addition is complete */
                 if(polygon_search(polygons[k], queue[j][0]) && polygon_search(polygons[k], queue[j][queue[j].size() - 1])) {
                     printf("ADD to %d: <%d,%d>\n", k, queue[j][0], queue[j][queue[j].size() - 1]);
+                    printf("\nADDED:\n");
+                    for(i = 0; i < added.size(); i++) {
+                        printf("%d ", added[i]);
+                    }
+                    n = distance(added.begin(), find(added.begin(), added.end(), queue[j][0]));
+                    m = distance(added.begin(), find(added.begin(), added.end(), queue[j][queue[j].size() - 1]));
+                    printf("n: %d, m: %d\n", n, m);
+                    /* remove the previous connection */
+                    added.erase(added.begin() + n, added.begin() + m);
+                    /* move elments after n before n, so that n is at the end and m is at the beginning */
+                    for(l = added.size() - 1; l > n; l--) {
+                        added.push_front(added[l]);
+                        added.erase(added.end());
+                    }
+                    /* add the new shape */
                     tmp_shape_0.clear();
                     for(l = 0; l < queue[j].size(); l++) {
                         tmp_shape_0.push_back(queue[j][l]);
+                        /* add the shape after n */
+                        added.push_back(queue[j][l]);
+                    }
+                    printf("\nADDED:\n");
+                    for(i = 0; i < added.size(); i++) {
+                        printf("%d ", added[i]);
                     }
                     polygons.push_back(tmp_shape_0);
                     queue[j].erase(queue[j].begin(), queue[j].end());
+                    for(; j < size - 1; j++) {
+                        queue[j] = queue[j + 1];
+                    }
+                    queue[size - 1].clear();
                     break;
                 }
             }
-            /* walk through the queue to check for a loop */
+            /* check if the addition is a loop */
             for(k = 0; k < queue[j].size(); k++) {
                 if(duplicate_search(queue[j], queue[j][k])) {
-                    printf("ADD %d ... %d\n", k, k);
+                    printf("ADD %d ... %d\n", queue[j][k], queue[j][k]);
+                    queue = separate_shape(queue, size, j, k);
+                    /*for(l = 0; l < size; l++) {
+                        if(queue[l].size() < 1) {
+                            queue[l].push_back(queue[j][k]);
+                            queue[l].push_back(queue[j][k + 1]);
+                            printf("add <%d,%d>\n", queue[j][k], queue[j][k + 1]);
+                            break;
+                        }
+                    }*/
                     tmp_shape_1.clear();
                     l = distance(queue[j].begin(), find(queue[j].begin(), queue[j].end(), queue[j][k]));
                     start = INT_MAX;
@@ -624,6 +669,10 @@ vector<vector<int> > construct_polygons(vector<int *> segments, int size)
             }
             printf("\n");
         }
+    }
+    printf("\nADDED:\n");
+    for(i = 0; i < added.size(); i++) {
+        printf("%d ", added[i]);
     }
     return polygons;
 }
@@ -655,7 +704,7 @@ int segment_search(vector<int *> segments, int vertex)
 /* searches through a deque of vertices for a duplicate */
 int duplicate_search(deque<int> queue, int vertex)
 {
-    int d;
+    int d = 0;
     /* check if the vertex has a duplicate */
     if(find(queue.begin(), queue.end(), vertex) != queue.end()) {
         d = distance(queue.begin(), find(queue.begin(), queue.end(), vertex));
@@ -665,6 +714,52 @@ int duplicate_search(deque<int> queue, int vertex)
         }
     }
     return 0;
+}
+
+/* separates a shape given there is a found duplicate at index m */
+deque<int> *separate_shape(deque<int> *queue, int size, int n, int m)
+{
+    int i = 0;
+    int j = 0;
+    for(i = 0; i < size; i++) {
+        /* add segment to an empty slot */
+        if(queue[i].size() < 1) {
+            for(j = m + 1; queue[n][j] != queue[n][m]; j++) {
+                queue[i].push_back(queue[n][j]);
+            }
+            queue[i].push_back(queue[n][m]);
+            break;
+        }
+    }
+    return queue;
+}
+
+deque<int> *merge_queue(deque<int> *queue, int size)
+{
+    int i = 0;
+    int j = 0;
+    int k = 0;
+    for(i = 0; i < size; i++) {
+        for(j = 0; j < size; j++) {
+            if((i == j) || (queue[i].size() < 1) || (queue[j].size() < 1)) {
+                continue;
+            }
+            /* check if queue[i][last] matches queue[j][0] */
+            if((queue[i][queue[i].size() - 1]) == queue[j][0]) {
+                printf("MERGE\n");
+                for(k = 1; k < queue[j].size(); k++) {
+                    queue[i].push_back(queue[j][k]);
+                }
+                queue[j].erase(queue[j].begin(), queue[j].end());
+                for(k = j; k < size - 1; k++) {
+                    queue[k] = queue[k + 1];
+                }
+                queue[size - 1].clear();
+                break;
+            }
+        }
+    }
+    return queue;
 }
 
 /* calculates curvature given structure k */
