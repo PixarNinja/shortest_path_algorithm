@@ -492,7 +492,7 @@ vector<vector<int> > construct_polygons(vector<int *> segments, int size)
         printf("%d ", polygons[0][j]);
     }
     printf("\n");
-
+    printf("\n");
     segments = tmp_segments;
     /* loop through all segments */
     for(i = 0; i < segments.size(); i++) {
@@ -546,10 +546,10 @@ vector<vector<int> > construct_polygons(vector<int *> segments, int size)
                 found_end[1] = segments[i][1];
             }
         }
-        /*if((found_beginning[0] != INT_MAX) && (found_end[0] != INT_MAX)) {
+        if((found_beginning[0] != INT_MAX) && (found_end[0] != INT_MAX)) {
             printf("SPLIT %d and %d with <%d,%d>\n", found_beginning[0], found_end[0], found_beginning[1], found_end[1]);
             split = 1;
-        }*/
+        }
         if(split) {
             continue;
         }
@@ -608,8 +608,8 @@ vector<vector<int> > construct_polygons(vector<int *> segments, int size)
                     l = segment_search(free_segments, queue[j][l]);
                     free_segments.erase(free_segments.begin() + l);
                     printf("\nFREE:\n");
-                    for(i = 0; i < free_segments.size(); i++) {
-                        printf("<%d,%d>\n", free_segments[i][0], free_segments[i][1]);
+                    for(l = 0; l < free_segments.size(); l++) {
+                        printf("<%d,%d>\n", free_segments[l][0], free_segments[i][1]);
                     }
                     /* add the new shape */
                     tmp_shape_0.clear();
@@ -645,8 +645,8 @@ vector<vector<int> > construct_polygons(vector<int *> segments, int size)
                     l = segment_search(free_segments, queue[j][l]);
                     free_segments.erase(free_segments.begin() + l);
                     printf("\nFREE:\n");
-                    for(i = 0; i < free_segments.size(); i++) {
-                        printf("<%d,%d>\n", free_segments[i][0], free_segments[i][1]);
+                    for(l = 0; l < free_segments.size(); l++) {
+                        printf("<%d,%d>\n", free_segments[l][0], free_segments[i][1]);
                     }
                     queue = separate_shape(queue, size, j, k);
                     /*for(l = 0; l < size; l++) {
@@ -682,6 +682,7 @@ vector<vector<int> > construct_polygons(vector<int *> segments, int size)
                 continue;
             }
         }
+        printf("segment index: %d", i);
     }
     printf("\nQUEUE:\n");
     for(i = 0; i < size; i++) {
