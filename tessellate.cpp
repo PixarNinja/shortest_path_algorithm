@@ -445,13 +445,10 @@ vector<vector<int> > construct_polygons(vector<int *> segments, int size)
     int n = 0;
     int start = size;
     int stop = size;
-    /* type flags
-       -- split means the polygon was split into 2 polygons
-       -- loop means the queue contained a loop
-       -- add means the polygon was added to */
-    int split = 0;
-    int loop = 0;
-    int add = 0;
+    /* type flags */
+    int split = 0; //the polygon was split into 2 polygons
+    int loop = 0; //the queue contained a loop
+    int add = 0; //the polygon was added
 
     tmp_shape_0.push_back(segments[0][0]);
     tmp_shape_0.push_back(segments[0][1]);
@@ -469,10 +466,9 @@ vector<vector<int> > construct_polygons(vector<int *> segments, int size)
     segments.erase(segments.begin(), segments.begin() + 2);
     //segments.erase(segments.begin() + 1);
     polygons.push_back(tmp_shape_0);
-    /* reorder the segments closest to the first polygon */
+    /* reorder the segments closest to the first polygon
     printf("\nNEW SEGMENTS:\n");
     for(i = 0; i < segments.size(); i++) {
-        /* add the segment if there is a matching vertex */
         if(shape_search(polygons[0], segments[i][0]) || shape_search(polygons[0], segments[i][1])) {
             pushed_segment = new int [2];
             pushed_segment[0] = segments[i][0];
@@ -482,10 +478,9 @@ vector<vector<int> > construct_polygons(vector<int *> segments, int size)
             i--;
             printf("<%d,%d>\n", pushed_segment[0], pushed_segment[1]);
         }
-    }
-    /* reorder the segments closest to the reordered segments */
+    }*/
+    /* reorder the segments closest to the reordered segments
     for(i = 0; i < segments.size(); i++) {
-        /* add the segment if there is a matching vertex */
         if((segment_search(tmp_segments, segments[i][0], pos) != -1) || (segment_search(tmp_segments, segments[i][1], pos) != -1)) {
             pushed_segment = new int [2];
             pushed_segment[0] = segments[i][0];
@@ -503,7 +498,7 @@ vector<vector<int> > construct_polygons(vector<int *> segments, int size)
     }
     printf("\n");
     printf("\n");
-    segments = tmp_segments;
+    segments = tmp_segments;*/
     /* loop through all segments */
     for(i = 0; i < segments.size(); i++) {
         found_beginning[0] = INT_MAX;
@@ -727,7 +722,7 @@ vector<vector<int> > construct_polygons(vector<int *> segments, int size)
         }
     }
     printf("\nFREE:\n");
-    for(i = 0; i < free_segments.size(); i++) {
+    for(i = 0; i < free_segments.size() - 1; i++) {
         printf("<%d,%d>\n", free_segments[i][0], free_segments[i][1]);
     }
     return polygons;
