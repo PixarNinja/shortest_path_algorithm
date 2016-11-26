@@ -10,6 +10,7 @@
 #include <vector>
 #include <deque>
 #include <algorithm>
+#include <iterator>
 
 #define NUM_FILES 4
 
@@ -426,6 +427,8 @@ void construct_segments(struct point_t *points, struct point_t begin, int n, int
 vector<vector<int> > construct_polygons(vector<int *> segments, int size)
 {
     vector<vector<int> > polygons;
+    vector<int *> original_segments;
+    copy(segments.begin(), segments.end(), back_inserter(original_segments));
     vector<int *> tmp_segments;
     vector<int *> free_segments; //list of segments that are available for adding
     deque<int> *queue = new deque<int> [size]; //keeps track of adding and splitting
@@ -445,10 +448,8 @@ vector<vector<int> > construct_polygons(vector<int *> segments, int size)
     int n = 0;
     int start = size;
     int stop = size;
-    /* type flags */
-    int split = 0; //the polygon was split into 2 polygons
-    int loop = 0; //the queue contained a loop
-    int add = 0; //the polygon was added
+    int found = 0;
+    int full = 0;
 
     tmp_shape_0.push_back(segments[0][0]);
     tmp_shape_0.push_back(segments[0][1]);
@@ -464,252 +465,203 @@ vector<vector<int> > construct_polygons(vector<int *> segments, int size)
         printf("<%d,%d>\n", free_segments[i][0], free_segments[i][1]);
     }
     segments.erase(segments.begin(), segments.begin() + 2);
-    //segments.erase(segments.begin() + 1);
     polygons.push_back(tmp_shape_0);
-    /* reorder the segments closest to the first polygon
-    printf("\nNEW SEGMENTS:\n");
-    for(i = 0; i < segments.size(); i++) {
-        if(shape_search(polygons[0], segments[i][0]) || shape_search(polygons[0], segments[i][1])) {
-            pushed_segment = new int [2];
-            pushed_segment[0] = segments[i][0];
-            pushed_segment[1] = segments[i][1];
-            tmp_segments.push_back(pushed_segment);
-            segments.erase(segments.begin() + i);
-            i--;
-            printf("<%d,%d>\n", pushed_segment[0], pushed_segment[1]);
+
+    full = 0;
+    /* while we still need to add polygons */
+    while(full < 5) {
+        segments = original_segments;
+        /* finds a match of the beginning and end of the polygon in segments and deletes it */
+        l = segment_match(segments, polygons[polygons.size() - 1][0], polygons[polygons.size() - 1][polygons[polygons.size() - 1].size() - 1]);
+        printf("deleted: <%d,%d>\n", polygons[polygons.size() - 1][0], polygons[polygons.size() - 1][polygons[polygons.size() - 1].size() - 1]);
+        segments.erase(segments.begin() + l);
+        for(j = 0; j < polygons[polygons.size() - 1].size() - 1; j++) {
+            /* deletes the polygon from segments */
+            l = segment_match(segments, polygons[polygons.size() - 1][j], polygons[polygons.size() - 1][j + 1]);
+            segments.erase(segments.begin() + l);
+            printf("deleted: <%d,%d>\n", polygons[polygons.size() - 1][j], polygons[polygons.size() - 1][j + 1]);
         }
-    }*/
-    /* reorder the segments closest to the reordered segments
-    for(i = 0; i < segments.size(); i++) {
-        if((segment_search(tmp_segments, segments[i][0], pos) != -1) || (segment_search(tmp_segments, segments[i][1], pos) != -1)) {
-            pushed_segment = new int [2];
-            pushed_segment[0] = segments[i][0];
-            pushed_segment[1] = segments[i][1];
-            tmp_segments.push_back(pushed_segment);
-            segments.erase(segments.begin() + i);
-            i--;
-            printf("<%d,%d>\n", pushed_segment[0], pushed_segment[1]);
-        }
-    }
-    printf("\n");
-    printf("\nPOLYGON [0]:\n");
-    for(j = 0; j < polygons[0].size(); j++) {
-        printf("%d ", polygons[0][j]);
-    }
-    printf("\n");
-    printf("\n");
-    segments = tmp_segments;*/
-    /* loop through all segments */
-    for(i = 0; i < segments.size(); i++) {
-        found_beginning[0] = INT_MAX;
-        found_end[0] = INT_MAX;
-        split = 0;
-        add = 0;
-        /* check for a split */
-        for(k = 0; k < polygons.size(); k++) {
-            if(shape_search(polygons[k], segments[i][0]) && shape_search(polygons[k], segments[i][1])) {
-                printf("SPLIT %d with <%d,%d>\n", k, segments[i][0], segments[i][1]);
-                tmp_shape_1.clear();
-                tmp_shape_2.clear();
-                l = distance(polygons[k].begin(), find(polygons[k].begin(), polygons[k].end(), segments[i][0]));
-                start = segments[i][0];
-                stop = segments[i][1];
-                tmp_shape_1.push_back(polygons[k][l]);
-                /* leftward loop */
-                while(start != stop) {
-                    l--;
-                    if(l < 0) {
-                        l = polygons[k].size() - 1;
-                    }
-                    tmp_shape_1.push_back(polygons[k][l]);
-                    start = polygons[k][l];
-                }
-                l = distance(polygons[k].begin(), find(polygons[k].begin(), polygons[k].end(), segments[i][0]));
-                start = segments[i][0];
-                stop = segments[i][1];
-                tmp_shape_2.push_back(polygons[k][l]);
-                /* rightward loop */
-                while(start != stop) {
-                    l++;
-                    if(l > polygons[k].size() - 1) {
-                        l = 0;
-                    }
-                    tmp_shape_2.push_back(polygons[k][l]);
-                    start = polygons[k][l];
-                }
-                polygons.push_back(tmp_shape_1);
-                polygons.push_back(tmp_shape_2);
-                polygons.erase(polygons.begin() + k);
-                split = 1;
-                k += 2;
-            }
-            else if(shape_search(polygons[k], segments[i][0])) {
-                found_beginning[0] = k;
-                found_beginning[1] = segments[i][0];
-            }
-            else if(shape_search(polygons[k], segments[i][1])) {
-                found_end[0] = k;
-                found_end[1] = segments[i][1];
-            }
-        }
-        if((found_beginning[0] != INT_MAX) && (found_end[0] != INT_MAX)) {
-            printf("SPLIT %d and %d with <%d,%d>\n", found_beginning[0], found_end[0], found_beginning[1], found_end[1]);
-            split = 1;
-        }
-        if(split) {
-            continue;
-        }
-        /* update the queue */
+        /* clear tmp_segments and queue */
+        tmp_segments.clear();
         for(j = 0; j < size; j++) {
-            /* add segment if the slot is empty */
-            if(queue[j].size() < 1) {
-                queue[j].push_back(segments[i][0]);
-                queue[j].push_back(segments[i][1]);
-                printf("add <%d,%d>\n", segments[i][0], segments[i][1]);
-                break;
-            }
-            /* add segments[i][1] to the front of the list */
-            if(segments[i][0] == queue[j][0]) {
-                queue[j].push_front(segments[i][1]);
-                printf("add %d to front\n", segments[i][1]);
-                break;
-            }
-            /* add segments[i][0] to the front of the list */
-            if(segments[i][1] == queue[j][0]) {
-                queue[j].push_front(segments[i][0]);
-                printf("add %d to front\n", segments[i][0]);
-                break;
-            }
-            /* add segments[i][1] to the back of the list */
-            if(segments[i][0] == queue[j][queue[j].size() - 1]) {
-                queue[j].push_back(segments[i][1]);
-                printf("add %d to back\n", segments[i][1]);
-                break;
-            }
-            /* add segments[i][0] to the back of the list */
-            if(segments[i][1] == queue[j][queue[j].size() - 1]) {
-                queue[j].push_back(segments[i][0]);
-                printf("add %d to back\n", segments[i][0]);
-                break;
+            queue[j].clear();
+        }
+        /* reorder the segments closest to the last polygon */
+        printf("\nNEW SEGMENTS:\n");
+        for(i = 0; i < segments.size(); i++) {
+            if(shape_search(polygons[polygons.size() - 1], segments[i][0]) || shape_search(polygons[polygons.size() - 1], segments[i][1])) {
+                pushed_segment = new int [2];
+                pushed_segment[0] = segments[i][0];
+                pushed_segment[1] = segments[i][1];
+                tmp_segments.push_back(pushed_segment);
+                segments.erase(segments.begin() + i);
+                i--;
+                printf("<%d,%d>\n", pushed_segment[0], pushed_segment[1]);
             }
         }
-        /* merges queue elements if ends have a matching node */
-        queue = merge_queue(queue, size);
-        /* check for an addition */
-        for(j = 0; j < size; j++) {
-            if(queue[j].size() <= 1) {
-                continue;
+        /* reorder the segments closest to the reordered segments */
+        for(i = 0; i < segments.size(); i++) {
+            if((segment_search(tmp_segments, segments[i][0], pos) != -1) || (segment_search(tmp_segments, segments[i][1], pos) != -1)) {
+                pushed_segment = new int [2];
+                pushed_segment[0] = segments[i][0];
+                pushed_segment[1] = segments[i][1];
+                tmp_segments.push_back(pushed_segment);
+                segments.erase(segments.begin() + i);
+                i--;
+                printf("<%d,%d>\n", pushed_segment[0], pushed_segment[1]);
             }
-            /* check for a loop in a queue entry */
-            for(k = 0; k < queue[j].size(); k++) {
-                if(duplicate_search(queue[j], queue[j][k], dups)) {
-                    printf("ADD loop around %d\n", queue[j][k]);
-                    loop = 1;
-                    /* add the new segments to free_segments */
-                    n = dups[0];
-                    m = dups[1];
-                    for(; n < m + 1; n++) {
-                        pushed_segment = new int [2];
-                        pushed_segment[0] = queue[j][n];
-                        pushed_segment[1] = queue[j][n + 1];
-                        free_segments.push_back(pushed_segment);
-                        //printf("pushed <%d,%d>... ", pushed_segment[0], pushed_segment[1]);
+        }
+        printf("\n");
+        printf("\nLAST POLYGON:\n");
+        for(j = 0; j < polygons[polygons.size() - 1].size(); j++) {
+            printf("%d ", polygons[polygons.size() - 1][j]);
+        }
+        printf("\n");
+        printf("\n");
+        segments = tmp_segments;
+        i = -1;
+        found = 0;
+            /* loop through all segments, but stop after a polygon is added or split, or if a loop is found */
+        while(!found) {
+            i++;
+            if(i >= segments.size()) {
+                printf("\nNO MORE SEGMENTS TO ADD\n");
+            }
+            found_beginning[0] = INT_MAX;
+            found_end[0] = INT_MAX;
+            /* update the queue */
+            for(j = 0; j < size; j++) {
+                /* add segment if the slot is empty */
+                if(queue[j].size() < 1) {
+                    queue[j].push_back(segments[i][0]);
+                    queue[j].push_back(segments[i][1]);
+                    printf("add <%d,%d>\n", segments[i][0], segments[i][1]);
+                    break;
+                }
+                /* add segments[i][1] to the front of the list */
+                if(segments[i][0] == queue[j][0]) {
+                    queue[j].push_front(segments[i][1]);
+                    printf("add %d to front\n", segments[i][1]);
+                    break;
+                }
+                /* add segments[i][0] to the front of the list */
+                if(segments[i][1] == queue[j][0]) {
+                    queue[j].push_front(segments[i][0]);
+                    printf("add %d to front\n", segments[i][0]);
+                    break;
+                }
+                /* add segments[i][1] to the back of the list */
+                if(segments[i][0] == queue[j][queue[j].size() - 1]) {
+                    queue[j].push_back(segments[i][1]);
+                    printf("add %d to back\n", segments[i][1]);
+                    break;
+                }
+                /* add segments[i][0] to the back of the list */
+                if(segments[i][1] == queue[j][queue[j].size() - 1]) {
+                    queue[j].push_back(segments[i][0]);
+                    printf("add %d to back\n", segments[i][0]);
+                    break;
+                }
+            }
+            printf("UPDATED QUEUE:\n");
+            for(j = 0; j < size; j++) {
+                if(queue[j].size() >= 1) {
+                    printf("%d: ", j);
+                    for(k = 0; k < queue[j].size(); k++) {
+                        printf("%d ", queue[j][k]);
                     }
-                    printf("\nFREE:\n");
-                    for(l = 0; l < free_segments.size(); l++) {
-                        printf("<%d,%d>\n", free_segments[l][0], free_segments[l][1]);
-                    }
-                    queue = separate_shape(queue, size, j, k);
-                    tmp_shape_1.clear();
-                    l = distance(queue[j].begin(), find(queue[j].begin(), queue[j].end(), queue[j][k]));
-                    start = INT_MAX;
-                    stop = queue[j][k];
-                    /* adding to a temporary shape */
-                    while(start != stop) {
-                        l++;
-                        if(l > queue[j].size() - 1) {
-                            l = 0;
+                    printf("\n");
+                }
+            }
+            /* merges queue elements if ends have a matching node */
+            queue = merge_queue(queue, size);
+            /* check for an addition */
+            for(j = 0; j < size; j++) {
+                if(queue[j].size() <= 2) {
+                    continue;
+                }
+                /* check for a loop in a queue entry */
+                for(k = 0; k < queue[j].size(); k++) {
+                    if(duplicate_search(queue[j], queue[j][k], dups)) {
+                        printf("ADD loop around %d\n", queue[j][k]);
+                        /* add the new segments to free_segments */
+                        n = dups[0];
+                        m = dups[1];
+                        for(; n < m + 1; n++) {
+                            pushed_segment = new int [2];
+                            pushed_segment[0] = queue[j][n];
+                            pushed_segment[1] = queue[j][n + 1];
+                            free_segments.push_back(pushed_segment);
+                            //printf("pushed <%d,%d>... ", pushed_segment[0], pushed_segment[1]);
                         }
-                        tmp_shape_1.push_back(queue[j][l]);
-                        start = queue[j][l];
-                        queue[j].erase(queue[j].begin() + l);
-                        l--;
+                        printf("\nFREE:\n");
+                        for(l = 0; l < free_segments.size(); l++) {
+                            printf("<%d,%d>\n", free_segments[l][0], free_segments[l][1]);
+                        }
+                        queue = separate_shape(queue, size, j, k);
+                        tmp_shape_1.clear();
+                        l = distance(queue[j].begin(), find(queue[j].begin(), queue[j].end(), queue[j][k]));
+                        start = INT_MAX;
+                        stop = queue[j][k];
+                        /* adding to a temporary shape */
+                        while(start != stop) {
+                            l++;
+                            if(l > queue[j].size() - 1) {
+                                l = 0;
+                            }
+                            tmp_shape_1.push_back(queue[j][l]);
+                            start = queue[j][l];
+                            queue[j].erase(queue[j].begin() + l);
+                            l--;
+                        }
+                        polygons.push_back(tmp_shape_1);
+                        found = 1;
+                        break;
                     }
-                    polygons.push_back(tmp_shape_1);
                 }
-            }
-            for(k = 0; k < polygons.size(); k++) {
-                /* check for an end-to-end addition */
-                if(shape_search(polygons[k], queue[j][0]) && shape_search(polygons[k], queue[j][queue[j].size() - 1])) {
-                    if(loop) {
+                if(found) {
+                    continue;
+                }
+                for(k = 0; k < polygons.size(); k++) {
+                    /* check for an end-to-end addition */
+                    if(shape_search(polygons[k], queue[j][0]) && shape_search(polygons[k], queue[j][queue[j].size() - 1])) {
+                        printf("ADD to %d: <%d,%d>\n", k, queue[j][0], queue[j][queue[j].size() - 1]);
+                        /* filter out segments matching the segments of the polygon */
+                        printf("\nTODO\n");
+                        /* add the new shape to free_segments */
+                        for(l = 0; l < queue[j].size() - 1; l++) {
+                            pushed_segment = new int [2];
+                            pushed_segment[0] = queue[j][l];
+                            pushed_segment[1] = queue[j][l + 1];
+                            free_segments.push_back(pushed_segment);
+                        }
+                        l = segment_match(free_segments, queue[j][0], queue[j][queue[j].size() - 1]);
+                        free_segments.erase(free_segments.begin() + l);
+                        printf("\nFREE:\n");
+                        for(l = 0; l < free_segments.size(); l++) {
+                            printf("<%d,%d>\n", free_segments[l][0], free_segments[l][1]);
+                        }
+                        /* add the new shape */
+                        tmp_shape_0.clear();
+                        for(l = 0; l < queue[j].size(); l++) {
+                            tmp_shape_0.push_back(queue[j][l]);
+                        }
+                        polygons.push_back(tmp_shape_0);
                         queue[j].erase(queue[j].begin(), queue[j].end());
                         for(; j < size - 1; j++) {
                             queue[j] = queue[j + 1];
                         }
                         queue[size - 1].clear();
+                        found = 1;
                         break;
                     }
-                    printf("ADD to %d: <%d,%d>\n", k, queue[j][0], queue[j][queue[j].size() - 1]);
-                    add = 1;
-                    /* add the new shape to free_segments */
-                    for(l = 0; l < queue[j].size() - 1; l++) {
-                        pushed_segment = new int [2];
-                        pushed_segment[0] = queue[j][l];
-                        pushed_segment[1] = queue[j][l + 1];
-                        free_segments.push_back(pushed_segment);
-                    }
-                    l = segment_match(free_segments, queue[j][0], queue[j][queue[j].size() - 1]);
-                    free_segments.erase(free_segments.begin() + l);
-                    printf("\nFREE:\n");
-                    for(l = 0; l < free_segments.size(); l++) {
-                        printf("<%d,%d>\n", free_segments[l][0], free_segments[l][1]);
-                    }
-                    /* add the new shape */
-                    tmp_shape_0.clear();
-                    for(l = 0; l < queue[j].size(); l++) {
-                        tmp_shape_0.push_back(queue[j][l]);
-                    }
-                    polygons.push_back(tmp_shape_0);
-                    queue[j].erase(queue[j].begin(), queue[j].end());
-                    for(; j < size - 1; j++) {
-                        queue[j] = queue[j + 1];
-                    }
-                    queue[size - 1].clear();
-                    break;
                 }
-            }
-        }
-        /* check for an addition accross multiple shapes */
-        for(j = 0; j < size; j++) {
-            if(queue[j].size() <= 1) {
-                continue;
-            }
-            printf("checking %d: ", j);
-            for(k = 0; k < queue[j].size(); k++) {
-                printf("%d ", queue[j][k]);
-            }
-            printf("\n");
-            if(((n = polygons_search(polygons, queue[j][0])) != -1) && ((m = polygons_search(polygons, queue[j][queue[j].size() - 1])) != -1)) {
-                if(n == m) {
+                if(found) {
                     continue;
                 }
-                printf("ADD to %d and %d\n", n, m);
-                /* use free_segments to find if a polygon exists between the points */
-                n = queue[j][0];
-                m = queue[j][queue[j].size() - 1];
-                /*
-                while(n != m) {
-                    printf("n = %d, m = %d\n", n, m);
-                    if((l = segment_search(free_segments, n, pos)) != -1) {
-                        n = free_segments[l][*pos];
-                    }
-                    else {
-                        printf("\nNO POLYGON\n");
-                        break;
-                    }
-                }*/
             }
         }
+        full++;
     }
     printf("\nQUEUE:\n");
     for(i = 0; i < size; i++) {
