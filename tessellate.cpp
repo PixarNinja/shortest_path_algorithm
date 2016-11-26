@@ -450,6 +450,7 @@ vector<vector<int> > construct_polygons(vector<int *> segments, int size)
     int stop = size;
     int found = 0;
     int full = 0;
+    int impure = 0;
 
     tmp_shape_0.push_back(segments[0][0]);
     tmp_shape_0.push_back(segments[0][1]);
@@ -469,7 +470,7 @@ vector<vector<int> > construct_polygons(vector<int *> segments, int size)
 
     full = 0;
     /* while we still need to add polygons */
-    while(!full) {
+    while(full < segments.size()) {
         segments = original_segments;
         /* finds a match of the beginning and end of the polygon in segments and deletes it */
         l = segment_match(segments, polygons[polygons.size() - 1][0], polygons[polygons.size() - 1][polygons[polygons.size() - 1].size() - 1]);
@@ -526,7 +527,7 @@ vector<vector<int> > construct_polygons(vector<int *> segments, int size)
             i++;
             if(i >= segments.size()) {
                 printf("\nNO MORE SEGMENTS TO ADD\n");
-                full = 1;
+                full = segments.size();
                 break;
             }
             found_beginning[0] = INT_MAX;
@@ -596,7 +597,7 @@ vector<vector<int> > construct_polygons(vector<int *> segments, int size)
                             queue[size - 1].clear();
                             j--;
                             if(j < 0) {
-                                j = 0;
+                                break;
                             }
                             continue;
                         }
@@ -643,18 +644,14 @@ vector<vector<int> > construct_polygons(vector<int *> segments, int size)
                     /* check for an end-to-end addition */
                     if(shape_search(polygons[k], queue[j][0]) && shape_search(polygons[k], queue[j][queue[j].size() - 1])) {
                         printf("ADD to %d: <%d,%d>\n", k, queue[j][0], queue[j][queue[j].size() - 1]);
-                        /* filter out segments matching the polygon except for the ends */
+                        /* check if the addition is impure */
+                        impure = -2; //greater than 0 is impure
                         for(l = 1; l < queue[j].size() - 1; l++) {
                             if(shape_search(polygons[k], queue[j][l]) && shape_search(polygons[k], queue[j][l + 1])) {
-                                m = distance(queue[j].begin(), find(queue[j].begin(), queue[j].end(), queue[j][l]));
-                                printf("erasing: %d\n", queue[j][m]);
-                                queue[j].erase(queue[j].begin() + m);
-                            }
-                            if(queue[j].size() < 1) {
-                                break;
+                                impure++;
                             }
                         }
-                        if(queue[j].size() < 3) {
+                        if(impure > 0) {
                             printf("FAILED ADD\n");
                             /* delete the failed addition */
                             m = j;
@@ -665,7 +662,7 @@ vector<vector<int> > construct_polygons(vector<int *> segments, int size)
                             queue[size - 1].clear();
                             j--;
                             if(j < 0) {
-                                j = 0;
+                                break;
                             }
                             continue;
                         }
@@ -702,6 +699,7 @@ vector<vector<int> > construct_polygons(vector<int *> segments, int size)
                 }
             }
         }
+        full++;
     }
     printf("\nQUEUE:\n");
     for(i = 0; i < size; i++) {
