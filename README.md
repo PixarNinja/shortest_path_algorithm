@@ -15,4 +15,4 @@ connects them using Dynamic Programming.
 
 Note that the algorithm works for all "round" datasets, since it follows
 directly from my work with the Contour Construction Algorithm. Thus
-the Best Case Time Complexity of this algorithm is O(n^2).
+the Best Case Time Complexity of this algorithm is O(n<sup>2</sup>).
