@@ -37,7 +37,7 @@ struct vector_t {
 int permutations = 1;
 
 void construct_segments(struct point_t *points, struct point_t begin, int n, int size, FILE *gnu_files[NUM_FILES], int *mapped, int **recorded, vector<int *> *segments);
-vector<vector<int> > construct_polygons(vector<int *> segments, int size);
+vector<vector<int> > construct_polygons(vector<int *> segments, struct point_t *points, int size, FILE *gnu_files[NUM_FILES]);
 int shape_search(vector<int> shape, int vertex);
 int polygons_search(vector<vector<int> > polygons, int vertex);
 int segment_search(vector<int *> segments, int vertex, int *pos);
@@ -424,34 +424,20 @@ void construct_segments(struct point_t *points, struct point_t begin, int n, int
 }
 
 /* calculate polygons given all contoured segments */
-vector<vector<int> > construct_polygons(vector<int *> segments, int size)
+vector<vector<int> > construct_polygons(vector<int *> segments, struct point_t *points, int size, FILE *gnu_files[NUM_FILES])
 {
+    struct vector_t X; //reference vector for "x-axis"
+    struct vector_t Y; //reference vector for "x-axis"
+    struct vector_t S; //segment vector
+    struct point_t *search = new struct point_t [size];
+    struct point_t best;
     vector<vector<int> > polygons;
-    vector<int *> original_segments;
-    copy(segments.begin(), segments.end(), back_inserter(original_segments));
-    vector<int *> tmp_segments;
-    vector<int *> free_segments; //list of segments that are available for adding
-    deque<int> *queue = new deque<int> [size]; //keeps track of adding and splitting
-    vector<int> tmp_shape_0;
-    vector<int> tmp_shape_1;
-    vector<int> tmp_shape_2;
-    int *pos = new int [1];
-    int *pushed_segment;
-    int found_beginning[2];
-    int found_end[2];
-    int dups[2] = {-1};
-    int i = 0;
-    int j = 0;
-    int k = 0;
-    int l = 0;
-    int m = 0;
-    int n = 0;
-    int start = size;
-    int stop = size;
-    int found = 0;
-    int full = 0;
-    int impure = 0;
 
+    /* find the center of all of the points */
+    /* calculate the beginning reference vector */
+    /* loop through path, always adding to the left */
+    /* keep track of points to go back to later */
+    /* loop until all points have added shapes */
     return polygons;
 }
 
