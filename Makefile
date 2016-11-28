@@ -1,6 +1,6 @@
 CC=gcc
 CPP=g++
-CFLAGS=-g -Wall
+CFLAGS=-g
 
 all: multiple shortest tao2 pop tessellate
 

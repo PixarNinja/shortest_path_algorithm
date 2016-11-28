@@ -46,7 +46,7 @@ int duplicate_search(deque<int> queue, int vertex, int dups[2]);
 deque<int> *separate_shape(deque<int> *queue, int size, int n, int m);
 deque<int> *merge_queue(deque<int> *queue, int size);
 double calculate_curvature(struct vector_t T1, struct vector_t T2, double tao);
-double calculate_theta(double tao);
+double angle_t(double tao);
 double tao_distance(struct vector_t V, double curvature, double theta);
 double angle_v(struct vector_t V1, struct vector_t V2);
 double distance_p(struct point_t start, struct point_t end);
@@ -133,7 +133,7 @@ int main(int argc, char *argv[])
             i = size;
         }
     }
-    polygons = construct_polygons(*segments, size);
+    polygons = construct_polygons(*segments, points, size, gnu_files);
     printf("\n\nMAPPED ARRAY:\n");
     for(i = 0; i < size; i++) {
         printf("%d: %d\n", i, mapped[i]);
@@ -302,7 +302,7 @@ void construct_segments(struct point_t *points, struct point_t begin, int n, int
             curr[i].x = V.point[1].x;
             curr[i].y = V.point[1].y;
             curr[i].index = V.point[1].index;
-            curr[i].theta = calculate_theta(curr[i].tao);
+            curr[i].theta = angle_t(curr[i].tao);
             curr[i].curvature = calculate_curvature(T1, T2, curr[i].tao);
             curr[i].tao_distance = tao_distance(V, curr[i].curvature, curr[i].theta);
             V.point[1].tao_distance = curr[i].tao_distance;
@@ -429,12 +429,79 @@ vector<vector<int> > construct_polygons(vector<int *> segments, struct point_t *
     struct vector_t X; //reference vector for "x-axis"
     struct vector_t Y; //reference vector for "x-axis"
     struct vector_t S; //segment vector
+    struct vector_t P; //position vector used for calculations
+    struct vector_t I; //unit vector pointing horizontally right
+    struct vector_t J; //unit vector pointing vertically up
     struct point_t *search = new struct point_t [size];
     struct point_t best;
+    struct point_t start;
+    struct point_t center;
     vector<vector<int> > polygons;
+    int sum_x = 0;
+    int sum_y = 0;
+    int i = 0;
+    int j = 0;
 
+    start = points[segments[0][0]];
     /* find the center of all of the points */
-    /* calculate the beginning reference vector */
+    for(i = 0; i < size; i++) {
+        sum_x += points[i].x;
+        sum_y += points[i].y;
+    }
+    center.x = sum_x / size;
+    center.y = sum_y / size;
+    /* initialize horizontal and vertical vectors */
+    I.point[0].x = center.x;
+    I.point[0].y = center.y;
+    I.point[0].index = INT_MAX;
+    I.point[1].x = center.x + 1;
+    I.point[1].y = center.y;
+    I.point[1].index = INT_MAX;
+    I.i = 1;
+    I.j = 0;
+    I.length = length_v(I);
+    J.point[0].x = center.x;
+    J.point[0].y = center.y;
+    J.point[0].index = INT_MAX;
+    J.point[1].x = center.x;
+    J.point[1].y = center.y + 1;
+    J.point[1].index = INT_MAX;
+    J.i = 0;
+    J.j = 1;
+    J.length = length_v(J);
+    /* initialize position vector */
+    P.point[0].x = center.x;
+    P.point[0].y = center.y;
+    P.point[0].index = INT_MAX;
+    P.point[1].x = start.x;
+    P.point[1].y = start.y;
+    P.point[1].index = start.index;
+    P.i = start.x - center.x;
+    P.j = start.y - center.y;
+    P.length = length_v(P);
+    /* initialize axis vectors */
+    X.point[0].x = start.x;
+    X.point[0].y = start.y;
+    X.point[0].index = INT_MAX;
+    X.point[1].x = start.x * cos(angle_v(I, P)) - start.y * sin(angle_v(I, P));
+    X.point[1].y = start.x * sin(angle_v(I, P)) + start.y * cos(angle_v(I, P));
+    X.point[1].index = INT_MAX;
+    X.i = (X.point[1].x - X.point[0].x) / distance_p(X.point[0], X.point[1]);
+    X.j = (X.point[1].y - X.point[0].y) / distance_p(X.point[0], X.point[1]);
+    X.length = length_v(X);
+    Y.point[0].x = start.x;
+    Y.point[0].y = start.y;
+    Y.point[0].index = start.index;
+    Y.i = (start.x - center.x) / distance_p(center, start);
+    Y.j = (start.y - center.y) / distance_p(center, start);
+    Y.point[1].x = start.x + Y.i;
+    Y.point[1].y = start.y + Y.j;
+    Y.point[1].index = INT_MAX;
+    Y.length = length_v(Y);
+    printf("\nCENTER: (%lf,%lf)\n", center.x, center.y);
+    printf("START: (%lf,%lf)\n", start.x, start.y);
+    printf("X: (%lf,%lf)\n", X.point[1].x, X.point[1].y);
+    printf("Y: (%lf,%lf)\n", Y.point[1].x, Y.point[1].y);
     /* loop through path, always adding to the left */
     /* keep track of points to go back to later */
     /* loop until all points have added shapes */
@@ -564,27 +631,25 @@ deque<int> *merge_queue(deque<int> *queue, int size)
 /* calculates curvature given structure k */
 double calculate_curvature(struct vector_t T1, struct vector_t T2, double tao)
 {
-    return (distance_v(T1, T2) / calculate_theta(tao));
+    return (distance_v(T1, T2) / angle_t(tao));
 }
 
-/* calculates theta given structure k */
-double calculate_theta(double tao)
+/* calculates angle given tao */
+double angle_t(double tao)
 {
     return (acos(tao) + (M_PI / 180));
-    //return (acos(tao));
-}
-
-/* calculates distance given index and structure */
-double tao_distance(struct vector_t V, double curvature, double theta)
-{
-    return (V.length + curvature + theta);
-    //return (V.length + curvature + (cos(theta) * V.length));
 }
 
 /* calculates angle between two vectors */
 double angle_v(struct vector_t V1, struct vector_t V2)
 {
     return (acos(dot_product(V1, V2) / (V1.length * V2.length)));
+}
+
+/* calculates distance given index and structure */
+double tao_distance(struct vector_t V, double curvature, double theta)
+{
+    return (V.length + curvature + theta);
 }
 
 /* calculates distance given two points */
