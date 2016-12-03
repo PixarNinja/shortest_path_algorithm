@@ -12,7 +12,7 @@
 #include <algorithm>
 #include <iterator>
 
-#define NUM_FILES 4
+#define NUM_FILES 5
 
 using namespace std;
 
@@ -40,7 +40,7 @@ void construct_segments(struct point_t *points, struct point_t begin, int n, int
 vector<vector<int> > construct_polygons(vector<int *> segments, struct point_t *points, int size, FILE *gnu_files[NUM_FILES]);
 int shape_search(vector<int> shape, int vertex);
 int polygons_search(vector<vector<int> > polygons, int vertex);
-int segment_search(vector<int *> segments, int vertex, int *pos);
+vector<int *> segment_search(vector<int *> segments, int vertex);
 int segment_match(vector<int *> segments, int beginning, int end);
 int duplicate_search(deque<int> queue, int vertex, int dups[2]);
 deque<int> *separate_shape(deque<int> *queue, int size, int n, int m);
@@ -74,10 +74,11 @@ int main(int argc, char *argv[])
     if(argc == 1) {
         printf("\n\nPlease enter the path of the .dat file to read from. Exiting Program. Good Day.\n\n");
     }
-    gnu_files[0] = fopen ("./gnu_files/commands.polygons", "w+");
-    gnu_files[1] = fopen("./gnu_files/points.polygons", "w+");
-    gnu_files[2] = fopen("./gnu_files/lines.polygons", "w+");
-    gnu_files[3] = fopen("./gnu_files/polygons.polygons", "w+");
+    gnu_files[0] = fopen ("./gnu_files/commands.tmp", "w+");
+    gnu_files[1] = fopen("./gnu_files/datapoints.tmp", "w+");
+    gnu_files[2] = fopen("./gnu_files/lines.tmp", "w+");
+    gnu_files[3] = fopen("./gnu_files/extrapoints.tmp", "w+");
+    gnu_files[4] = fopen("./gnu_files/polygons.tmp", "w+");
     printf("%s\n", argv[1]);
     data = fopen(argv[1], "r");
     while(fgets(buf, 1024, data)) {
@@ -107,7 +108,7 @@ int main(int argc, char *argv[])
         i++;
     }
     fclose(data);
-    /* stores data for gnu_points */
+    /* plot datapoints */
     for(i = 0; i < size; i++) {
         fprintf(gnu_files[1], "%lf %lf %d\n", points[i].x, points[i].y, points[i].index);
     }
@@ -116,7 +117,7 @@ int main(int argc, char *argv[])
     fprintf(gnu_files[0], "set yrange [%lf:%lf]\n", -(range + 1), range + 1);
     fprintf(gnu_files[0], "set size ratio 1\n");
     fprintf(gnu_files[0], "set grid\n");
-    fprintf(gnu_files[0], "set title \"Contour Construction Algorithm\"\n");
+    fprintf(gnu_files[0], "set title \"Shortest Path Algorithm\"\n");
     fprintf(gnu_files[0], "set style line 1 lc rgb \"black\" lw 1\n");
     /* runs tao-distance algorithm on data */
     for(i = 0; i < size; i++) {
@@ -153,17 +154,19 @@ int main(int argc, char *argv[])
         printf("\n");
     }
     /* plot */
-    fprintf(gnu_files[0], "plot './gnu_files/lines.polygons' using 1:2 with lines ls 1 title \"shortest path\",");
-    fprintf(gnu_files[0], "'./gnu_files/points.polygons' using 1:2 with points pt 7 notitle,");
-    fprintf(gnu_files[0], "'' using 1:2:3 with labels point pt 7 offset char -1,-1 notitle\n");
+    fprintf(gnu_files[0], "plot './gnu_files/lines.tmp' using 1:2 with lines ls 1 title \"shortest path\",");
+    fprintf(gnu_files[0], "'./gnu_files/datapoints.tmp' using 1:2 with points pt 7 notitle,");
+    fprintf(gnu_files[0], "'' using 1:2:3 with labels point pt 7 offset char -1,-1 notitle,");
+    fprintf(gnu_files[0], "'./gnu_files/extrapoints.tmp' using 1:2:3 with labels point pt 3 offset char -1,-1 notitle\n");
     printf("\n");
     printf("Total Permutations: %d\n", permutations);
     printf("\n");
     fclose(gnu_files[0]);
     fclose(gnu_files[1]);
     fclose(gnu_files[2]);
-    system("gnuplot -persistent ./gnu_files/commands.polygons");
     fclose(gnu_files[3]);
+    system("gnuplot -persistent ./gnu_files/commands.tmp");
+    fclose(gnu_files[4]);
     return 0;
 }
 
@@ -221,6 +224,8 @@ void construct_segments(struct point_t *points, struct point_t begin, int n, int
     }
     center.x = sum_x / size;
     center.y = sum_y / size;
+    /* plot center point */
+    fprintf(gnu_files[3], "%lf %lf %s\n", center.x, center.y, "C");
     printf("begin = %d\n", begin.index);
     printf("\n");
     start.x = begin.x;
@@ -426,49 +431,34 @@ void construct_segments(struct point_t *points, struct point_t begin, int n, int
 /* calculate polygons given all contoured segments */
 vector<vector<int> > construct_polygons(vector<int *> segments, struct point_t *points, int size, FILE *gnu_files[NUM_FILES])
 {
-    struct vector_t X; //reference vector for "x-axis"
-    struct vector_t Y; //reference vector for "x-axis"
+    struct vector_t A; //axis vector
     struct vector_t S; //segment vector
     struct vector_t P; //position vector used for calculations
-    struct vector_t I; //unit vector pointing horizontally right
-    struct vector_t J; //unit vector pointing vertically up
     struct point_t *search = new struct point_t [size];
     struct point_t best;
+    struct point_t curr;
     struct point_t start;
     struct point_t center;
+    double sum_x = 0;
+    double sum_y = 0;
+    double dot = 0;
+    double smallest = DBL_MAX;
     vector<vector<int> > polygons;
-    int sum_x = 0;
-    int sum_y = 0;
+    vector<int *> pos;
+    int tmp[2] = {0};
     int i = 0;
     int j = 0;
 
-    start = points[segments[0][0]];
+    start = points[segments[4][0]];
     /* find the center of all of the points */
+    printf("SUM:\n");
     for(i = 0; i < size; i++) {
         sum_x += points[i].x;
         sum_y += points[i].y;
+        printf("(%lf,%lf)\n", sum_x, sum_y);
     }
     center.x = sum_x / size;
     center.y = sum_y / size;
-    /* initialize horizontal and vertical vectors */
-    I.point[0].x = center.x;
-    I.point[0].y = center.y;
-    I.point[0].index = INT_MAX;
-    I.point[1].x = center.x + 1;
-    I.point[1].y = center.y;
-    I.point[1].index = INT_MAX;
-    I.i = 1;
-    I.j = 0;
-    I.length = length_v(I);
-    J.point[0].x = center.x;
-    J.point[0].y = center.y;
-    J.point[0].index = INT_MAX;
-    J.point[1].x = center.x;
-    J.point[1].y = center.y + 1;
-    J.point[1].index = INT_MAX;
-    J.i = 0;
-    J.j = 1;
-    J.length = length_v(J);
     /* initialize position vector */
     P.point[0].x = center.x;
     P.point[0].y = center.y;
@@ -479,30 +469,46 @@ vector<vector<int> > construct_polygons(vector<int *> segments, struct point_t *
     P.i = start.x - center.x;
     P.j = start.y - center.y;
     P.length = length_v(P);
-    /* initialize axis vectors */
-    X.point[0].x = start.x;
-    X.point[0].y = start.y;
-    X.point[0].index = INT_MAX;
-    X.point[1].x = start.x * cos(angle_v(I, P)) - start.y * sin(angle_v(I, P));
-    X.point[1].y = start.x * sin(angle_v(I, P)) + start.y * cos(angle_v(I, P));
-    X.point[1].index = INT_MAX;
-    X.i = (X.point[1].x - X.point[0].x) / distance_p(X.point[0], X.point[1]);
-    X.j = (X.point[1].y - X.point[0].y) / distance_p(X.point[0], X.point[1]);
-    X.length = length_v(X);
-    Y.point[0].x = start.x;
-    Y.point[0].y = start.y;
-    Y.point[0].index = start.index;
-    Y.i = (start.x - center.x) / distance_p(center, start);
-    Y.j = (start.y - center.y) / distance_p(center, start);
-    Y.point[1].x = start.x + Y.i;
-    Y.point[1].y = start.y + Y.j;
-    Y.point[1].index = INT_MAX;
-    Y.length = length_v(Y);
-    printf("\nCENTER: (%lf,%lf)\n", center.x, center.y);
-    printf("START: (%lf,%lf)\n", start.x, start.y);
-    printf("X: (%lf,%lf)\n", X.point[1].x, X.point[1].y);
-    printf("Y: (%lf,%lf)\n", Y.point[1].x, Y.point[1].y);
+    /* initialize axis vector */
+    A.point[0].x = start.x;
+    A.point[0].y = start.y;
+    A.point[0].index = start.index;
+    A.i = (start.x - center.x) / distance_p(center, start);
+    A.j = (start.y - center.y) / distance_p(center, start);
+    A.point[1].x = start.x + A.i;
+    A.point[1].y = start.y + A.j;
+    A.point[1].index = INT_MAX;
+    A.length = length_v(A);
+    /* initialize dot_product variable -- TODO */
+    dot = dot_product(P, A);
+    printf("dot: %lf\n", dot);
     /* loop through path, always adding to the left */
+    pos = segment_search(segments, start.index);
+    for(i = 0; i < pos.size(); i++) {
+        curr = points[segments[pos[i][0]][pos[i][1]]];
+        /* find the segment with the smallest dot value */
+        if(smallest > dot) {
+            tmp[0] = pos[i][0];
+            tmp[1] = pos[i][1];
+            smallest = dot;
+        }
+        S.point[0].x = start.x;
+        S.point[0].y = start.y;
+        S.point[0].index = start.index;
+        S.i = (curr.x - start.x) / distance_p(curr, start);
+        S.j = (curr.y - start.y) / distance_p(curr, start);
+        S.point[1].x = start.x + S.i;
+        S.point[1].y = start.y + S.j;
+        S.point[1].index = INT_MAX;
+        S.length = length_v(S);
+        dot = dot_product(S, A);
+    }
+    if(tmp[1]) {
+        printf("PATH CHOSEN: <%d,%d>\n", segments[tmp[0]][0], segments[tmp[0]][1]);
+    }
+    else {
+        printf("PATH CHOSEN: <%d,%d>\n", segments[tmp[0]][1], segments[tmp[0]][0]);
+    }
     /* keep track of points to go back to later */
     /* loop until all points have added shapes */
     return polygons;
@@ -533,21 +539,28 @@ int polygons_search(vector<vector<int> > polygons, int vertex)
     return -1;
 }
 
-/* searches through a vector of segments for a matching end or beginning */
-int segment_search(vector<int *> segments, int vertex, int *pos)
+/* searches through a vector of segments for all matching end or
+ * beginning segments, storing their indices in vector pos */
+vector<int *> segment_search(vector<int *> segments, int vertex)
 {
+    vector<int *> pos;
+    int *tmp;
     /* check if the segment is found */
     for(int i = 0; i < segments.size(); i++) {
         if(segments[i][0] == vertex) {
-            *pos = 1;
-            return i;
+            tmp = new int [2];
+            tmp[0] = i;
+            tmp[1] = 1;
+            pos.push_back(tmp);
         }
         else if(segments[i][1] == vertex) {
-            *pos = 0;
-            return i;
+            tmp = new int [2];
+            tmp[0] = i;
+            tmp[1] = 0;
+            pos.push_back(tmp);
         }
     }
-    return -1;
+    return pos;
 }
 
 /* searches through a vector of segments for a matching segment */
