@@ -39,9 +39,10 @@ int permutations = 1;
 
 void construct_segments(struct point_t *points, struct point_t begin, int n, int size, FILE *gnu_files[NUM_FILES], int *mapped, int **recorded, vector<int *> *segments);
 vector<vector<int> > construct_polygons(vector<int *> segments, struct point_t *points, int size, FILE *gnu_files[NUM_FILES]);
+vector<int *> edge_search(vector<int *> segments, int vertex);
+vector<int> start_polygon(vector<int> path, vector<int *> edges, struct point_t *points, struct vector_t X, struct vector_t Y);
 int shape_search(vector<int> shape, int vertex);
 int polygons_search(vector<vector<int> > polygons, int vertex);
-vector<int *> segment_search(vector<int *> segments, int vertex);
 int segment_match(vector<int *> segments, int beginning, int end);
 int duplicate_search(deque<int> queue, int vertex, int dups[2]);
 deque<int> *separate_shape(deque<int> *queue, int size, int n, int m);
@@ -434,10 +435,14 @@ void construct_segments(struct point_t *points, struct point_t begin, int n, int
 /* calculate polygons given all contoured segments */
 vector<vector<int> > construct_polygons(vector<int *> segments, struct point_t *points, int size, FILE *gnu_files[NUM_FILES])
 {
-    struct vector_t A; //axis vector
-    A.name = new char [2];
-    A.name[0] = 'A';
-    A.name[1] = '\0';
+    struct vector_t X; //X-axis vector
+    X.name = new char [2];
+    X.name[0] = 'X';
+    X.name[1] = '\0';
+    struct vector_t Y; //Y-axis vector
+    Y.name = new char [2];
+    Y.name[0] = 'Y';
+    Y.name[1] = '\0';
     struct vector_t S; //segment vector
     S.name = new char [2];
     S.name[0] = 'S';
@@ -449,73 +454,50 @@ vector<vector<int> > construct_polygons(vector<int *> segments, struct point_t *
     struct point_t center;
     double sum_x = 0;
     double sum_y = 0;
-    double dot = 0;
-    double smallest = DBL_MAX;
     vector<vector<int> > polygons;
-    vector<int *> pos;
-    int tmp[2] = {0};
+    vector<int *> edges; //contains the index followed by position
+    vector<int> path; //contains the path of nodes to add as a polygon
     int i = 0;
     int j = 0;
 
-    start = points[segments[7][0]];
+    start = points[segments[0][0]];
     curr = start;
-    /* find the center of all of the points */
+    /* calculate average point */
+    for(i = 0; i < size; i++) {
+        sum_x += points[i].x;
+        sum_y += points[i].y;
+    }
     center.x = sum_x / size;
     center.y = sum_y / size;
-    /* initialize axis vector */
-    A.point[0].x = start.x;
-    A.point[0].y = start.y;
-    A.point[0].index = start.index;
-    A.i = (start.x - center.x) / distance_p(center, start);
-    A.j = (start.y - center.y) / distance_p(center, start);
-    A.point[1].x = start.x + A.i;
-    A.point[1].y = start.y + A.j;
-    A.point[1].index = -1;
-    A.length = length_v(A);
-    print_v(A);
-    /* initialize dot_product variable */
-    dot = DBL_MAX;
+    /* initialize axis vectors */
+    Y.point[0].x = start.x;
+    Y.point[0].y = start.y;
+    Y.point[0].index = start.index;
+    Y.i = (start.x - center.x) / distance_p(center, start);
+    Y.j = (start.y - center.y) / distance_p(center, start);
+    Y.point[1].x = start.x + Y.i;
+    Y.point[1].y = start.y + Y.j;
+    Y.point[1].index = -1;
+    Y.length = length_v(Y);
+    print_v(Y);
+    X.point[0].x = start.x;
+    X.point[0].y = start.y;
+    X.point[0].index = start.index;
+    X.i = Y.j;
+    X.j = -Y.i;
+    X.point[1].x = start.x + X.i;
+    X.point[1].y = start.y + X.j;
+    X.point[1].index = -1;
+    X.length = length_v(X);
+    print_v(X);
+    /* find the initial cluster of edges */
+    edges = edge_search(segments, start.index);
+    /* prints the initial edges */
+    for(i = 0; i < edges.size(); i++) {
+        printf("%d ", edges[i][1]);
+    }
     /* find the initial direction */
-    pos = segment_search(segments, start.index);
-    for(i = 0; i < pos.size(); i++) {
-        /* find the segment with the smallest dot value */
-        if(smallest > dot) {
-            tmp[0] = pos[i][0];
-            tmp[1] = pos[i][1];
-            smallest = dot;
-        }
-        curr = points[segments[pos[i][0]][pos[i][1]]];
-        S.point[0].x = start.x;
-        S.point[0].y = start.y;
-        S.point[0].index = start.index;
-        S.i = (curr.x - start.x) / distance_p(curr, start);
-        S.j = (curr.y - start.y) / distance_p(curr, start);
-        S.point[1].x = start.x + S.i;
-        S.point[1].y = start.y + S.j;
-        S.point[1].index = -1;
-        S.length = length_v(S);
-        dot = dot_product(S, A);
-        printf("curr[%d] dot: %lf\n", curr.index, dot);
-    }
-    prev = start;
-    if(tmp[1]) {
-        printf("PATH CHOSEN: <%d,%d>\n", segments[tmp[0]][0], segments[tmp[0]][1]);
-        start = points[segments[tmp[0]][1]];
-    }
-    else {
-        printf("PATH CHOSEN: <%d,%d>\n", segments[tmp[0]][1], segments[tmp[0]][0]);
-        start = points[segments[tmp[0]][0]];
-    }
-    /* reinitialize axis vector */
-    A.point[0].x = start.x;
-    A.point[0].y = start.y;
-    A.point[0].index = start.index;
-    A.i = (start.x - prev.x) / distance_p(prev, start);
-    A.j = (start.y - prev.y) / distance_p(prev, start);
-    A.point[1].x = start.x + A.i;
-    A.point[1].y = start.y + A.j;
-    A.point[1].index = INT_MAX;
-    A.length = length_v(A);
+    path = start_polygon(path, edges, points, X, Y);
     /* loop through path, always adding to the left */
     /* keep track of points to go back to later */
     /* loop until all points have added shapes */
@@ -523,28 +505,48 @@ vector<vector<int> > construct_polygons(vector<int *> segments, struct point_t *
 }
 
 /* searches through a vector of segments for all matching end or
- * beginning segments, storing their indices in vector pos */
-vector<int *> segment_search(vector<int *> segments, int vertex)
+ * beginning segments, storing their indices in vector edges */
+vector<int *> edge_search(vector<int *> segments, int vertex)
 {
-    vector<int *> pos;
+    vector<int *> edges;
     int *tmp;
 
     /* check if the segment is found */
     for(int i = 0; i < segments.size(); i++) {
         if(segments[i][0] == vertex) {
             tmp = new int [2];
-            tmp[0] = i;
-            tmp[1] = 1;
-            pos.push_back(tmp);
+            tmp[0] = vertex;
+            tmp[1] = segments[i][1];
+            edges.push_back(tmp);
         }
         else if(segments[i][1] == vertex) {
             tmp = new int [2];
-            tmp[0] = i;
-            tmp[1] = 0;
-            pos.push_back(tmp);
+            tmp[0] = vertex;
+            tmp[1] = segments[i][0];
+            edges.push_back(tmp);
         }
     }
-    return pos;
+    return edges;
+}
+
+/* finds the "right-most" path from the vertex */
+vector<int> start_polygon(vector<int> path, vector<int *> edges, struct point_t *points, struct vector_t X, struct vector_t Y)
+{
+    int **X_quads = new int * [edges.size()];
+    int **Y_quads = new int * [edges.size()];
+    int i = 0;
+    int j = 0;
+
+    /* initialize the quadrant flags for each edge */
+    for(i = 0; i < edges.size(); i++) {
+        X_quads[i] = new int [4];
+        Y_quads[i] = new int [4];
+        for(j = 0; j < 4; j++) {
+            X_quads[i][j] = -1;
+            Y_quads[i][j] = -1;
+        }
+    }
+    return path;
 }
 
 /* searches through a shape for a matching vertex */
