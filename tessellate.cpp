@@ -496,6 +496,8 @@ vector<vector<int> > construct_polygons(vector<int *> segments, struct point_t *
     for(i = 0; i < edges.size(); i++) {
         printf("%d ", edges[i][1]);
     }
+    printf("\n");
+    printf("\n");
     /* find the initial direction */
     path = start_polygon(path, edges, points, X, Y);
     /* loop through path, always adding to the left */
@@ -532,20 +534,72 @@ vector<int *> edge_search(vector<int *> segments, int vertex)
 /* finds the "right-most" path from the vertex */
 vector<int> start_polygon(vector<int> path, vector<int *> edges, struct point_t *points, struct vector_t X, struct vector_t Y)
 {
-    int **X_quads = new int * [edges.size()];
-    int **Y_quads = new int * [edges.size()];
+    struct vector_t E; //edge vector
+    E.name = new char [2];
+    E.name[0] = 'E';
+    E.name[1] = '\0';
+    double *X_flags = new double [edges.size()];
+    double *Y_flags = new double [edges.size()];
+    double dot = 0.0;
+    int *quads = new int [edges.size()];
     int i = 0;
-    int j = 0;
 
     /* initialize the quadrant flags for each edge */
     for(i = 0; i < edges.size(); i++) {
-        X_quads[i] = new int [4];
-        Y_quads[i] = new int [4];
-        for(j = 0; j < 4; j++) {
-            X_quads[i][j] = -1;
-            Y_quads[i][j] = -1;
+        X_flags[i] = 0.0;
+        Y_flags[i] = 0.0;
+    }
+
+    /* calculate and set flags for each edge */
+    for(i = 0; i < edges.size(); i++) {
+        /* set edge vector */
+        E.point[0].x = points[edges[i][0]].x;
+        E.point[0].y = points[edges[i][0]].y;
+        E.point[0].index = points[edges[i][0]].index;
+        E.point[1].x = points[edges[i][1]].x;
+        E.point[1].y = points[edges[i][1]].y;
+        E.point[1].index = points[edges[i][1]].index;
+        E.i = (points[edges[i][1]].x - points[edges[i][0]].x) / distance_p(points[edges[i][1]], points[edges[i][0]]);
+        E.j = (points[edges[i][1]].y - points[edges[i][0]].y) / distance_p(points[edges[i][1]], points[edges[i][0]]);
+        E.length = length_v(E);
+        //print_v(E);
+        X_flags[i] = dot_product(E, X);
+        Y_flags[i] = dot_product(E, Y);
+        if(dot_product(E, X) >= 0) {
+            if(dot_product(E, Y) >= 0) {
+                quads[i] = 1;
+            }
+            else {
+                quads[i] = 2;
+            }
+        }
+        else {
+            if(dot_product(E, Y) >= 0) {
+                quads[i] = 4;
+            }
+            else {
+                quads[i] = 3;
+            }
         }
     }
+
+    for(i = 0; i < edges.size(); i++) {
+        switch(quads[i]) {
+        case 1:
+            printf("<%d,%d> = quadrant 1\n", edges[i][0], edges[i][1]);
+            break;
+        case 2:
+            printf("<%d,%d> = quadrant 2\n", edges[i][0], edges[i][1]);
+            break;
+        case 3:
+            printf("<%d,%d> = quadrant 3\n", edges[i][0], edges[i][1]);
+            break;
+        case 4:
+            printf("<%d,%d> = quadrant 4\n", edges[i][0], edges[i][1]);
+            break;
+        }
+    }
+
     return path;
 }
 
