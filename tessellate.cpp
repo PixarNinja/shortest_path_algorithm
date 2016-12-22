@@ -39,10 +39,9 @@ struct vector_t {
 int permutations = 1;
 
 void construct_segments(struct point_t *points, struct point_t begin, int n, int size, FILE *gnu_files[NUM_FILES], int *mapped, int **recorded, vector<int *> *segments);
-vector<vector<int> > construct_polygons(vector<int *> segments, struct point_t *points, int size, FILE *gnu_files[NUM_FILES]);
+vector<vector<int> > construct_polygons(vector<vector<int> > polygons, vector<int *> segments, struct point_t *points, int size, FILE *gnu_files[NUM_FILES]);
 vector<vector<int> > construct_cluster(vector<vector<int> > polygons, vector<int *> segments, struct point_t *points, struct point_t start, int size, FILE *gnu_files[NUM_FILES]);
-vector<int> start_path(vector<int> path, vector<int *> edges, struct point_t *points, struct vector_t X, struct vector_t Y);
-vector<int> continue_path(vector<int> path, vector<int *> edges, struct point_t *points, struct point_t prev, struct vector_t X, struct vector_t Y);
+vector<int> add_path(vector<int> path, vector<int *> edges, struct point_t *points, struct point_t prev, struct vector_t X, struct vector_t Y, vector<struct vector_t *> remaining);
 vector<int *> edge_search(vector<int *> segments, int vertex);
 int index_match(vector<int *> segments, int vertex);
 int shape_search(vector<int> shape, int vertex);
@@ -141,7 +140,7 @@ int main(int argc, char *argv[])
             i = size;
         }
     }
-    polygons = construct_polygons(*segments, points, size, gnu_files);
+    polygons = construct_polygons(polygons, *segments, points, size, gnu_files);
     /*
     printf("\n\nMAPPED ARRAY:\n");
     for(i = 0; i < size; i++) {
@@ -437,23 +436,9 @@ void construct_segments(struct point_t *points, struct point_t begin, int n, int
 }
 
 /* calculate cluster of polygons given all contoured segments */
-vector<vector<int> > construct_polygons(vector<int *> segments, struct point_t *points, int size, FILE *gnu_files[NUM_FILES])
+vector<vector<int> > construct_polygons(vector<vector<int> > polygons, vector<int *> segments, struct point_t *points, int size, FILE *gnu_files[NUM_FILES])
 {
-    struct point_t start = points[segments[0][0]];
-    vector<vector<int> > polygons;
-    int complete = 0;
-
-    while(!complete) {
-        polygons = construct_cluster(polygons, segments, points, start, size, gnu_files);
-        complete = 1;
-    }
-
-    return polygons;
-}
-
-/* calculate cluster of polygons given all contoured segments */
-vector<vector<int> > construct_cluster(vector<vector<int> > polygons, vector<int *> segments, struct point_t *points, struct point_t start, int size, FILE *gnu_files[NUM_FILES])
-{
+    vector<struct vector_t *> remaining;
     struct vector_t X; //X-axis vector
     X.name = new char [2];
     X.name[0] = 'X';
@@ -468,6 +453,7 @@ vector<vector<int> > construct_cluster(vector<vector<int> > polygons, vector<int
     S.name[1] = '\0';
     struct point_t prev;
     struct point_t curr;
+    struct point_t start = points[segments[0][0]];
     struct point_t node; //copy of initial starting node
     node.x = start.x;
     node.y = start.y;
@@ -482,6 +468,8 @@ vector<vector<int> > construct_cluster(vector<vector<int> > polygons, vector<int
     int j = 0;
     int complete = 0;
     int inserted = 0;
+    int visit = -1;
+    int done = 0;
 
     curr = start;
     /* calculate average point */
@@ -512,95 +500,107 @@ vector<vector<int> > construct_cluster(vector<vector<int> > polygons, vector<int
     X.length = length_v(X);
     /* find the initial cluster of edges */
     edges = edge_search(segments, node.index);
-    while(edges.size() != 0) {
-        /* prints the initial edges */
-        for(i = 0; i < edges.size(); i++) {
-            printf("%d ", edges[i][1]);
-        }
-        printf("\n\n");
-        /* find the initial direction */
-        path = start_path(path, edges, points, X, Y);
-        printf("PATH: %d %d ", path[0], path[1]);
-        start.x = points[path[0]].x;
-        start.y = points[path[0]].y;
-        start.index = points[path[0]].index;
-        i = 1;
-        complete = 0;
-        inserted = 0;
-        while(!complete) {
-            prev.x = start.x;
-            prev.y = start.y;
-            prev.index = start.index;
-            start.x = points[path[i]].x;
-            start.y = points[path[i]].y;
-            start.index = points[path[i]].index;
-            /* initialize axis vectors */
-            Y.point[0].x = start.x;
-            Y.point[0].y = start.y;
-            Y.point[0].index = start.index;
-            Y.i = (start.x - prev.x) / distance_p(prev, start);
-            Y.j = (start.y - prev.y) / distance_p(prev, start);
-            Y.point[1].x = start.x + Y.i;
-            Y.point[1].y = start.y + Y.j;
-            Y.point[1].index = -1;
-            Y.length = length_v(Y);
-            X.point[0].x = start.x;
-            X.point[0].y = start.y;
-            X.point[0].index = start.index;
-            X.i = Y.j;
-            X.j = -Y.i;
-            X.point[1].x = start.x + X.i;
-            X.point[1].y = start.y + X.j;
-            X.point[1].index = -1;
-            X.length = length_v(X);
-            /* find the initial cluster of edges */
-            edges = edge_search(segments, start.index);
-            path = continue_path(path, edges, points, prev, X, Y);
-            printf("%d ", path[i + 1]);
-            if(path[i + 1] == path[0]) {
-                complete = 1;
-            }
-            i++;
-        }
-        printf("\n\n");
-        polygons.push_back(path);
-        path.clear();
-        /* find the initial cluster of edges */
-        edges = edge_search(segments, node.index);
-        /* find the index in edges that matches path[1] */
-        for(i = 0; i < remove.size(); i++) {
-            if(index_match(edges, path[1]) > remove[i]) {
-                inserted = 1;
-                remove.insert(remove.begin() + i, index_match(edges, path[1]));
-                break;
-            }
-        }
-        if(!inserted) {
-            remove.insert(remove.begin() + i, index_match(edges, path[1]));
-        }
-        /* erasing the edges already traversed */
-        for(i = 0; i < remove.size(); i++) {
-            edges.erase(edges.begin() + remove[i]);
-        }
-    }
-    /* loop through path, always adding to the left */
     /* keep track of points to go back to later */
     /* loop until all points have added shapes */
+    while(!done) {
+        while(edges.size() != 0) {
+            /* prints the initial edges */
+            for(i = 0; i < edges.size(); i++) {
+                printf("%d ", edges[i][1]);
+            }
+            printf("\n\n");
+            /* find the initial direction */
+            path.push_back(edges[0][0]);
+            path = add_path(path, edges, points, prev, X, Y, remaining);
+            printf("PATH: %d %d ", path[0], path[1]);
+            start.x = points[path[0]].x;
+            start.y = points[path[0]].y;
+            start.index = points[path[0]].index;
+            i = 1;
+            complete = 0;
+            inserted = 0;
+            while(!complete) {
+                prev.x = start.x;
+                prev.y = start.y;
+                prev.index = start.index;
+                start.x = points[path[i]].x;
+                start.y = points[path[i]].y;
+                start.index = points[path[i]].index;
+                /* initialize axis vectors */
+                Y.point[0].x = start.x;
+                Y.point[0].y = start.y;
+                Y.point[0].index = start.index;
+                Y.i = (start.x - prev.x) / distance_p(prev, start);
+                Y.j = (start.y - prev.y) / distance_p(prev, start);
+                Y.point[1].x = start.x + Y.i;
+                Y.point[1].y = start.y + Y.j;
+                Y.point[1].index = -1;
+                Y.length = length_v(Y);
+                X.point[0].x = start.x;
+                X.point[0].y = start.y;
+                X.point[0].index = start.index;
+                X.i = Y.j;
+                X.j = -Y.i;
+                X.point[1].x = start.x + X.i;
+                X.point[1].y = start.y + X.j;
+                X.point[1].index = -1;
+                X.length = length_v(X);
+                /* find the initial cluster of edges */
+                edges = edge_search(segments, start.index);
+                path = add_path(path, edges, points, prev, X, Y, remaining);
+                printf("%d ", path[i + 1]);
+                if(path[i + 1] == path[0]) {
+                    complete = 1;
+                }
+                i++;
+            }
+            printf("\n\n");
+            polygons.push_back(path);
+            path.clear();
+            /* find the initial cluster of edges */
+            edges = edge_search(segments, node.index);
+            /* find the index in edges that matches path[1] */
+            for(i = 0; i < remove.size(); i++) {
+                if(index_match(edges, path[1]) > remove[i]) {
+                    inserted = 1;
+                    remove.insert(remove.begin() + i, index_match(edges, path[1]));
+                    break;
+                }
+            }
+            if(!inserted) {
+                remove.insert(remove.begin() + i, index_match(edges, path[1]));
+            }
+            /* erasing the edges already traversed */
+            for(i = 0; i < remove.size(); i++) {
+                edges.erase(edges.begin() + remove[i]);
+            }
+        }
+        if(remaining.size() > 0) {
+            done = 0;
+        }
+        else {
+            done = 1;
+        }
+    }
     return polygons;
 }
 
 /* finds the "right-most" path from the vertex */
-vector<int> start_path(vector<int> path, vector<int *> edges, struct point_t *points, struct vector_t X, struct vector_t Y)
+vector<int> add_path(vector<int> path, vector<int *> edges, struct point_t *points, struct point_t prev, struct vector_t X, struct vector_t Y, vector<struct vector_t *> remaining)
 {
+    struct vector_t *leftover; //format: {E, X, Y, I}
     struct vector_t E; //edge vector
     E.name = new char [2];
     E.name[0] = 'E';
     E.name[1] = '\0';
+    struct vector_t I; //index vector
+    I.name = new char [2];
+    I.name[0] = 'I';
+    I.name[1] = '\0';
     double *X_flags = new double [edges.size()];
     double *Y_flags = new double [edges.size()];
     double dot = 0.0;
     int *quads = new int [edges.size()];
-    int tmp = 0;
     int i = 0;
     int curr = 0;
     int init = 0;
@@ -642,11 +642,23 @@ vector<int> start_path(vector<int> path, vector<int *> edges, struct point_t *po
                 quads[i] = 3;
             }
         }
+        I.i = i;
+
+        /* store as a leftover */
+        leftover = new struct vector_t [4];
+        leftover[0] = E;
+        leftover[1] = X;
+        leftover[2] = Y;
+        leftover[3] = I;
+        remaining.push_back(leftover);
     }
 
     /* first check for an edge in quadrant 4 */
     for(i = 0; i < edges.size(); i++) {
         if(quads[i] == 4) {
+            if(edges[i][1] == prev.index) {
+                continue;
+            }
             found = 1;
             if(!init) {
                 curr = i;
@@ -662,6 +674,9 @@ vector<int> start_path(vector<int> path, vector<int *> edges, struct point_t *po
     if(!found) {
         for(i = 0; i < edges.size(); i++) {
             if(quads[i] == 1) {
+                if(edges[i][1] == prev.index) {
+                    continue;
+                }
                 found = 1;
                 if(!init) {
                     curr = i;
@@ -678,6 +693,9 @@ vector<int> start_path(vector<int> path, vector<int *> edges, struct point_t *po
     if(!found) {
         for(i = 0; i < edges.size(); i++) {
             if(quads[i] == 2) {
+                if(edges[i][1] == prev.index) {
+                    continue;
+                }
                 found = 1;
                 if(!init) {
                     curr = i;
@@ -694,6 +712,9 @@ vector<int> start_path(vector<int> path, vector<int *> edges, struct point_t *po
     if(!found) {
         for(i = 0; i < edges.size(); i++) {
             if(quads[i] == 3) {
+                if(edges[i][1] == prev.index) {
+                    continue;
+                }
                 found = 1;
                 if(!init) {
                     curr = i;
@@ -707,148 +728,20 @@ vector<int> start_path(vector<int> path, vector<int *> edges, struct point_t *po
         }
     }
 
-    /* use curr to create the start of the path */
-    tmp = edges[curr][0];
-    path.push_back(tmp);
-    tmp = edges[curr][1];
-    path.push_back(tmp);
-
-    return path;
-}
-
-/* finds the "left-most" path from the vertex */
-vector<int> continue_path(vector<int> path, vector<int *> edges, struct point_t *points, struct point_t prev, struct vector_t X, struct vector_t Y)
-{
-    struct vector_t E; //edge vector
-    E.name = new char [2];
-    E.name[0] = 'E';
-    E.name[1] = '\0';
-    double *X_flags = new double [edges.size()];
-    double *Y_flags = new double [edges.size()];
-    double dot = 0.0;
-    int *quads = new int [edges.size()];
-    int tmp = 0;
-    int i = 0;
-    int curr = 0;
-    int init = 0;
-    int found = 0;
-
-    /* initialize the quadrant flags for each edge */
-    for(i = 0; i < edges.size(); i++) {
-        X_flags[i] = 0.0;
-        Y_flags[i] = 0.0;
-    }
-
-    /* calculate and set flags for each edge */
-    for(i = 0; i < edges.size(); i++) {
-        /* set edge vector */
-        E.point[0].x = points[edges[i][0]].x;
-        E.point[0].y = points[edges[i][0]].y;
-        E.point[0].index = points[edges[i][0]].index;
-        E.point[1].x = points[edges[i][1]].x;
-        E.point[1].y = points[edges[i][1]].y;
-        E.point[1].index = points[edges[i][1]].index;
-        E.i = (points[edges[i][1]].x - points[edges[i][0]].x) / distance_p(points[edges[i][1]], points[edges[i][0]]);
-        E.j = (points[edges[i][1]].y - points[edges[i][0]].y) / distance_p(points[edges[i][1]], points[edges[i][0]]);
-        E.length = length_v(E);
-        X_flags[i] = dot_product(E, X);
-        Y_flags[i] = dot_product(E, Y);
-        if(dot_product(E, X) >= 0) {
-            if(dot_product(E, Y) >= 0) {
-                quads[i] = 1;
-            }
-            else {
-                quads[i] = 4;
-            }
+    /* remove the chosen path from leftover array */
+    printf("(");
+    for(i = 0; i < remaining.size(); i++) {
+        if(remaining[i][4].i == curr) {
+            remaining.erase(remaining.begin() + i);
         }
         else {
-            if(dot_product(E, Y) >= 0) {
-                quads[i] = 2;
-            }
-            else {
-                quads[i] = 3;
-            }
+            printf("%d ", edges[remaining[i][4].i][1]);
         }
     }
-
-    /* first check for an edge in quadrant 3 */
-    for(i = 0; i < edges.size(); i++) {
-        if(quads[i] == 3) {
-            if(edges[i][1] == prev.index) {
-                continue;
-            }
-            found = 1;
-            if(!init) {
-                curr = i;
-                init = 1;
-            }
-            /* find the smallest Y value */
-            else if(Y_flags[i] < Y_flags[curr]) {
-                curr = i;
-            }
-        }
-    }
-    /* now check for an edge in quadrant 2 */
-    if(!found) {
-        for(i = 0; i < edges.size(); i++) {
-            if(quads[i] == 2) {
-                if(edges[i][1] == prev.index) {
-                    continue;
-                }
-                found = 1;
-                if(!init) {
-                    curr = i;
-                    init = 1;
-                }
-                /* find the smallest Y value */
-                else if(Y_flags[i] < Y_flags[curr]) {
-                    curr = i;
-                }
-            }
-        }
-    }
-    /* now check for an edge in quadrant 1 */
-    if(!found) {
-        for(i = 0; i < edges.size(); i++) {
-            if(quads[i] == 1) {
-                if(edges[i][1] == prev.index) {
-                    continue;
-                }
-                found = 1;
-                if(!init) {
-                    curr = i;
-                    init = 1;
-                }
-                /* find the greatest Y value */
-                else if(Y_flags[i] > Y_flags[curr]) {
-                    curr = i;
-                }
-            }
-        }
-    }
-    /* now check for an edge in quadrant 4 */
-    if(!found) {
-        for(i = 0; i < edges.size(); i++) {
-            if(quads[i] == 4) {
-                if(edges[i][1] == prev.index) {
-                    continue;
-                }
-                found = 1;
-                if(!init) {
-                    curr = i;
-                    init = 1;
-                }
-                /* find the greatest Y value */
-                else if(Y_flags[i] > Y_flags[curr]) {
-                    curr = i;
-                }
-            }
-        }
-    }
+    printf(") ");
 
     /* use curr to create the start of the path */
-    tmp = edges[curr][1];
-    path.push_back(tmp);
+    path.push_back(edges[curr][1]);
 
     return path;
 }
