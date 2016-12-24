@@ -39,7 +39,8 @@ struct vector_t {
 /* global variables */
 int permutations = 1;
 
-void construct_segments(struct point_t *points, struct point_t begin, int n, int size, FILE *gnu_files[NUM_FILES], int *mapped, int **recorded, vector<int *> *segments);
+void construct_segments(vector<int *> *segments, struct point_t *points, struct point_t begin, int n, int size, FILE *gnu_files[NUM_FILES], int *mapped, int **recorded);
+void join_vertex(vector<int *> *segments, struct point_t *points, struct point_t begin, int n, int size, FILE *gnu_files[NUM_FILES]);
 vector<vector<int> > construct_polygons(vector<int *> segments, struct point_t *points, int size, FILE *gnu_files[NUM_FILES]);
 vector<vector<int> > construct_cluster(vector<vector<int> > cluster, vector<int *> segments, struct point_t *points, struct point_t start, int size, FILE *gnu_files[NUM_FILES]);
 vector<int> add_path(vector<int> path, vector<int *> edges, struct point_t *points, struct point_t prev, struct vector_t X, struct vector_t Y);
@@ -134,16 +135,23 @@ int main(int argc, char *argv[])
             }
         }
         if(keep_going == 1) {
-            construct_segments(points, points[i], i, size, gnu_files, mapped, recorded, segments);
+            construct_segments(segments, points, points[i], i, size, gnu_files, mapped, recorded);
             keep_going = 0;
         }
         else {
             i = size;
         }
     }
-
+    /* cleanup unmapped points */
+    for(i = 0; i < size; i++) {
+        if(mapped[i] == 0) {
+            join_vertex(segments, points, points[i], i, size, gnu_files);
+        }
+    }
+    /* find polygons */
     polygons = construct_polygons(*segments, points, size, gnu_files);
-
+    /* ensure each polygon is optimal */
+    //TODO
     /* print mapped information */
     printf("UNMAPPED: ");
     for(i = 0; i < size; i++) {
@@ -183,7 +191,7 @@ int main(int argc, char *argv[])
 }
 
 /* calculates the shortest path */
-void construct_segments(struct point_t *points, struct point_t begin, int n, int size, FILE *gnu_files[NUM_FILES], int *mapped, int **recorded, vector<int *> *segments)
+void construct_segments(vector<int *> *segments, struct point_t *points, struct point_t begin, int n, int size, FILE *gnu_files[NUM_FILES], int *mapped, int **recorded)
 {
     struct vector_t V;
     struct vector_t T1;
@@ -440,6 +448,218 @@ void construct_segments(struct point_t *points, struct point_t begin, int n, int
     return;
 }
 
+/* calculates the connections for un-joined vertices */
+void join_vertex(vector<int *> *segments, struct point_t *points, struct point_t begin, int n, int size, FILE *gnu_files[NUM_FILES])
+{
+    struct vector_t V;
+    struct vector_t T1;
+    struct vector_t T2;
+    struct point_t *curr = new struct point_t [size];
+    struct point_t *search = new struct point_t [size];
+    struct point_t best;
+    struct point_t start;
+    struct point_t prev;
+    struct point_t center;
+    double sum_x = 0.0;
+    double sum_y = 0.0;
+    int **tmp_segments = new int * [size + 1];
+    int *pushed_segment;
+    int *visited = new int [size];
+    int count = 0;
+    int added = 0;
+    int i = 0;
+    int j = 0;
+    int k = 0;
+    int m = 0;
+    /* initialization of arrays */
+    for(i = 0; i < size; i++) {
+        curr[i].x = DBL_MAX;
+        curr[i].y = DBL_MAX;
+        curr[i].tao_distance = DBL_MAX;
+        curr[i].index = INT_MAX;
+        search[i].x = points[i].x;
+        search[i].y = points[i].y;
+        search[i].tao_distance = points[i].tao_distance;
+        search[i].index = points[i].index;
+        tmp_segments[i] = new int [2];
+        tmp_segments[i][0] = INT_MAX;
+        tmp_segments[i][1] = INT_MAX;
+    }
+    tmp_segments[i] = new int [2];
+    tmp_segments[i][0] = INT_MAX;
+    tmp_segments[i][1] = INT_MAX;
+    best.x = DBL_MAX;
+    best.y = DBL_MAX;
+    best.tao_distance = DBL_MAX;
+    best.index = INT_MAX;
+
+    /* calculate average point */
+    for(i = 0; i < size; i++) {
+        sum_x += points[i].x;
+        sum_y += points[i].y;
+    }
+    center.x = sum_x / size;
+    center.y = sum_y / size;
+
+    start.x = begin.x;
+    start.y = begin.y;
+    start.index = begin.index;
+    prev.x = begin.x;
+    prev.y = begin.y;
+    prev.index = begin.index;
+    best.x = begin.x;
+    best.y = begin.y;
+    best.index = begin.index;
+    /* initializing vector T1 */
+    T1.point[0].x = start.x;
+    T1.point[0].y = start.y;
+    T1.point[0].index = start.index;
+    T1.i = (center.x - start.x) / distance_p(center, start);
+    T1.j = (center.y - start.y) / distance_p(center, start);
+    T1.point[1].x = start.x + T1.i;
+    T1.point[1].y = start.y + T1.j;
+    T1.point[1].index = INT_MAX;
+    T1.length = length_v(T1);
+    /* outer loop */
+    while(m < 2) {
+        /* store start index in visted-array */
+        visited[start.index] = 1;
+        i = 0;
+        /* refreshing best index */
+        best.tao_distance = DBL_MAX;
+        best.index = start.index;
+        /* initializing vector T2 */
+        T2.point[0].x = start.x;
+        T2.point[0].y = start.y;
+        T2.point[0].index = start.index;
+        T2.i = 0;
+        T2.j = 0;
+        T2.length = 0;
+        /* initializing vector V */
+        V.point[0].x = start.x;
+        V.point[0].y = start.y;
+        V.point[0].index = start.index;
+        V.i = 0;
+        V.j = 0;
+        V.length = 0;
+        count = 0;
+        /* loops through all possible indices from start */
+        while(count < size) {
+            /* skip current index and previous index */
+            if((search[i].index == best.index) || (search[i].index == prev.index)) {
+                curr[i].tao_distance = DBL_MAX;
+                i++;
+                count++;
+                continue;
+            }
+            /* initializing vector V */
+            V.point[1].x = search[i].x;
+            V.point[1].y = search[i].y;
+            V.point[1].index = search[i].index;
+            V.i = V.point[1].x - V.point[0].x;
+            V.j = V.point[1].y - V.point[0].y;
+            V.length = length_v(V);
+            /* initializing vector T2 */
+            T2.point[1].x = V.point[1].x;
+            T2.point[1].y = V.point[1].y;
+            T2.point[1].index = INT_MAX;
+            T2.i = (T2.point[1].x - T2.point[0].x) / V.length;
+            T2.j = (T2.point[1].y - T2.point[0].y) / V.length;
+            T2.point[1].x = V.point[0].x + T2.i;
+            T2.point[1].y = V.point[0].y + T2.j;
+            T2.length = length_v(T2);
+            /* initializing tao, theta, and curvature */
+            curr[i].tao = (dot_product(T1, T2)); //length of T1 and T2 is always 1
+            if(curr[i].tao <= -1.0) {
+                curr[i].tao = -1.0;
+            }
+            else if(curr[i].tao >= 1.0) {
+                curr[i].tao = 1.0;
+            }
+            curr[i].x = V.point[1].x;
+            curr[i].y = V.point[1].y;
+            curr[i].index = V.point[1].index;
+            curr[i].theta = angle_t(curr[i].tao);
+            curr[i].curvature = calculate_curvature(T1, T2, curr[i].tao);
+            curr[i].tao_distance = tao_distance(V, curr[i].curvature, curr[i].theta);
+            V.point[1].tao_distance = curr[i].tao_distance;
+            i++;
+            count++;
+        }
+        /* sets the previous point as the previous best point */
+        prev = best;
+        /* find point with the lowest tao-distance */
+        for(i = 0; i < size; i++) {
+            if(best.tao_distance > curr[i].tao_distance) {
+                best.x = curr[i].x;
+                best.y = curr[i].y;
+                best.index = curr[i].index;
+                best.theta = curr[i].theta;
+                best.curvature = curr[i].curvature;
+                best.tao_distance = curr[i].tao_distance;
+                k = i;
+            }
+        }
+        /* record segment */
+        tmp_segments[m][0] = n;
+        tmp_segments[m][1] = k;
+        /* plot */
+        fprintf(gnu_files[2], "%lf %lf %d\n", points[tmp_segments[m][0]].x, points[tmp_segments[m][0]].y, points[tmp_segments[m][0]].index);
+        fprintf(gnu_files[2], "%lf %lf %d\n", points[tmp_segments[m][1]].x, points[tmp_segments[m][1]].y, points[tmp_segments[m][1]].index);
+        fprintf(gnu_files[2], "\n");
+        /* pushes new segments */
+        pushed_segment = new int [2];
+        pushed_segment[0] = points[tmp_segments[m][0]].index;
+        pushed_segment[1] = points[tmp_segments[m][1]].index;
+        segments->push_back(pushed_segment);
+        m++;
+        /* reinitializing vector V */
+        V.point[1].x = best.x;
+        V.point[1].y = best.y;
+        V.point[1].index = best.index;
+        V.i = V.point[1].x - V.point[0].x;
+        V.j = V.point[1].y - V.point[0].y;
+        V.length = length_v(V);
+        /* reinitializing vector T1 */
+        T2.point[1].x = best.x;
+        T2.point[1].y = best.y;
+        T2.point[1].index = INT_MAX;
+        T2.i = (T2.point[1].x - T2.point[0].x) / V.length;
+        T2.j = (T2.point[1].y - T2.point[0].y) / V.length;
+        T2.length = length_v(T2);
+        T1.point[0].x = best.x;
+        T1.point[0].y = best.y;
+        T1.point[0].index = best.index;
+        T1.point[1].x = best.x + T2.i;
+        T1.point[1].y = best.y + T2.j;
+        T1.point[1].index = INT_MAX;
+        T1.i = (T1.point[1].x - T1.point[0].x);
+        T1.j = (T1.point[1].y - T1.point[0].y);
+        T1.length = length_v(T1);
+        /* shifts starting point to best point */
+        start.x = best.x;
+        start.y = best.y;
+        start.index = best.index;
+        /* initializing vector T2 */
+        T2.point[0].x = start.x;
+        T2.point[0].y = start.y;
+        T2.point[0].index = start.index;
+        T2.i = 0;
+        T2.j = 0;
+        T2.length = 0;
+        /* initializing vector V */
+        V.point[0].x = start.x;
+        V.point[0].y = start.y;
+        V.point[0].index = start.index;
+        V.i = 0;
+        V.j = 0;
+        V.length = 0;
+        count = 0;
+        permutations++;
+    }
+    return;
+}
+
 vector<vector<int> > construct_polygons(vector<int *> segments, struct point_t *points, int size, FILE *gnu_files[NUM_FILES])
 {
     vector<vector<int> > polygons;
@@ -466,10 +686,10 @@ vector<vector<int> > construct_cluster(vector<vector<int> > cluster, vector<int 
     S.name[1] = '\0';
     struct point_t prev;
     struct point_t curr;
-    struct point_t node; //copy of initial starting node
-    node.x = start.x;
-    node.y = start.y;
-    node.index = start.index;
+    struct point_t root; //copy of initial starting node
+    root.x = start.x;
+    root.y = start.y;
+    root.index = start.index;
     struct point_t center;
     double sum_x = 0;
     double sum_y = 0;
@@ -510,7 +730,7 @@ vector<vector<int> > construct_cluster(vector<vector<int> > cluster, vector<int 
     X.point[1].index = -1;
     X.length = length_v(X);
     /* find the initial cluster of edges */
-    edges = edge_search(segments, node.index);
+    edges = edge_search(segments, root.index);
     while(edges.size() > 0) {
         /* prints the initial edges
         for(i = 0; i < edges.size(); i++) {
@@ -565,7 +785,7 @@ vector<vector<int> > construct_cluster(vector<vector<int> > cluster, vector<int 
         printf("\n\n");
         cluster.push_back(path);
         /* find the initial cluster of edges */
-        edges = edge_search(segments, node.index);
+        edges = edge_search(segments, root.index);
         /* find the index in edges that matches path[1] */
         if(index_match(edges, path[1]) > -1) {
             remove.push_back(index_match(edges, path[1]));
