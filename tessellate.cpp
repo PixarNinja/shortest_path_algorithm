@@ -61,7 +61,7 @@ double distance_v(struct vector_t V1, struct vector_t V2);
 double length_v(struct vector_t V);
 double dot_product(struct vector_t V1, struct vector_t V2);
 void print_v(struct vector_t V);
-void print(struct vector_t V, struct vector_t T1, struct vector_t T2, double curvature, double theta, double tao);
+void print(struct vector_t V, struct vector_t T1, struct vector_t T2, double curvature, double theta, double tao, double tao_distance);
 void memory_error(void);
 
 int main(int argc, char *argv[])
@@ -491,7 +491,7 @@ void join_vertex(vector<int *> *segments, struct point_t *points, struct point_t
     best.x = DBL_MAX;
     best.y = DBL_MAX;
     best.tao_distance = DBL_MAX;
-    best.index = INT_MAX;
+    best.index = -1;
 
     /* calculate average point */
     for(i = 0; i < size; i++) {
@@ -1138,7 +1138,7 @@ void print_v(struct vector_t V)
 }
 
 /* prints curvature structure for debugging */
-void print(struct vector_t V, struct vector_t T1, struct vector_t T2, double curvature, double theta, double tao)
+void print(struct vector_t V, struct vector_t T1, struct vector_t T2, double curvature, double theta, double tao, double tao_distance)
 {
     printf("V: %d[0](%lf, %lf), %d[1](%lf, %lf), <%lf, %lf>, |V| = %lf\n", V.point[0].index, V.point[0].x, V.point[0].y, V.point[1].index, V.point[1].x, V.point[1].y, V.i, V.j, V.length);
     printf("T1: point[0](%lf, %lf), point[1](%lf, %lf), <%lf, %lf>, |T1| = %lf\n", T1.point[0].x, T1.point[0].y, T1.point[1].x, T1.point[1].y, T1.i, T1.j, T1.length);
@@ -1146,7 +1146,7 @@ void print(struct vector_t V, struct vector_t T1, struct vector_t T2, double cur
     printf("curvature: %lf; ", curvature);
     printf("angle = %lf; ", theta * 180 / M_PI);
     printf("tao = %lf; ", tao);
-    printf("tao-distance = %lf\n\n", V.point[1].tao_distance);
+    printf("tao-distance = %lf\n\n", tao_distance);
 }
 
 /* prints to the terminal if there is an error assigning memory */
