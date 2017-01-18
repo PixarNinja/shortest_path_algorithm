@@ -276,7 +276,7 @@ void construct_segments(vector<int *> *segments, struct point_t *points, struct 
     T1.length = length_v(T1);
     /* outer loop, calculates total distance */
     while(visited_count <= total_size) {
-        /* store start index in visted-array */
+        /* store start index in visited-array */
         visited[start.index] = 1;
         i = 0;
         /* refreshing best index */
@@ -528,7 +528,7 @@ void join_vertex(vector<int *> *segments, struct point_t *points, struct point_t
     T1.length = length_v(T1);
     /* outer loop */
     while(m < 2) {
-        /* store start index in visted-array */
+        /* store start index in visited-array */
         visited[start.index] = 1;
         i = 0;
         /* refreshing best index */
@@ -668,21 +668,54 @@ void join_vertex(vector<int *> *segments, struct point_t *points, struct point_t
 
 vector<struct polygon_t> construct_polygons(vector<int *> segments, struct point_t *points, int size, FILE *gnu_files[NUM_FILES])
 {
-    vector<int> remaining;
     vector<vector<int> > tesselations;
     vector<struct polygon_t> polygons;
     struct polygon_t polygon;
+    struct point_t center;
+    int *visited = new int [size]();
     int i = 0;
+    int count = 0;
+    int remaining = -1;
+    double curr = -1;
+    double sum_x = 0.0;
+    double sum_y = 0.0;
 
+    /* find the initial center point */
+    for(i = 0; i < size; i++) {
+        sum_x += points[i].x;
+        sum_y += points[i].y;
+    }
+    center.x = sum_x / size;
+    center.y = sum_y / size;
+    /* start with the furthest point from the center */
+    for(i = 0; i < size; i++) {
+        if(distance_p(center, points[i]) > curr) {
+            curr = distance_p(center, points[i]);
+            remaining = i;
+        }
+    }
     /* loop until all points have added shapes */
-    remaining.push_back(segments[0][0]);
-    while(remaining.size() > 0) {
-        tesselations = construct_cluster(tesselations, segments, points, size, points[remaining[0]], gnu_files);
-        remaining.clear();
-        /* keep track of points to go back to later */
+    while(count < size) {
+        tesselations = construct_cluster(tesselations, segments, points, size, points[remaining], gnu_files);
+        count++;
+        visited[remaining] = 1;
+        printf("visited: %d\n", remaining);
+        remaining = -1;
+        curr = -1;
+        /* find the new center point
         for(i = 0; i < size; i++) {
-            if(polygons_search(tesselations, points[i].index) == -1) {
-                remaining.push_back(i);
+            if(visited[i] == 0) {
+                sum_x += points[i].x;
+                sum_y += points[i].y;
+            }
+        }
+        center.x = sum_x / (size - count);
+        center.y = sum_y / (size - count);*/
+        /* find the furthest point from the center out of untouched points */
+        for(i = 0; i < size; i++) {
+            if((visited[i] == 0) && (distance_p(center, points[i]) > curr)) {
+                curr = distance_p(center, points[i]);
+                remaining = i;
             }
         }
     }
@@ -768,6 +801,9 @@ vector<vector<int> > construct_cluster(vector<vector<int> > cluster, vector<int 
         /* find the initial direction */
         path.push_back(edges[0][0]);
         path = add_path(path, edges, points, prev, X, Y);
+        if(path.size() == 0) {
+            return cluster;
+        }
         printf("PATH: %d %d ", points[path[0]].index, points[path[1]].index);
         start.x = points[path[0]].x;
         start.y = points[path[0]].y;
@@ -804,6 +840,9 @@ vector<vector<int> > construct_cluster(vector<vector<int> > cluster, vector<int 
             /* find the initial cluster of edges */
             edges = edge_search(segments, start.index, points, size);
             path = add_path(path, edges, points, prev, X, Y);
+            if(path.size() == 0) {
+                return cluster;
+            }
             printf("%d ", points[path[i + 1]].index);
             if(path[i + 1] == path[0]) {
                 complete = 1;
@@ -845,7 +884,7 @@ vector<int> add_path(vector<int> path, vector<int *> edges, struct point_t *poin
     double dot = 0.0;
     int *quads = new int [edges.size()];
     int i = 0;
-    int curr = 0;
+    int curr = -1;
     int init = 0;
     int found = 0;
 
@@ -923,7 +962,7 @@ vector<int> add_path(vector<int> path, vector<int *> edges, struct point_t *poin
             }
         }
     }
-    /* now check for an edge in quadrant 2 */
+    /* now check for an edge in quadrant 2
     if(!found) {
         for(i = 0; i < edges.size(); i++) {
             if(quads[i] == 2) {
@@ -935,14 +974,14 @@ vector<int> add_path(vector<int> path, vector<int *> edges, struct point_t *poin
                     curr = i;
                     init = 1;
                 }
-                /* find the greatest Y value */
+                 find the greatest Y value
                 else if(Y_flags[i] > Y_flags[curr]) {
                     curr = i;
                 }
             }
         }
     }
-    /* now check for an edge in quadrant 3 */
+     now check for an edge in quadrant 3
     if(!found) {
         for(i = 0; i < edges.size(); i++) {
             if(quads[i] == 3) {
@@ -954,16 +993,21 @@ vector<int> add_path(vector<int> path, vector<int *> edges, struct point_t *poin
                     curr = i;
                     init = 1;
                 }
-                /* find the greatest Y value */
+                 find the greatest Y value
                 else if(Y_flags[i] > Y_flags[curr]) {
                     curr = i;
                 }
             }
         }
-    }
+    }*/
 
     /* use curr to create the link in the path */
-    path.push_back(edges[curr][1]);
+    if(curr > -1) {
+        path.push_back(edges[curr][1]);
+    }
+    else {
+        path.clear();
+    }
 
     return path;
 }
