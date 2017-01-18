@@ -36,18 +36,24 @@ struct vector_t {
     double j;
 };
 
+struct polygon_t {
+    vector<int> shape;
+    double perimeter;
+};
+
 /* global variables */
 int permutations = 1;
 
 void construct_segments(vector<int *> *segments, struct point_t *points, struct point_t begin, int n, int size, FILE *gnu_files[NUM_FILES], int *mapped, int **recorded);
 void join_vertex(vector<int *> *segments, struct point_t *points, struct point_t begin, int n, int size, FILE *gnu_files[NUM_FILES]);
-vector<vector<int> > construct_polygons(vector<int *> segments, struct point_t *points, int size, FILE *gnu_files[NUM_FILES]);
-vector<vector<int> > construct_cluster(vector<vector<int> > cluster, vector<int *> segments, struct point_t *points, struct point_t start, FILE *gnu_files[NUM_FILES]);
+vector<struct polygon_t> construct_polygons(vector<int *> segments, struct point_t *points, int size, FILE *gnu_files[NUM_FILES]);
+vector<vector<int> > construct_cluster(vector<vector<int> > cluster, vector<int *> segments, struct point_t *points, int size, struct point_t start, FILE *gnu_files[NUM_FILES]);
 vector<int> add_path(vector<int> path, vector<int *> edges, struct point_t *points, struct point_t prev, struct vector_t X, struct vector_t Y);
-vector<int *> edge_search(vector<int *> segments, int vertex);
+vector<int *> edge_search(vector<int *> segments, int vertex, struct point_t *points, int size);
 int index_match(vector<int *> segments, int vertex);
 int shape_search(vector<int> shape, int vertex);
 int polygons_search(vector<vector<int> > polygons, int vertex);
+double find_perimeter(vector<int> shape, struct point_t *points);
 int segment_match(vector<int *> segments, int beginning, int end);
 int duplicate_search(deque<int> queue, int vertex, int dups[2]);
 deque<int> *separate_shape(deque<int> *queue, int size, int n, int m);
@@ -69,9 +75,9 @@ int main(int argc, char *argv[])
     FILE *data;
     FILE *gnu_files[NUM_FILES];
     struct point_t *points;
+    vector<struct polygon_t> polygons;
     char buf[1024];
     double range = 0.0;
-    vector<vector<int> > polygons;
     vector<int *> *segments = new vector<int *> [1];
     int **recorded;
     int *mapped;
@@ -168,10 +174,10 @@ int main(int argc, char *argv[])
     printf("\nPOLYGONS:\n");
     for(i = 0; i < polygons.size(); i++) {
         printf("%d: ", i);
-        for(j = 0; j < polygons[i].size(); j++) {
-            printf("%d ", polygons[i][j]);
+        for(j = 0; j < (polygons[i]).shape.size(); j++) {
+            printf("%d ", points[(polygons[i]).shape[j]].index);
         }
-        printf("\n");
+        printf("= %0.2lf\n", polygons[i].perimeter);
     }
     /* plot */
     fprintf(gnu_files[0], "plot './gnu_files/lines.tmp' using 1:2 with lines ls 1 title \"shortest path\",");
@@ -660,29 +666,38 @@ void join_vertex(vector<int *> *segments, struct point_t *points, struct point_t
     return;
 }
 
-vector<vector<int> > construct_polygons(vector<int *> segments, struct point_t *points, int size, FILE *gnu_files[NUM_FILES])
+vector<struct polygon_t> construct_polygons(vector<int *> segments, struct point_t *points, int size, FILE *gnu_files[NUM_FILES])
 {
     vector<int> remaining;
-    vector<vector<int> > polygons;
+    vector<vector<int> > tesselations;
+    vector<struct polygon_t> polygons;
+    struct polygon_t polygon;
     int i = 0;
 
     /* loop until all points have added shapes */
     remaining.push_back(segments[0][0]);
     while(remaining.size() > 0) {
-        polygons = construct_cluster(polygons, segments, points, points[remaining[0]], gnu_files);
+        tesselations = construct_cluster(tesselations, segments, points, size, points[remaining[0]], gnu_files);
         remaining.clear();
         /* keep track of points to go back to later */
         for(i = 0; i < size; i++) {
-            if(polygons_search(polygons, points[i].index) == -1) {
+            if(polygons_search(tesselations, points[i].index) == -1) {
                 remaining.push_back(i);
             }
         }
     }
+    /* stores in polygon_t structure format */
+    for(i = 0; i < tesselations.size(); i++) {
+        polygon.shape = tesselations[i];
+        polygon.perimeter = find_perimeter(tesselations[i], points);
+        polygons.push_back(polygon);
+    }
+    
     return polygons;
 }
 
 /* calculate cluster of polygons given all contoured segments */
-vector<vector<int> > construct_cluster(vector<vector<int> > cluster, vector<int *> segments, struct point_t *points, struct point_t start, FILE *gnu_files[NUM_FILES])
+vector<vector<int> > construct_cluster(vector<vector<int> > cluster, vector<int *> segments, struct point_t *points, int size, struct point_t start, FILE *gnu_files[NUM_FILES])
 {
     struct vector_t X; //X-axis vector
     X.name = new char [2];
@@ -705,7 +720,7 @@ vector<vector<int> > construct_cluster(vector<vector<int> > cluster, vector<int 
     struct point_t center;
     double sum_x = 0;
     double sum_y = 0;
-    vector<int *> edges; //contains the index followed by position
+    vector<int *> edges; //pointer contains the index followed by position
     vector<int> path; //contains the path of nodes to add as a polygon
     vector<int> remove; //contains edges to remove
     int i = 0;
@@ -717,7 +732,7 @@ vector<vector<int> > construct_cluster(vector<vector<int> > cluster, vector<int 
     int short_circuit = 0;
 
     /* find the initial cluster of edges */
-    edges = edge_search(segments, root.index);
+    edges = edge_search(segments, root.index, points, size);
     /* calculate average point out of the current visible edges */
     for(i = 0; i < edges.size(); i++) {
         sum_x += points[edges[i][1]].x;
@@ -745,16 +760,15 @@ vector<vector<int> > construct_cluster(vector<vector<int> > cluster, vector<int 
     X.point[1].index = -1;
     X.length = length_v(X);
     while(edges.size() > 0) {
-        short_circuit++;
         /* prints the initial edges */
         for(i = 0; i < edges.size(); i++) {
-            printf("%d ", edges[i][1]);
+            printf("%d ", points[edges[i][1]].index);
         }
         printf("\n\n");
         /* find the initial direction */
         path.push_back(edges[0][0]);
         path = add_path(path, edges, points, prev, X, Y);
-        printf("PATH: %d %d ", path[0], path[1]);
+        printf("PATH: %d %d ", points[path[0]].index, points[path[1]].index);
         start.x = points[path[0]].x;
         start.y = points[path[0]].y;
         start.index = points[path[0]].index;
@@ -788,9 +802,9 @@ vector<vector<int> > construct_cluster(vector<vector<int> > cluster, vector<int 
             X.point[1].index = -1;
             X.length = length_v(X);
             /* find the initial cluster of edges */
-            edges = edge_search(segments, start.index);
+            edges = edge_search(segments, start.index, points, size);
             path = add_path(path, edges, points, prev, X, Y);
-            printf("%d ", path[i + 1]);
+            printf("%d ", points[path[i + 1]].index);
             if(path[i + 1] == path[0]) {
                 complete = 1;
             }
@@ -799,7 +813,7 @@ vector<vector<int> > construct_cluster(vector<vector<int> > cluster, vector<int 
         printf("\n\n");
         cluster.push_back(path);
         /* find the initial cluster of edges */
-        edges = edge_search(segments, root.index);
+        edges = edge_search(segments, root.index, points, size);
         /* find the index in edges that matches path[1] */
         if(index_match(edges, path[1]) > -1) {
             remove.push_back(index_match(edges, path[1]));
@@ -955,24 +969,43 @@ vector<int> add_path(vector<int> path, vector<int *> edges, struct point_t *poin
 }
 
 /* searches through a vector of segments for all matching end or
- * beginning segments */
-vector<int *> edge_search(vector<int *> segments, int vertex)
+ * beginning segments, returning the vertex and index at which
+ * it was found in a vector of 2D arrays */
+vector<int *> edge_search(vector<int *> segments, int vertex, struct point_t *points, int size)
 {
     vector<int *> edges;
     int *tmp;
+    int i = 0;
+    int j = 0;
 
     /* check if the segment is found */
-    for(int i = 0; i < segments.size(); i++) {
+    for(i = 0; i < segments.size(); i++) {
+        /* find the indexed value */
+        for(j = 0; j < size; j++) {
+            if(points[j].index == vertex) {
+                break;
+            }
+        }
         if(segments[i][0] == vertex) {
             tmp = new int [2];
-            tmp[0] = vertex;
-            tmp[1] = segments[i][1];
+            tmp[0] = j;
+            for(j = 0; j < size; j++) {
+                if(points[j].index == segments[i][1]) {
+                    break;
+                }
+            }
+            tmp[1] = j;
             edges.push_back(tmp);
         }
         else if(segments[i][1] == vertex) {
             tmp = new int [2];
-            tmp[0] = vertex;
-            tmp[1] = segments[i][0];
+            tmp[0] = j;
+            for(j = 0; j < size; j++) {
+                if(points[j].index == segments[i][0]) {
+                    break;
+                }
+            }
+            tmp[1] = j;
             edges.push_back(tmp);
         }
     }
@@ -1017,6 +1050,19 @@ int polygons_search(vector<vector<int> > polygons, int vertex)
         }
     }
     return -1;
+}
+
+/* returns the perimeter for the input shape */
+double find_perimeter(vector<int> shape, struct point_t *points)
+{
+    int i = 0;
+    double sum = 0.0;
+
+    /* shape contains indices to points array */
+    for(i = 0; i < shape.size() - 1; i++) {
+        sum += distance_p(points[shape[i]], points[shape[i + 1]]);
+    }
+    return sum;
 }
 
 /* searches through a vector of segments for a matching segment */
