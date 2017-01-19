@@ -55,7 +55,8 @@ int shape_search(vector<int> shape, int vertex);
 int polygons_search(vector<vector<int> > polygons, int vertex);
 double find_perimeter(vector<int> shape, struct point_t *points);
 int segment_match(vector<int *> segments, int beginning, int end);
-int duplicate_search(deque<int> queue, int vertex, int dups[2]);
+int duplicate_search(vector<int> shape);
+vector<struct polygon_t> delete_duplicates(vector<struct polygon_t> polygons);
 deque<int> *separate_shape(deque<int> *queue, int size, int n, int m);
 deque<int> *merge_queue(deque<int> *queue, int size);
 double calculate_curvature(struct vector_t T1, struct vector_t T2, double tao);
@@ -156,6 +157,7 @@ int main(int argc, char *argv[])
     }
     /* find polygons */
     polygons = construct_polygons(*segments, points, size, gnu_files);
+    polygons = delete_duplicates(polygons);
     /* ensure each polygon is optimal */
     //TODO
     /* print mapped information */
@@ -766,13 +768,20 @@ vector<vector<int> > construct_cluster(vector<vector<int> > cluster, vector<int 
 
     /* find the initial cluster of edges */
     edges = edge_search(segments, root.index, points, size);
-    /* calculate average point out of the current visible edges */
+    /* calculate average point out of the current visible edges
     for(i = 0; i < edges.size(); i++) {
         sum_x += points[edges[i][1]].x;
         sum_y += points[edges[i][1]].y;
     }
     center.x = sum_x / edges.size();
-    center.y = sum_y / edges.size();
+    center.y = sum_y / edges.size();*/
+    /* calculate the average point */
+    for(i = 0; i < size; i++) {
+        sum_x += points[i].x;
+        sum_y += points[i].y;
+    }
+    center.x = sum_x / size;
+    center.y = sum_y / size;
     /* initialize axis vectors */
     Y.point[0].x = start.x;
     Y.point[0].y = start.y;
@@ -908,8 +917,8 @@ vector<int> add_path(vector<int> path, vector<int *> edges, struct point_t *poin
         E.length = length_v(E);
         X_flags[i] = dot_product(E, X);
         Y_flags[i] = dot_product(E, Y);
-        if(dot_product(E, X) >= 0) {
-            if(dot_product(E, Y) >= 0) {
+        if(dot_product(E, X) > 0) {
+            if(dot_product(E, Y) > 0) {
                 quads[i] = 1;
             }
             else {
@@ -1004,6 +1013,11 @@ vector<int> add_path(vector<int> path, vector<int *> edges, struct point_t *poin
     /* use curr to create the link in the path */
     if(curr > -1) {
         path.push_back(edges[curr][1]);
+        if(duplicate_search(path)) {
+            printf("duplicate found: %d\n", edges[curr][1]);
+            path.clear();
+            return path;
+        }
     }
     else {
         path.clear();
@@ -1121,23 +1135,73 @@ int segment_match(vector<int *> segments, int beginning, int end)
     return -1;
 }
 
-/* searches through a deque of vertices for a duplicate */
-int duplicate_search(deque<int> queue, int vertex, int dups[2])
+/* searches through a shape for a duplicate */
+int duplicate_search(vector<int> shape)
 {
-    int d1 = 0;
-    int d2 = 0;
-    /* check if the vertex has a duplicate */
-    if(find(queue.begin(), queue.end(), vertex) != queue.end()) {
-        d1 = distance(queue.begin(), find(queue.begin(), queue.end(), vertex));
-        queue.erase(queue.begin(), queue.begin() + d1 + 1);
-        if(find(queue.begin() + d1, queue.end(), vertex) != queue.end()) {
-            d2 = distance(queue.begin(), find(queue.begin(), queue.end(), vertex));
-            dups[0] = d1;
-            dups[1] = d1 + d2;
+    for(int i = 1; i < shape.size(); i++) {
+        /* check if the vertex has a duplicate */
+        if(find(shape.begin() + i + 1, shape.end(), shape[i]) != shape.end()) {
             return 1;
         }
     }
     return 0;
+}
+
+/* searches through a vector of shapes for a duplicate */
+vector<struct polygon_t> delete_duplicates(vector<struct polygon_t> polygons)
+{
+    vector<struct polygon_t> tmp = polygons;
+    int i = 0;
+    int j = 0;
+    int k = 0;
+    int n = 0;
+
+    /* remove incorrect shapes */
+    for(i = 0; i < tmp.size(); i++) {
+        if((tmp[i]).shape.size() <= 3) {
+            tmp.erase(tmp.begin() + i, tmp.begin() + i + 1);
+            polygons.erase(polygons.begin() + i);
+            i--;
+        }
+    }
+    /* remove the loop for each shape */
+    for(i = 0; i < tmp.size(); i++) {
+        (tmp[i]).shape.erase((tmp[i]).shape.begin());
+    }
+    /* sort each entry */
+    for(i = 0; i < tmp.size(); i++) {
+        sort((tmp[i]).shape.begin(), (tmp[i]).shape.end());
+        printf("new: ");
+        for(j = 0; j < (tmp[i]).shape.size(); j++) {
+            printf("%d ", tmp[i].shape[j]);
+        }
+        printf("\n");
+    }
+    /* check for an equal entry
+    */
+    for(i = 0; i < tmp.size(); i++) {
+        for(j = 0; j < tmp.size(); j++) {
+            if(((tmp[i]).shape.size() == (tmp[j]).shape.size()) && (i != j)) {
+                for(k = 0; k < (tmp[i]).shape.size(); k++) {
+                    if((tmp[i]).shape[k] != (tmp[j]).shape[k]) {
+                        break;
+                    }
+                }
+                if(k == (tmp[i]).shape.size()) {
+                    printf("%d. deleting: ", j);
+                    for(k = 0; k < (tmp[j]).shape.size(); k++) {
+                        printf("%d ", tmp[j].shape[k]);
+                    }
+                    printf("\n");
+                    tmp.erase(tmp.begin() + j);
+                    polygons.erase(polygons.begin() + j);
+                    j--;
+                    i--;
+                }
+            }
+        }
+    }
+    return polygons;
 }
 
 /* separates a shape given there is a found duplicate at index m */
