@@ -159,8 +159,8 @@ int main(int argc, char *argv[])
             join_vertex(segments, points, points[i], i, size, gnu_files);
         }
     }
+    /* find polygons */
     do {
-        /* find polygons */
         polygons = construct_polygons(*segments, points, size, gnu_files);
         polygons = delete_duplicates(polygons);
         /* ensure each polygon is optimal */
@@ -216,7 +216,6 @@ void construct_segments(vector<int *> *segments, struct point_t *points, struct 
     struct vector_t T1;
     struct vector_t T2;
     struct point_t *curr = new struct point_t [size];
-    struct point_t *search = new struct point_t [size];
     struct point_t best;
     struct point_t start;
     struct point_t prev;
@@ -229,7 +228,6 @@ void construct_segments(vector<int *> *segments, struct point_t *points, struct 
     int *visited = new int [size];
     int total_size = size;
     int visited_count = 0;
-    int segment_count = 0;
     int count = 0;
     int i = 0;
     int j = 0;
@@ -241,10 +239,6 @@ void construct_segments(vector<int *> *segments, struct point_t *points, struct 
         curr[i].y = DBL_MAX;
         curr[i].tao_distance = DBL_MAX;
         curr[i].index = INT_MAX;
-        search[i].x = points[i].x;
-        search[i].y = points[i].y;
-        search[i].tao_distance = points[i].tao_distance;
-        search[i].index = points[i].index;
         tmp_segments[i] = new int [2];
         tmp_segments[i][0] = INT_MAX;
         tmp_segments[i][1] = INT_MAX;
@@ -313,16 +307,16 @@ void construct_segments(vector<int *> *segments, struct point_t *points, struct 
         /* loops through all possible indices from start */
         while(count < size) {
             /* skip current index and previous index */
-            if((search[i].index == best.index) || (search[i].index == prev.index)) {
+            if((points[i].index == best.index) || (points[i].index == prev.index)) {
                 curr[i].tao_distance = DBL_MAX;
                 i++;
                 count++;
                 continue;
             }
             /* initializing vector V */
-            V.point[1].x = search[i].x;
-            V.point[1].y = search[i].y;
-            V.point[1].index = search[i].index;
+            V.point[1].x = points[i].x;
+            V.point[1].y = points[i].y;
+            V.point[1].index = points[i].index;
             V.i = V.point[1].x - V.point[0].x;
             V.j = V.point[1].y - V.point[0].y;
             V.length = length_v(V);
@@ -373,7 +367,7 @@ void construct_segments(vector<int *> *segments, struct point_t *points, struct 
         if(visited[best.index] == 1) {
             m--;
             if(m != 0) {
-                /* check if the loop has finished elsewhere */
+                /* check if the loop has finished elsewhere 
                 if(loop[m] != loop[j]) {
                     for(j = m; j > 0; j--) {
                         if(loop[j] != loop[0]) {
@@ -383,12 +377,12 @@ void construct_segments(vector<int *> *segments, struct point_t *points, struct 
                             break;
                         }
                     }
-                }
+                }*/
                 for(j = 0; j < m; j++) {
-                    printf("%d->", search[loop[j]].index);
+                    printf("%d->", points[loop[j]].index);
                     mapped[loop[j]] = 1;
                 }
-                printf("%d\n", search[loop[m]].index);
+                printf("%d\n", points[loop[m]].index);
                 for(j = 0; j < m; j++) {
                     /* record segment */
                     tmp_segments[j][0] = loop[j];
@@ -407,7 +401,6 @@ void construct_segments(vector<int *> *segments, struct point_t *points, struct 
                     pushed_segment[0] = points[tmp_segments[j][0]].index;
                     pushed_segment[1] = points[tmp_segments[j][1]].index;
                     segments->push_back(pushed_segment);
-                    segment_count++;
                     recorded[tmp_segments[j][0]][tmp_segments[j][1]] = 1;
                     /* book-keeping */
                     printf("%d = (%d, %d): <%d,%d>\n", j, tmp_segments[j][0], tmp_segments[j][1], points[tmp_segments[j][0]].index, points[tmp_segments[j][1]].index);
