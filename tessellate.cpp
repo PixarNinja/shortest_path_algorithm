@@ -78,10 +78,13 @@ int main(int argc, char *argv[])
 {
     FILE *data;
     FILE *gnu_files[NUM_FILES];
-    struct point_t *points;
     vector<struct polygon_t> polygons;
+    struct point_t *points;
+    struct point_t center;
     char buf[1024];
     double range = 0.0;
+    double sum_x = 0.0;
+    double sum_y = 0.0;
     vector<int *> *segments = new vector<int *> [1];
     vector<int *> edges;
     int **recorded;
@@ -92,6 +95,7 @@ int main(int argc, char *argv[])
     int j = 0;
     int k = 0;
     int count = 0;
+
     if(argc == 1) {
         printf("\n\nPlease enter the path of the .dat file to read from. Exiting Program. Good Day.\n\n");
     }
@@ -187,6 +191,18 @@ int main(int argc, char *argv[])
         fprintf(gnu_files[2], "%lf %lf %d\n", points[j].x, points[j].y, points[j].index);
         fprintf(gnu_files[2], "%lf %lf %d\n", points[k].x, points[k].y, points[k].index);
         fprintf(gnu_files[2], "\n");
+    }
+    /* plot perimeter data */
+    for(i = 0; i < polygons.size(); i++) {
+        sum_x = 0.0;
+        sum_y = 0.0;
+        for(j = 1; j < (polygons[i]).shape.size(); j++) {
+            sum_x += points[(polygons[i]).shape[j]].x;
+            sum_y += points[(polygons[i]).shape[j]].y;
+        }
+        center.x = sum_x / (double)((polygons[i]).shape.size() - 1);
+        center.y = sum_y / (double)((polygons[i]).shape.size() - 1);
+        fprintf(gnu_files[3], "%lf %lf %0.2lf\n", center.x, center.y, polygons[i].perimeter);
     }
     /* print segment information */
     printf("\nSEGMENTS:\n");
@@ -1349,14 +1365,17 @@ vector<struct polygon_t> optimize_polygons(vector<struct polygon_t> polygons, ve
     struct point_t *curr = new struct point_t [size];
     struct point_t best;
     struct point_t start;
+    struct point_t end;
     struct point_t prev;
     struct point_t center;
     double sum_x = 0.0;
     double sum_y = 0.0;
+    vector<int *> edges;
     int *tmp;
     int i = 0;
     int j = 0;
     int k = 0;
+    int l = 0;
     int n = 0;
     /* initialization of arrays */
     for(i = 0; i < size; i++) {
@@ -1369,6 +1388,122 @@ vector<struct polygon_t> optimize_polygons(vector<struct polygon_t> polygons, ve
     best.y = DBL_MAX;
     best.tao_distance = DBL_MAX;
     best.index = INT_MAX;
+    /* make sure each segment branch is optimal */
+    for(i = 0; i < polygons.size(); i++) {
+        start.x = points[(polygons[i]).shape[0]].x;
+        start.y = points[(polygons[i]).shape[0]].y;
+        start.index = points[(polygons[i]).shape[0]].index;
+        prev.x = start.x;
+        prev.y = start.y;
+        prev.index = start.index;
+        best.x = start.x;
+        best.y = start.y;
+        best.index = start.index;
+        /* initializing vector T1 */
+        T1.point[0].x = start.x;
+        T1.point[0].y = start.y;
+        T1.point[0].index = start.index;
+        T1.i = (center.x - start.x) / distance_p(center, start);
+        T1.j = (center.y - start.y) / distance_p(center, start);
+        T1.point[1].x = start.x + T1.i;
+        T1.point[1].y = start.y + T1.j;
+        T1.point[1].index = INT_MAX;
+        T1.length = length_v(T1);
+        /* loops through all segments of the polygon */
+        for(j = 0; j < (polygons[i]).shape.size() - 2; j++) {
+            k = (polygons[i]).shape[j];
+            l = (polygons[i]).shape[j + 1];
+            start.x = points[k].x;
+            start.y = points[k].y;
+            start.index = points[k].index;
+            end.x = points[l].x;
+            end.y = points[l].y;
+            end.index = points[l].index;
+            /* initializing vector T1 */
+            T1.point[0].x = start.x;
+            T1.point[0].y = start.y;
+            T1.point[0].index = start.index;
+            T1.i = (end.x - start.x) / distance_p(end, start);
+            T1.j = (end.y - start.y) / distance_p(end, start);
+            T1.point[1].x = start.x + T1.i;
+            T1.point[1].y = start.y + T1.j;
+            T1.point[1].index = INT_MAX;
+            T1.length = length_v(T1);
+            /* refreshing best index */
+            best.tao_distance = DBL_MAX;
+            /* initializing vector T2 */
+            T2.point[0].x = start.x;
+            T2.point[0].y = start.y;
+            T2.point[0].index = start.index;
+            T2.i = 0;
+            T2.j = 0;
+            T2.length = 0;
+            /* initializing vector V */
+            V.point[0].x = start.x;
+            V.point[0].y = start.y;
+            V.point[0].index = start.index;
+            V.i = 0;
+            V.j = 0;
+            V.length = 0;
+            /* loops through all possible indices from start */
+            for(k = 0; k < size; k++) {
+                /* initializing vector V */
+                V.point[1].x = points[k].x;
+                V.point[1].y = points[k].y;
+                V.point[1].index = points[k].index;
+                V.i = V.point[1].x - V.point[0].x;
+                V.j = V.point[1].y - V.point[0].y;
+                V.length = length_v(V);
+                /* initializing vector T2 */
+                T2.point[1].x = V.point[1].x;
+                T2.point[1].y = V.point[1].y;
+                T2.point[1].index = INT_MAX;
+                T2.i = (T2.point[1].x - T2.point[0].x) / V.length;
+                T2.j = (T2.point[1].y - T2.point[0].y) / V.length;
+                T2.point[1].x = V.point[0].x + T2.i;
+                T2.point[1].y = V.point[0].y + T2.j;
+                T2.length = length_v(T2);
+                /* initializing tao, theta, and curvature */
+                curr[k].tao = (dot_product(T1, T2)); //length of T1 and T2 is always 1
+                if(curr[k].tao <= -1.0) {
+                    curr[k].tao = -1.0;
+                }
+                else if(curr[k].tao >= 1.0) {
+                    curr[k].tao = 1.0;
+                }
+                curr[k].x = V.point[1].x;
+                curr[k].y = V.point[1].y;
+                curr[k].index = V.point[1].index;
+                curr[k].theta = angle_t(curr[k].tao);
+                curr[k].curvature = calculate_curvature(T1, T2, curr[k].tao);
+                curr[k].tao_distance = tao_distance(V, curr[k].curvature, curr[k].theta);
+                V.point[1].tao_distance = curr[k].tao_distance;
+            }
+            /* find point with the lowest tao-distance */
+            for(k = 0; k < size; k++) {
+                if(best.tao_distance > curr[k].tao_distance) {
+                    best.x = curr[k].x;
+                    best.y = curr[k].y;
+                    best.index = curr[k].index;
+                    best.theta = curr[k].theta;
+                    best.curvature = curr[k].curvature;
+                    best.tao_distance = curr[k].tao_distance;
+                    n = k;
+                }
+            }
+            /* record path */
+            for(k = 0; k < (*segments).size(); k++) {
+                if(segment_match(*segments, points[(polygons[i]).shape[j]].index, points[n].index) == -1) {
+                    tmp = new int [2];
+                    tmp[0] = points[(polygons[i]).shape[j]].index;
+                    tmp[1] = points[n].index;
+                    (*segments).push_back(tmp);
+                    printf("added: <%d,%d>\n", points[(polygons[i]).shape[j]].index, points[n].index);
+                    break;
+                }
+            }
+        }
+    }
     /* finds the "positive" optimal segments */
     for(i = 0; i < polygons.size(); i++) {
         sum_x = 0;
@@ -1599,18 +1734,55 @@ vector<struct polygon_t> optimize_polygons(vector<struct polygon_t> polygons, ve
                 }
             }
             /* record path */
-            for(k = 0; k < (*segments).size(); k++) {
+            for(k = 0; k < segments->size(); k++) {
                 if(segment_match(*segments, points[(polygons[i]).shape[j]].index, points[n].index) == -1) {
                     tmp = new int [2];
                     tmp[0] = points[(polygons[i]).shape[j]].index;
                     tmp[1] = points[n].index;
-                    (*segments).push_back(tmp);
+                    segments->push_back(tmp);
                     printf("added: <%d,%d>\n", points[(polygons[i]).shape[j]].index, points[n].index);
                     break;
                 }
             }
         }
     }
+    /* get rid of single-point segments */
+    for(i = 0; i < segments->size(); i++) {
+        if((*segments)[i][0] == (*segments)[i][1]) {
+            segments->erase(segments->begin() + i);
+            i--;
+        }
+    }
+    /* make sure each 2-edge point is optimal
+    for(i = 0; i < size; i++) {
+        edges = edge_search(*segments, points[i].index, points, size);
+        printf("EDGES: %d\n", edges.size());
+        if(edges.size() == 2) {
+            /* check that the point is optimal
+            best.tao_distance = DBL_MAX;
+            for(j = 0; j < size; j++) {
+                if(i == j) {
+                    continue;
+                }
+                curr->tao_distance = distance_p(points[i], points[j]);
+                if(curr->tao_distance < best.tao_distance) {
+                    best.tao_distance = curr->tao_distance;
+                    n = j;
+                }
+            }
+            /* record path
+            for(k = 0; k < segments->size(); k++) {
+                if(segment_match(*segments, points[i].index, points[n].index) == -1) {
+                    tmp = new int [2];
+                    tmp[0] = points[i].index;
+                    tmp[1] = points[n].index;
+                    segments->push_back(tmp);
+                    printf("added: <%d,%d>\n", points[i].index, points[n].index);
+                    break;
+                }
+            }
+        }
+    }*/
     return polygons;
 }
 
