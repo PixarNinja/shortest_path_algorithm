@@ -59,9 +59,8 @@ int segment_match(vector<int *> segments, int beginning, int end);
 int duplicate_search(vector<int> shape);
 vector<struct polygon_t> delete_duplicates(vector<struct polygon_t> polygons);
 vector<struct polygon_t> optimize_polygons(vector<struct polygon_t> polygons, vector<int *> *segments, struct point_t *points, int size, FILE *gnu_files[NUM_FILES]);
+vector<struct polygon_t> remove_crosses(vector<struct polygon_t> polygons, vector<int *> *segments, struct point_t *points, int size, FILE *gnu_files[NUM_FILES]);
 int point_match(struct point_t *points, int size, int vertex);
-deque<int> *separate_shape(deque<int> *queue, int size, int n, int m);
-deque<int> *merge_queue(deque<int> *queue, int size);
 double calculate_curvature(struct vector_t T1, struct vector_t T2, double tao);
 double angle_t(double tao);
 double tao_distance(struct vector_t V, double curvature, double theta);
@@ -180,6 +179,11 @@ int main(int argc, char *argv[])
         /* ensure each polygon is optimal */
         count = segments->size();
         polygons = optimize_polygons(polygons, segments, points, size, gnu_files);
+    } while(count < segments->size());
+    /* get rid of crossing lines */
+    do {
+        count = segments->size();
+        polygons = remove_crosses(polygons, segments, points, size, gnu_files);
     } while(count < segments->size());
     /* plot segment information */
     for(i = 0; i < segments->size(); i++) {
@@ -1357,6 +1361,7 @@ vector<struct polygon_t> delete_duplicates(vector<struct polygon_t> polygons)
     return polygons;
 }
 
+/* returns the optimized polygons */
 vector<struct polygon_t> optimize_polygons(vector<struct polygon_t> polygons, vector<int *> *segments, struct point_t *points, int size, FILE *gnu_files[NUM_FILES])
 {
     struct vector_t V;
@@ -1786,6 +1791,33 @@ vector<struct polygon_t> optimize_polygons(vector<struct polygon_t> polygons, ve
     return polygons;
 }
 
+/* returns the polygons with all crosses removed */
+vector<struct polygon_t> remove_crosses(vector<struct polygon_t> polygons, vector<int *> *segments, struct point_t *points, int size, FILE *gnu_files[NUM_FILES])
+{
+    int i = 0;
+    int j = 0;
+    int k = 0;
+    double linsys[2][3] = {0.0};
+
+    for(i = 0; i < polygons.size(); i++) {
+        /*  */
+        for(j = 0; j < (polygons[i]).shape.size() - 1; j++) {
+            /* setup linear system */
+            linsys[1][1] = 1;
+            linsys[1][2] = points[polygons[i].shape[j]].x;
+            linsys[1][3] = points[polygons[i].shape[j]].y;
+            for(k = 0; k < polygons.size(); k++) {
+                if(k == i)
+                    break;
+                linsys[2][1] = points[polygons[i].shape[j + 1]].x;
+                linsys[1][2] = 1;
+                linsys[1][3] = points[polygons[i].shape[j + 1]].y;
+            }
+        }
+    }
+    return polygons;
+}
+
 /* returns the index of the requested vertex */
 int point_match(struct point_t *points, int size, int vertex)
 {
@@ -1795,53 +1827,6 @@ int point_match(struct point_t *points, int size, int vertex)
         } 
     }
     return -1;
-}
-
-/* separates a shape given there is a found duplicate at index m */
-deque<int> *separate_shape(deque<int> *queue, int size, int n, int m)
-{
-    int i = 0;
-    int j = 0;
-    for(i = 0; i < size; i++) {
-        /* add segment to an empty slot */
-        if(queue[i].size() < 1) {
-            for(j = m + 1; queue[n][j] != queue[n][m]; j++) {
-                queue[i].push_back(queue[n][j]);
-            }
-            queue[i].push_back(queue[n][m]);
-            break;
-        }
-    }
-    return queue;
-}
-
-/* merges queue entries if they match */
-deque<int> *merge_queue(deque<int> *queue, int size)
-{
-    int i = 0;
-    int j = 0;
-    int k = 0;
-    for(i = 0; i < size; i++) {
-        for(j = 0; j < size; j++) {
-            if((i == j) || (queue[i].size() < 1) || (queue[j].size() < 1)) {
-                continue;
-            }
-            /* check if queue[i][last] matches queue[j][0] */
-            if((queue[i][queue[i].size() - 1]) == queue[j][0]) {
-                printf("MERGE\n");
-                for(k = 1; k < queue[j].size(); k++) {
-                    queue[i].push_back(queue[j][k]);
-                }
-                queue[j].erase(queue[j].begin(), queue[j].end());
-                for(k = j; k < size - 1; k++) {
-                    queue[k] = queue[k + 1];
-                }
-                queue[size - 1].clear();
-                break;
-            }
-        }
-    }
-    return queue;
 }
 
 /* calculates curvature given structure k */
