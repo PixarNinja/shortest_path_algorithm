@@ -1797,15 +1797,16 @@ vector<struct polygon_t> remove_crosses(vector<struct polygon_t> polygons, vecto
     int i = 0;
     int j = 0;
     int k = 0;
+    int intersection = 1;
     double linsys[2][3] = {0.0};
     double y = 0.0;
     double m = 0.0;
     double x = 0.0;
     double b = 0.0;
-    double r = 0.0;
-    double l = 0.0;
+    double r = DBL_MAX;
+    double l = DBL_MAX;
 
-    /* loops through polygon */
+    /* loops through all polygon */
     for(i = 0; i < polygons.size(); i++) {
         /* loops through shape */
         for(j = 0; j < (polygons[i]).shape.size() - 1; j++) {
@@ -1819,85 +1820,102 @@ vector<struct polygon_t> remove_crosses(vector<struct polygon_t> polygons, vecto
             linsys[1][2] = 1;
             linsys[1][3] = b;
             for(k = 0; k < segments->size(); k++) {
-                if((points[segments[k][0]].index == points[polygons[i].shape[j]].index) || (points[segments[k][1]] == points[polygons[i].shape[j]].index) || (points[segments[k][0]].index == points[polygons[i].shape[j + 1]].index) || (points[segments[k][1]] == points[polygons[i].shape[j + 1]].index)) //if the indices of the segment match the indices of the shape's edge
+                printf("\ni:%d j:%d k:%d\n", i, j, k);
+                if((points[(*segments)[k][0]].index == points[polygons[i].shape[j]].index) || (points[(*segments)[k][1]].index == points[polygons[i].shape[j]].index) || (points[(*segments)[k][0]].index == points[polygons[i].shape[j + 1]].index) || (points[(*segments)[k][1]].index == points[polygons[i].shape[j + 1]].index)) //if the indices of the segment match the indices of the shape's edge
                     break;
+                /* find intersection area */
+                r = DBL_MAX;
+                l = DBL_MAX;
+                if(points[(*segments)[k][0]].x < points[(*segments)[k][1]].x)
+                    if(points[polygons[i].shape[j]].x < points[polygons[i].shape[j + 1]].x)
+                        if(points[(*segments)[k][0]].x < points[polygons[i].shape[j + 1]].x)
+                            l = points[(*segments)[k][0]].x;
+                        else
+                            ; //no intersection
+                    else
+                        if(points[(*segments)[k][0]].x < points[polygons[i].shape[j]].x)
+                            l = points[(*segments)[k][0]].x;
+                        else
+                            ; //no intersection
+                else
+                    if(points[polygons[i].shape[j]].x < points[polygons[i].shape[j + 1]].x)
+                        if(points[(*segments)[k][1]].x < points[polygons[i].shape[j + 1]].x)
+                            l = points[(*segments)[k][1]].x;
+                        else
+                            ; //no intersection
+                    else
+                        if(points[(*segments)[k][1]].x < points[polygons[i].shape[j]].x)
+                            l = points[(*segments)[k][1]].x;
+                        else
+                            ; //no intersection
+                if(points[(*segments)[k][0]].x < points[(*segments)[k][1]].x)
+                    if(points[polygons[i].shape[j]].x < points[polygons[i].shape[j + 1]].x)
+                        if(points[(*segments)[k][0]].x < points[polygons[i].shape[j + 1]].x)
+                            r = points[polygons[i].shape[j + 1]].x;
+                        else
+                            ; //no intersection
+                    else
+                        if(points[(*segments)[k][0]].x < points[polygons[i].shape[j]].x)
+                            r = points[polygons[i].shape[j]].x;
+                        else
+                            ; //no intersection
+                else
+                    if(points[polygons[i].shape[j]].x < points[polygons[i].shape[j + 1]].x)
+                        if(points[(*segments)[k][1]].x < points[polygons[i].shape[j + 1]].x)
+                            r = points[polygons[i].shape[j + 1]].x;
+                        else
+                            ; //no intersection
+                    else
+                        if(points[(*segments)[k][1]].x < points[polygons[i].shape[j]].x)
+                            r = points[polygons[i].shape[j]].x;
+                        else
+                            ; //no intersection
+                if(((l == points[(*segments)[k][0]].x || l == points[(*segments)[k][1]].x) && (r == points[polygons[i].shape[j]].x || r == points[polygons[i].shape[j + 1]].x)) || (l == DBL_MAX) || (r == DBL_MAX)) {
+                    printf("\nINTERSECTION IMPOSSIBLE!\n");
+                    break;
+                }
+                else
+                    printf("\nINTERSECTION POSSIBLE!\n");
                 /* create second equation */
-                y = points[segments[k][0]].y; //y = y1
-                m = (points[segments[k][1]].y - points[segments[k][0]].y) / (points[segments[k][1]].x - points[segments[k][0]].x); //m = (y2 - y1) / (x2 - x1)
-                x = points[segments[k][0]].x; //x = x1
+                y = points[(*segments)[k][0]].y; //y = y1
+                m = (points[(*segments)[k][1]].y - points[(*segments)[k][0]].y) / (points[(*segments)[k][1]].x - points[(*segments)[k][0]].x); //m = (y2 - y1) / (x2 - x1)
+                x = points[(*segments)[k][0]].x; //x = x1
                 b = y - m * x; //b = y1 - m * x1
                 /* setup second row of linear system */
                 linsys[2][1] = -m;
-                linsys[1][2] = 1;
-                linsys[1][3] = b;
-                /* solve linear system */
-                linsys[1][3] = linsys[1][3] / linsys[1][1];
-                linsys[1][2] = linsys[1][2] / linsys[1][1];
-                linsys[1][1] = 1;
-                linsys[2][3] = linsys[2][3] - linsys[1][3] * linsys[2][1];
-                linsys[2][2] = linsys[2][2] - linsys[1][2] * linsys[2][1];
-                linsys[2][1] = 0;
-                linsys[2][3] = linsys[2][3] / linsys[2][2];
                 linsys[2][2] = 1;
-                linsys[1][3] = linsys[1][3] - linsys[2][3] * linsys[1][2];
-                linsys[1][2] = 0;
+                linsys[2][3] = b;
+                /* solve linear system */
                 printf("\nLINEAR SYSTEM:\n\n");
+                if(linsys[1][1] != 0) {
+                        linsys[1][3] = linsys[1][3] / linsys[1][1];
+                        linsys[1][2] = linsys[1][2] / linsys[1][1];
+                        linsys[1][1] = linsys[1][1] / linsys[1][1];
+                }
                 printf("| %0.2f %0.2f %0.2f |\n", linsys[1][1], linsys[1][2], linsys[1][3]);
                 printf("| %0.2f %0.2f %0.2f |\n\n", linsys[2][1], linsys[2][2], linsys[2][3]);
-                /* find intersection area */
-                if(points[segments[k][0]].x < points[segments[k][1]].x)
-                    if(points[polygons[i].shape[j]].x < points[polygons[i].shape[j + 1]].x)
-                        if(points[segments[k][0]].x < points[polygons[i].shape[j + 1]].x)
-                            l = points[segments[k][0]].x;
-                        else
-                            intersection = 0; //no intersection
-                    else
-                        if(points[segments[k][0]].x < points[polygons[i].shape[j]].x)
-                            l = points[segments[k][0]].x;
-                        else
-                            intersection = 0; //no intersection
-                else
-                    if(points[polygons[i].shape[j]].x < points[polygons[i].shape[j + 1]].x)
-                        if(points[segments[k][1]].x < points[polygons[i].shape[j + 1]].x)
-                            l = points[segments[k][1]].x;
-                        else
-                            intersection = 0; //no intersection
-                    else
-                        if(points[segments[k][1]].x < points[polygons[i].shape[j]].x)
-                            l = points[segments[k][1]].x;
-                        else
-                            intersection = 0; //no intersection
-                if(points[segments[k][0]].x < points[segments[k][1]].x)
-                    if(points[polygons[i].shape[j]].x < points[polygons[i].shape[j + 1]].x)
-                        if(points[segments[k][0]].x < points[polygons[i].shape[j + 1]].x)
-                            r = points[polygons[i].shape[j + 1]].x;
-                        else
-                            intersection = 0; //no intersection
-                    else
-                        if(points[segments[k][0]].x < points[polygons[i].shape[j]].x)
-                            r = points[polygons[i].shape[j]].x;
-                        else
-                            intersection = 0; //no intersection
-                else
-                    if(points[polygons[i].shape[j]].x < points[polygons[i].shape[j + 1]].x)
-                        if(points[segments[k][1]].x < points[polygons[i].shape[j + 1]].x)
-                            r = points[polygons[i].shape[j + 1]].x;
-                        else
-                            intersection = 0; //no intersection
-                    else
-                        if(points[segments[k][1]].x < points[polygons[i].shape[j]].x)
-                            r = points[polygons[i].shape[j]].x;
-                        else
-                            intersection = 0; //no intersection
+                linsys[2][3] = linsys[2][3] - linsys[1][3] * linsys[2][1];
+                linsys[2][2] = linsys[2][2] - linsys[1][2] * linsys[2][1];
+                linsys[2][1] = linsys[2][1] - linsys[1][1] * linsys[2][1];
+                printf("| %0.2f %0.2f %0.2f |\n", linsys[1][1], linsys[1][2], linsys[1][3]);
+                printf("| %0.2f %0.2f %0.2f |\n\n", linsys[2][1], linsys[2][2], linsys[2][3]);
+                if(linsys[2][2] != 0) {
+                        linsys[2][3] = linsys[2][3] / linsys[2][2];
+                        linsys[2][2] = linsys[2][2] / linsys[2][2];
+                }
+                printf("| %0.2f %0.2f %0.2f |\n", linsys[1][1], linsys[1][2], linsys[1][3]);
+                printf("| %0.2f %0.2f %0.2f |\n\n", linsys[2][1], linsys[2][2], linsys[2][3]);
+                linsys[1][3] = linsys[1][3] - linsys[2][3] * linsys[1][2];
+                linsys[1][2] = linsys[1][2] - linsys[2][2] * linsys[1][2];
+                printf("| %0.2f %0.2f %0.2f |\n", linsys[1][1], linsys[1][2], linsys[1][3]);
+                printf("| %0.2f %0.2f %0.2f |\n\n", linsys[2][1], linsys[2][2], linsys[2][3]);
                 /* check if the intersection is valid */
-                if(intersection && (linsys[1][3] < r && linsys[1][3] > l))
+                printf("\nRANGE: [%0.2f,%0.2f]\n", l, r);
+                if(linsys[1][3] < r && linsys[1][3] > l)
                     printf("\nINTERSECTION!!!\n");
                 else
                      printf("\nNO INTERSECTION!!!\n");
                 /* correct the cross */
-                j = (polygons[i]).shape.size();
-                i = polygons.size();
-                break;
             }
         }
     }
