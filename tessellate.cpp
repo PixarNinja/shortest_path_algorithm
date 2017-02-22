@@ -183,7 +183,7 @@ int main(int argc, char *argv[])
     /* print segment information */
     printf("\nSEGMENTS:\n");
     for(i = 0; i < segments->size(); i++) {
-        printf("%d: <%d,%d>\n", i, (*segments)[i][0], (*segments)[i][1]);
+        printf("%d: <%d,%d>\n", i, points[(*segments)[i][0]].index, points[(*segments)[i][1]].index);
     }
     /* get rid of crossing lines */
     do {
@@ -192,13 +192,8 @@ int main(int argc, char *argv[])
     } while(count < segments->size());
     /* plot segment information */
     for(i = 0; i < segments->size(); i++) {
-        j = point_match(points, size, (*segments)[i][0]);
-        k = point_match(points, size, (*segments)[i][1]);
-        if((j == -1) || (k == -1)) {
-            exit(EXIT_FAILURE);
-        }
-        fprintf(gnu_files[2], "%lf %lf %d\n", points[j].x, points[j].y, points[j].index);
-        fprintf(gnu_files[2], "%lf %lf %d\n", points[k].x, points[k].y, points[k].index);
+        fprintf(gnu_files[2], "%lf %lf %d\n", points[(*segments)[i][0]].x, points[(*segments)[i][0]].y, points[(*segments)[i][0]].index);
+        fprintf(gnu_files[2], "%lf %lf %d\n", points[(*segments)[i][1]].x, points[(*segments)[i][1]].y, points[(*segments)[i][1]].index);
         fprintf(gnu_files[2], "\n");
     }
     /* plot perimeter data */
@@ -428,8 +423,8 @@ void construct_segments(vector<int *> *segments, struct point_t *points, struct 
                     }
                     /* pushes new segments */
                     pushed_segment = new int [2];
-                    pushed_segment[0] = points[tmp_segments[j][0]].index;
-                    pushed_segment[1] = points[tmp_segments[j][1]].index;
+                    pushed_segment[0] = tmp_segments[j][0];
+                    pushed_segment[1] = tmp_segments[j][1];
                     segments->push_back(pushed_segment);
                     recorded[tmp_segments[j][0]][tmp_segments[j][1]] = 1;
                     /* book-keeping */
@@ -638,8 +633,8 @@ void join_vertex(vector<int *> *segments, struct point_t *points, struct point_t
         tmp_segments[m][1] = k;
         /* pushes new segments */
         pushed_segment = new int [2];
-        pushed_segment[0] = points[tmp_segments[m][0]].index;
-        pushed_segment[1] = points[tmp_segments[m][1]].index;
+        pushed_segment[0] = tmp_segments[m][0];
+        pushed_segment[1] = tmp_segments[m][1];
         segments->push_back(pushed_segment);
         m++;
         /* reinitializing vector V */
@@ -819,8 +814,8 @@ void join_segment(vector<int *> *segments, struct point_t *points, struct point_
     printf("... joining: <%d,%d>\n", points[n].index, points[k].index);
     /* pushes new segments */
     pushed_segment = new int [2];
-    pushed_segment[0] = points[tmp_segments[m][0]].index;
-    pushed_segment[1] = points[tmp_segments[m][1]].index;
+    pushed_segment[0] = tmp_segments[m][0];
+    pushed_segment[1] = tmp_segments[m][1];
     segments->push_back(pushed_segment);
     return;
 }
@@ -1184,7 +1179,7 @@ vector<int> add_path(vector<int> path, vector<int *> edges, struct point_t *poin
 }
 
 /* searches through a vector of segments for all matching end or
- * beginning segments, returning the vertex and index at which
+ * beginning segments, returning the first and last indices at which
  * it was found in a vector of 2D arrays */
 vector<int *> edge_search(vector<int *> segments, int vertex, struct point_t *points, int size)
 {
@@ -1201,22 +1196,22 @@ vector<int *> edge_search(vector<int *> segments, int vertex, struct point_t *po
                 break;
             }
         }
-        if(segments[i][0] == vertex) {
+        if(segments[i][0] == points[vertex].index) {
             tmp = new int [2];
             tmp[0] = j;
             for(j = 0; j < size; j++) {
-                if(points[j].index == segments[i][1]) {
+                if(points[j].index == points[segments[i][1]].index) {
                     break;
                 }
             }
             tmp[1] = j;
             edges.push_back(tmp);
         }
-        else if(segments[i][1] == vertex) {
+        else if(segments[i][1] == points[vertex].index) {
             tmp = new int [2];
             tmp[0] = j;
             for(j = 0; j < size; j++) {
-                if(points[j].index == segments[i][0]) {
+                if(points[j].index == points[segments[i][0]].index) {
                     break;
                 }
             }
@@ -1498,10 +1493,10 @@ vector<struct polygon_t> optimize_polygons(vector<struct polygon_t> polygons, ve
             }
             /* record path */
             for(k = 0; k < (*segments).size(); k++) {
-                if(segment_match(*segments, points[(polygons[i]).shape[j]].index, points[n].index) == -1) {
+                if(segment_match(*segments, (polygons[i]).shape[j], n) == -1) {
                     tmp = new int [2];
-                    tmp[0] = points[(polygons[i]).shape[j]].index;
-                    tmp[1] = points[n].index;
+                    tmp[0] = (polygons[i]).shape[j];
+                    tmp[1] = n;
                     (*segments).push_back(tmp);
                     printf("added: <%d,%d>\n", points[(polygons[i]).shape[j]].index, points[n].index);
                     break;
@@ -1619,10 +1614,10 @@ vector<struct polygon_t> optimize_polygons(vector<struct polygon_t> polygons, ve
             }
             /* record path */
             for(k = 0; k < (*segments).size(); k++) {
-                if(segment_match(*segments, points[(polygons[i]).shape[j]].index, points[n].index) == -1) {
+                if(segment_match(*segments, (polygons[i]).shape[j], n) == -1) {
                     tmp = new int [2];
-                    tmp[0] = points[(polygons[i]).shape[j]].index;
-                    tmp[1] = points[n].index;
+                    tmp[0] = (polygons[i]).shape[j];
+                    tmp[1] = n;
                     (*segments).push_back(tmp);
                     printf("added: <%d,%d>\n", points[(polygons[i]).shape[j]].index, points[n].index);
                     break;
@@ -1739,12 +1734,12 @@ vector<struct polygon_t> optimize_polygons(vector<struct polygon_t> polygons, ve
                 }
             }
             /* record path */
-            for(k = 0; k < segments->size(); k++) {
-                if(segment_match(*segments, points[(polygons[i]).shape[j]].index, points[n].index) == -1) {
+            for(k = 0; k < (*segments).size(); k++) {
+                if(segment_match(*segments, (polygons[i]).shape[j], n) == -1) {
                     tmp = new int [2];
-                    tmp[0] = points[(polygons[i]).shape[j]].index;
-                    tmp[1] = points[n].index;
-                    segments->push_back(tmp);
+                    tmp[0] = (polygons[i]).shape[j];
+                    tmp[1] = n;
+                    (*segments).push_back(tmp);
                     printf("added: <%d,%d>\n", points[(polygons[i]).shape[j]].index, points[n].index);
                     break;
                 }
@@ -1817,11 +1812,7 @@ vector<struct polygon_t> remove_crosses(vector<struct polygon_t> polygons, vecto
         /* loops through shape */
         for(j = 0; j < (polygons[i]).shape.size() - 1; j++) {
             for(k = 0; k < segments->size(); k++) {
-                printf("\ni:%d j:%d k:%d\n", i, j, k);
-                /*TODO: use point_match. Ex:
-                j = point_match(points, size, (*segments)[i][0]);
-                k = point_match(points, size, (*segments)[i][1]);
-                */
+                //printf("\ni:%d j:%d k:%d\n", i, j, k);
                 if((points[(*segments)[k][0]].index == points[polygons[i].shape[j]].index) || (points[(*segments)[k][1]].index == points[polygons[i].shape[j]].index) || (points[(*segments)[k][0]].index == points[polygons[i].shape[j + 1]].index) || (points[(*segments)[k][1]].index == points[polygons[i].shape[j + 1]].index)) { //if the indices of the segment match the indices of the shape's edge
                     //printf("\nINTERSECTION IMPOSSIBLE!\n");
                     continue;
@@ -1840,7 +1831,7 @@ vector<struct polygon_t> remove_crosses(vector<struct polygon_t> polygons, vecto
                     p4 = 0;
                 }
                 /* print for debug */
-                printf("shape: <%d,%d>  segment: <%d,%d>\n", points[polygons[i].shape[p1]].index, points[polygons[i].shape[p2]].index, points[(*segments)[k][p3]].index, points[(*segments)[k][p4]].index);
+                //printf("shape: <%d,%d>  segment: <%d,%d>\n", points[polygons[i].shape[p1]].index, points[polygons[i].shape[p2]].index, points[(*segments)[k][p3]].index, points[(*segments)[k][p4]].index);
                 /* make sure the left nodes are not the same */
                 if(points[polygons[i].shape[p1]].index == points[(*segments)[k][p3]].index) {
                     //printf("\nINTERSECTION IMPOSSIBLE!\n");
@@ -1888,7 +1879,7 @@ vector<struct polygon_t> remove_crosses(vector<struct polygon_t> polygons, vecto
                     //printf("\nINTERSECTION IMPOSSIBLE!\n");
                     continue;
                 }
-                printf("\nINTERSECTION POINT: ");
+                //printf("\nINTERSECTION POINT: ");
                 /* create first equation */
                 y = points[polygons[i].shape[p1]].y;
                 m1 = (points[polygons[i].shape[p2]].y - points[polygons[i].shape[p1]].y) / (points[polygons[i].shape[p2]].x - points[polygons[i].shape[p1]].x);
@@ -1902,11 +1893,11 @@ vector<struct polygon_t> remove_crosses(vector<struct polygon_t> polygons, vecto
                 /* solve linear system */
                 x = (b2 - b1) / (m1 - m2);
                 y = m1 * x + b1;
-                printf("(%0.2lf, %0.2lf)\n", x, y);
+                //printf("(%0.2lf, %0.2lf)\n", x, y);
                 if(x < r && x > l)
                     printf("\nINTERSECTION FOUND!!!\n");
                 else
-                     printf("\nNO INTERSECTION!!!\n");
+                     ;//printf("\nNO INTERSECTION!!!\n");
                 /* correct the cross */
             }
         }
