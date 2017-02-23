@@ -59,7 +59,7 @@ int segment_match(vector<int *> segments, int beginning, int end);
 int duplicate_search(vector<int> shape);
 vector<struct polygon_t> delete_duplicates(vector<struct polygon_t> polygons);
 vector<struct polygon_t> optimize_polygons(vector<struct polygon_t> polygons, vector<int *> *segments, struct point_t *points, int size, FILE *gnu_files[NUM_FILES]);
-vector<struct polygon_t> remove_crosses(vector<struct polygon_t> polygons, vector<int *> *segments, struct point_t *points, int size, FILE *gnu_files[NUM_FILES]);
+void remove_crosses(vector<struct polygon_t> polygons, vector<int *> *segments, struct point_t *points, int size, FILE *gnu_files[NUM_FILES]);
 int point_match(struct point_t *points, int size, int vertex);
 double calculate_curvature(struct vector_t T1, struct vector_t T2, double tao);
 double angle_t(double tao);
@@ -186,10 +186,9 @@ int main(int argc, char *argv[])
         printf("%d: <%d,%d>\n", i, points[(*segments)[i][0]].index, points[(*segments)[i][1]].index);
     }
     /* get rid of crossing lines */
-    do {
-        count = segments->size();
-        polygons = remove_crosses(polygons, segments, points, size, gnu_files);
-    } while(count < segments->size());
+    remove_crosses(polygons, segments, points, size, gnu_files);
+    /* find polygons again */
+    polygons = construct_polygons(*segments, points, size, gnu_files);
     /* plot segment information */
     for(i = 0; i < segments->size(); i++) {
         fprintf(gnu_files[2], "%lf %lf %d\n", points[(*segments)[i][0]].x, points[(*segments)[i][0]].y, points[(*segments)[i][0]].index);
@@ -1787,8 +1786,9 @@ vector<struct polygon_t> optimize_polygons(vector<struct polygon_t> polygons, ve
 }
 
 /* returns the polygons with all crosses removed */
-vector<struct polygon_t> remove_crosses(vector<struct polygon_t> polygons, vector<int *> *segments, struct point_t *points, int size, FILE *gnu_files[NUM_FILES])
+void remove_crosses(vector<struct polygon_t> polygons, vector<int *> *segments, struct point_t *points, int size, FILE *gnu_files[NUM_FILES])
 {
+    int *tmp = NULL;
     int p1 = 0;
     int p2 = 0;
     int p3 = 0;
@@ -1796,7 +1796,7 @@ vector<struct polygon_t> remove_crosses(vector<struct polygon_t> polygons, vecto
     int i = 0;
     int j = 0;
     int k = 0;
-    int intersection = 1;
+    int s = 0;
     double linsys[2][3] = {0.0};
     double y = 0.0;
     double x = 0.0;
@@ -1812,9 +1812,7 @@ vector<struct polygon_t> remove_crosses(vector<struct polygon_t> polygons, vecto
         /* loops through shape */
         for(j = 0; j < (polygons[i]).shape.size() - 1; j++) {
             for(k = 0; k < segments->size(); k++) {
-                //printf("\ni:%d j:%d k:%d\n", i, j, k);
                 if((points[(*segments)[k][0]].index == points[polygons[i].shape[j]].index) || (points[(*segments)[k][1]].index == points[polygons[i].shape[j]].index) || (points[(*segments)[k][0]].index == points[polygons[i].shape[j + 1]].index) || (points[(*segments)[k][1]].index == points[polygons[i].shape[j + 1]].index)) { //if the indices of the segment match the indices of the shape's edge
-                    //printf("\nINTERSECTION IMPOSSIBLE!\n");
                     continue;
                 }
                 /* find intersection area */
@@ -1830,16 +1828,12 @@ vector<struct polygon_t> remove_crosses(vector<struct polygon_t> polygons, vecto
                     p3 = 1;
                     p4 = 0;
                 }
-                /* print for debug */
-                //printf("shape: <%d,%d>  segment: <%d,%d>\n", points[polygons[i].shape[p1]].index, points[polygons[i].shape[p2]].index, points[(*segments)[k][p3]].index, points[(*segments)[k][p4]].index);
                 /* make sure the left nodes are not the same */
                 if(points[polygons[i].shape[p1]].index == points[(*segments)[k][p3]].index) {
-                    //printf("\nINTERSECTION IMPOSSIBLE!\n");
                     continue;
                 }
                 /* make sure the right nodes are not the same */
                 if(points[polygons[i].shape[p2]].index == points[(*segments)[k][p4]].index) {
-                    //printf("\nINTERSECTION IMPOSSIBLE!\n");
                     continue;
                 }
                 /* find the left and right boundaries of intersection on the x-axis */
@@ -1871,15 +1865,12 @@ vector<struct polygon_t> remove_crosses(vector<struct polygon_t> polygons, vecto
                 }
                 /* a---------b  c---------d */
                 else {
-                    //printf("\nINTERSECTION IMPOSSIBLE!\n");
                     continue;
                 }
                 /* c---------d  a---------b */
                 if(l >= r) {
-                    //printf("\nINTERSECTION IMPOSSIBLE!\n");
                     continue;
                 }
-                //printf("\nINTERSECTION POINT: ");
                 /* create first equation */
                 y = points[polygons[i].shape[p1]].y;
                 m1 = (points[polygons[i].shape[p2]].y - points[polygons[i].shape[p1]].y) / (points[polygons[i].shape[p2]].x - points[polygons[i].shape[p1]].x);
@@ -1893,16 +1884,57 @@ vector<struct polygon_t> remove_crosses(vector<struct polygon_t> polygons, vecto
                 /* solve linear system */
                 x = (b2 - b1) / (m1 - m2);
                 y = m1 * x + b1;
-                //printf("(%0.2lf, %0.2lf)\n", x, y);
-                if(x < r && x > l)
+                if(x < r && x > l) {
                     printf("\nINTERSECTION FOUND!!!\n");
-                else
-                     ;//printf("\nNO INTERSECTION!!!\n");
-                /* correct the cross */
+                    /* add segments around the square, if not already added */
+                    if(segment_match(*segments, polygons[i].shape[p1], (*segments)[k][p3]) == -1) {
+                        tmp = new int [2];
+                        tmp[0] = (polygons[i]).shape[p1];
+                        tmp[1] = (*segments)[k][p3];
+                        (*segments).push_back(tmp);
+                        k++;
+                    }
+                    if(segment_match(*segments, polygons[i].shape[p1], (*segments)[k][p4]) == -1) {
+                        tmp = new int [2];
+                        tmp[0] = (polygons[i]).shape[p1];
+                        tmp[1] = (*segments)[k][p4];
+                        (*segments).push_back(tmp);
+                        k++;
+                    }
+                    if(segment_match(*segments, polygons[i].shape[p2], (*segments)[k][p3]) == -1) {
+                        tmp = new int [2];
+                        tmp[0] = (polygons[i]).shape[p2];
+                        tmp[1] = (*segments)[k][p3];
+                        (*segments).push_back(tmp);
+                        k++;
+                    }
+                    if(segment_match(*segments, polygons[i].shape[p2], (*segments)[k][p4]) == -1) {
+                        tmp = new int [2];
+                        tmp[0] = (polygons[i]).shape[p2];
+                        tmp[1] = (*segments)[k][p4];
+                        (*segments).push_back(tmp);
+                        k++;
+                    }
+                    /* replace the intersection with a box around it */
+                    printf("searching for: <%d,%d>\n", points[polygons[i].shape[p1]].index, points[polygons[i].shape[p2]].index);
+                    s = segment_match(*segments, polygons[i].shape[p1], polygons[i].shape[p2]);
+                    if(s == -1) {
+                        exit(EXIT_FAILURE);
+                    }
+                    printf("intersection: (%0.2lf, %0.2lf), ", x, y);
+                    printf("segments: <%d,%d>\n", points[(*segments)[s][0]].index, points[(*segments)[s][1]].index);
+                    printf("points: <%d,%d>\n", points[(*segments)[k][0]].index, points[(*segments)[k][1]].index);
+                    (*segments).erase((*segments).begin() + s);
+                    k--;
+                    (*segments).erase((*segments).begin() + k);
+                    k--;
+                    i = 0;
+                    j = 0;
+                    break;
+                }
             }
         }
     }
-    return polygons;
 }
 
 /* returns the index of the requested vertex */
