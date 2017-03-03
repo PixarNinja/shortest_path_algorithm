@@ -48,7 +48,7 @@ void construct_segments(vector<int *> *segments, struct point_t *points, struct 
 void join_vertex(vector<int *> *segments, struct point_t *points, struct point_t begin, int n, int size, FILE *gnu_files[NUM_FILES]);
 void join_segment(vector<int *> *segments, struct point_t *points, struct point_t begin, struct point_t end, int n, int m, int size, FILE *gnu_files[NUM_FILES]);
 vector<struct polygon_t> construct_polygons(vector<int *> segments, struct point_t *points, int size, FILE *gnu_files[NUM_FILES]);
-vector<vector<int> > tesselate(vector<vector<int> > tesselations, vector<int *> segments, struct point_t *points, int size, struct point_t start, FILE *gnu_files[NUM_FILES]);
+vector<vector<int> > tesselate(vector<vector<int> > tesselations, vector<int *> segments, struct point_t *points, int size, char type, FILE *gnu_files[NUM_FILES]);
 vector<int> add_path(vector<int> path, vector<int *> edges, struct point_t *points, struct point_t prev, struct vector_t X, struct vector_t Y, char type);
 vector<int> init_path(vector<int> path, vector<int *> edges, struct point_t *points, struct point_t prev, struct vector_t X, struct vector_t Y, char type);
 vector<int *> edge_search(vector<int *> segments, int vertex, struct point_t *points, int size);
@@ -1156,26 +1156,7 @@ vector<int> add_path(vector<int> path, vector<int *> edges, struct point_t *poin
     case 'l':
         /* first check for an edge in quadrant 3 */
         for(i = 0; i < edges.size(); i++) {
-            for(i = 0; i < edges.size(); i++) {
-                if(quads[i] == 3) {
-                    if(edges[i][1] == prev.index) {
-                        continue;
-                    }
-                    found = 1;
-                    if(!init) {
-                        curr = i;
-                        init = 1;
-                    }
-                     find the greatest Y value
-                    else if(Y_flags[i] > Y_flags[curr]) {
-                        curr = i;
-                    }
-                }
-            }
-        }
-        /* now check for an edge in quadrant 2 */
-        if(!found) {
-            if(quads[i] == 2) {
+            if(quads[i] == 3) {
                 if(edges[i][1] == prev.index) {
                     continue;
                 }
@@ -1184,9 +1165,28 @@ vector<int> add_path(vector<int> path, vector<int *> edges, struct point_t *poin
                     curr = i;
                     init = 1;
                 }
-                 find the greatest Y value
+                /* find the greatest Y value */
                 else if(Y_flags[i] > Y_flags[curr]) {
                     curr = i;
+                }
+            }
+        }
+        /* now check for an edge in quadrant 2 */
+        if(!found) {
+            for(i = 0; i < edges.size(); i++) {
+                if(quads[i] == 2) {
+                    if(edges[i][1] == prev.index) {
+                        continue;
+                    }
+                    found = 1;
+                    if(!init) {
+                        curr = i;
+                        init = 1;
+                    }
+                    /* find the greatest Y value */
+                    else if(Y_flags[i] > Y_flags[curr]) {
+                        curr = i;
+                    }
                 }
             }
         }
@@ -1266,8 +1266,25 @@ vector<int> init_path(vector<int> path, vector<int *> edges, struct point_t *poi
     case 'r':
         /* first check for an edge in quadrant 1 */
         for(i = 0; i < edges.size(); i++) {
+            if(quads[i] == 1) {
+                if(edges[i][1] == prev.index) {
+                    continue;
+                }
+                found = 1;
+                if(!init) {
+                    curr = i;
+                    init = 1;
+                }
+                /* find the smallest Y value */
+                else if(Y_flags[i] < Y_flags[curr]) {
+                    curr = i;
+                }
+            }
+        }
+        /* now check for an edge in quadrant 4 */
+        if(!found) {
             for(i = 0; i < edges.size(); i++) {
-                if(quads[i] == 1) {
+                if(quads[i] == 4) {
                     if(edges[i][1] == prev.index) {
                         continue;
                     }
@@ -1283,26 +1300,9 @@ vector<int> init_path(vector<int> path, vector<int *> edges, struct point_t *poi
                 }
             }
         }
-        /* now check for an edge in quadrant 4 */
-        if(!found) {
-            if(quads[i] == 4) {
-                if(edges[i][1] == prev.index) {
-                    continue;
-                }
-                found = 1;
-                if(!init) {
-                    curr = i;
-                    init = 1;
-                }
-                /* find the smallest Y value */
-                else if(Y_flags[i] < Y_flags[curr]) {
-                    curr = i;
-                }
-            }
-        }
         break;
     case 'l':
-        /* now check for an edge in quadrant 2 */
+        /* first check for an edge in quadrant 2 */
         for(i = 0; i < edges.size(); i++) {
             if(quads[i] == 2) {
                 if(edges[i][1] == prev.index) {
@@ -1313,7 +1313,7 @@ vector<int> init_path(vector<int> path, vector<int *> edges, struct point_t *poi
                     curr = i;
                     init = 1;
                 }
-                 find the greatest Y value
+                /* find the greatest Y value */
                 else if(Y_flags[i] > Y_flags[curr]) {
                     curr = i;
                 }
@@ -1331,7 +1331,7 @@ vector<int> init_path(vector<int> path, vector<int *> edges, struct point_t *poi
                         curr = i;
                         init = 1;
                     }
-                     find the greatest Y value
+                    /* find the greatest Y value */
                     else if(Y_flags[i] > Y_flags[curr]) {
                         curr = i;
                     }
