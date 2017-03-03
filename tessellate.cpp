@@ -1946,22 +1946,22 @@ void remove_crosses(vector<struct polygon_t> polygons, vector<int *> *segments, 
                 }
                 else if(points[polygons[i].shape[p2]].x >= points[(*segments)[k][p3]].x) {
                     l = points[(*segments)[k][p3]].x;
-                    /* a--------------------b */
-                    /*      c---------d */
+                    /* p1--------------------p2 */
+                    /*      p3---------p4 */
                     if(points[polygons[i].shape[p2]].x >= points[(*segments)[k][p4]].x) {
                         r = points[(*segments)[k][p4]].x;
                     }
-                    /* a--------------------b */
-                    /*      c-------------------------d */
+                    /* p1--------------------p2 */
+                    /*      p3-------------------------p4 */
                     else {
                         r = points[polygons[i].shape[p2]].x;
                     }
                 }
-                /* a---------b  c---------d */
+                /* p1---------p2  p3---------p4 */
                 else {
                     continue;
                 }
-                /* c---------d  a---------b */
+                /* p3---------p4  p1---------p2 */
                 if(l >= r) {
                     continue;
                 }
@@ -1980,40 +1980,11 @@ void remove_crosses(vector<struct polygon_t> polygons, vector<int *> *segments, 
                 y = m1 * x + b1;
                 if(x < r && x > l) {
                     printf("\nINTERSECTION FOUND!!!\n");
-                    /* add segments around the square, if not already added */
-                    if(segment_match(*segments, polygons[i].shape[p1], (*segments)[k][p3]) == -1) {
-                        tmp = new int [2];
-                        tmp[0] = (polygons[i]).shape[p1];
-                        tmp[1] = (*segments)[k][p3];
-                        (*segments).push_back(tmp);
-                        k++;
-                    }
-                    if(segment_match(*segments, polygons[i].shape[p1], (*segments)[k][p4]) == -1) {
-                        tmp = new int [2];
-                        tmp[0] = (polygons[i]).shape[p1];
-                        tmp[1] = (*segments)[k][p4];
-                        (*segments).push_back(tmp);
-                        k++;
-                    }
-                    if(segment_match(*segments, polygons[i].shape[p2], (*segments)[k][p3]) == -1) {
-                        tmp = new int [2];
-                        tmp[0] = (polygons[i]).shape[p2];
-                        tmp[1] = (*segments)[k][p3];
-                        (*segments).push_back(tmp);
-                        k++;
-                    }
-                    if(segment_match(*segments, polygons[i].shape[p2], (*segments)[k][p4]) == -1) {
-                        tmp = new int [2];
-                        tmp[0] = (polygons[i]).shape[p2];
-                        tmp[1] = (*segments)[k][p4];
-                        (*segments).push_back(tmp);
-                        k++;
-                    }
-                    /* replace the intersection with a box around it */
+                    /* replace the intersection */
                     printf("searching for: <%d,%d>\n", points[polygons[i].shape[p1]].index, points[polygons[i].shape[p2]].index);
                     s = segment_match(*segments, polygons[i].shape[p1], polygons[i].shape[p2]);
                     if(s == -1) {
-                        exit(EXIT_FAILURE);
+                        break;
                     }
                     printf("intersection: (%0.2lf, %0.2lf), ", x, y);
                     printf("segments: <%d,%d>\n", points[(*segments)[s][0]].index, points[(*segments)[s][1]].index);
