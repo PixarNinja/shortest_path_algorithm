@@ -49,8 +49,8 @@ void join_vertex(vector<int *> *segments, struct point_t *points, struct point_t
 void join_segment(vector<int *> *segments, struct point_t *points, struct point_t begin, struct point_t end, int n, int m, int size, FILE *gnu_files[NUM_FILES]);
 vector<struct polygon_t> construct_polygons(vector<int *> segments, struct point_t *points, int size, FILE *gnu_files[NUM_FILES]);
 vector<vector<int> > tesselate(vector<vector<int> > tesselations, vector<int *> segments, struct point_t *points, int size, char type, FILE *gnu_files[NUM_FILES]);
-vector<int> add_path(vector<int> path, vector<int *> edges, struct point_t *points, struct point_t prev, struct vector_t X, struct vector_t Y, char type);
-vector<int> init_path(vector<int> path, vector<int *> edges, struct point_t *points, struct point_t prev, struct vector_t X, struct vector_t Y, char type);
+vector<int> init_path(vector<int> path, vector<int *> edges, struct point_t *points, struct vector_t X, struct vector_t Y, char type);
+vector<int> add_path(vector<int> path, vector<int *> edges, struct point_t *points, struct vector_t X, struct vector_t Y, char type);
 vector<int *> edge_search(vector<int *> segments, int vertex, struct point_t *points, int size);
 int index_match(vector<int *> segments, int vertex);
 int shape_search(vector<int> shape, int vertex);
@@ -860,22 +860,19 @@ vector<vector<int> > tesselate(vector<vector<int> > tesselations, vector<int *> 
     Y.name = new char [2];
     Y.name[0] = 'Y';
     Y.name[1] = '\0';
-    struct point_t start = points[0];
-    struct point_t prev = points[0];
-    struct point_t curr = points[0];
-    struct point_t root = points[0];
+    struct point_t start;
+    struct point_t prev;
+    struct point_t root;
     vector<int *> edges; //pointer contains the index followed by position
     vector<int> path; //contains the path of nodes to add as a polygon
     vector<int> remove; //contains edges to remove
     int i = 0;
     int j = 0;
     int complete = 0;
-    int inserted = 0;
-    int visit = -1;
-    int done = 0;
-    int short_circuit = 0;
 
     for(i = 0; i < size; i++) {
+        point_t start = points[i];
+        point_t root = points[i];
         /* find the initial cluster of edges */
         edges = edge_search(segments, start.index, points, size);
         /* initialize axis vectors */
@@ -898,163 +895,75 @@ vector<vector<int> > tesselate(vector<vector<int> > tesselations, vector<int *> 
         X.point[1].index = -1;
         X.length = length_v(X);
         /* prints the initial cluster of edges */
+        printf("INITIAL: ");
         for(j = 0; j < edges.size(); j++) {
             printf("%d ", points[edges[j][1]].index);
         }
         printf("\n\n");
-
-        /* decides to branch left or right */
-        switch(type) {
-        case 'r':
-            /* find the initial direction */
-            path.push_back(edges[0][0]);
-            path = init_path(path, edges, points, prev, X, Y, 'r');
-            if(path.size() == 0) {
-                continue;
-            }
-            printf("PATH: %d %d ", points[path[0]].index, points[path[1]].index);
-            start.x = points[path[0]].x;
-            start.y = points[path[0]].y;
-            start.index = points[path[0]].index;
-            j = 1;
-            complete = 0;
-            inserted = 0;
-            while(!complete) {
-                prev.x = start.x;
-                prev.y = start.y;
-                prev.index = start.index;
-                start.x = points[path[j]].x;
-                start.y = points[path[j]].y;
-                start.index = points[path[j]].index;
-                /* initialize axis vectors */
-                Y.point[0].x = start.x;
-                Y.point[0].y = start.y;
-                Y.point[0].index = start.index;
-                Y.i = (start.x - prev.x) / distance_p(prev, start);
-                Y.j = (start.y - prev.y) / distance_p(prev, start);
-                Y.point[1].x = start.x + Y.i;
-                Y.point[1].y = start.y + Y.j;
-                Y.point[1].index = -1;
-                Y.length = length_v(Y);
-                X.point[0].x = start.x;
-                X.point[0].y = start.y;
-                X.point[0].index = start.index;
-                X.i = Y.j;
-                X.j = -Y.i;
-                X.point[1].x = start.x + X.i;
-                X.point[1].y = start.y + X.j;
-                X.point[1].index = -1;
-                X.length = length_v(X);
-                /* find the initial tesselations of edges */
-                edges = edge_search(segments, start.index, points, size);
-                path = add_path(path, edges, points, prev, X, Y, 'r');
-                if(path.size() == 0) {
-                    break;
-                }
-                printf("%d ", points[path[j + 1]].index);
-                if(path[j + 1] == path[0]) {
-                    complete = 1;
-                }
-                j++;
-            }
-            if(!complete) {
-                path.clear();
-                remove.clear();
-                continue;
-            }
-            printf("\n\n");
-            tesselations.push_back(path);
+        /* find the initial direction */
+        path.push_back(edges[0][0]);
+        path = init_path(path, edges, points, X, Y, type);
+        if(path.size() == 0) {
+            continue;
+        }
+        printf("PATH: %d %d ", points[path[0]].index, points[path[1]].index);
+        j = 1;
+        complete = 0;
+        while(!complete) {
+            prev = start;
+            start = points[path[j]];
+            /* initialize axis vectors */
+            Y.point[0].x = start.x;
+            Y.point[0].y = start.y;
+            Y.point[0].index = start.index;
+            Y.i = (start.x - prev.x) / distance_p(prev, start);
+            Y.j = (start.y - prev.y) / distance_p(prev, start);
+            Y.point[1].x = start.x + Y.i;
+            Y.point[1].y = start.y + Y.j;
+            Y.point[1].index = -1;
+            Y.length = length_v(Y);
+            X.point[0].x = start.x;
+            X.point[0].y = start.y;
+            X.point[0].index = start.index;
+            X.i = Y.j;
+            X.j = -Y.i;
+            X.point[1].x = start.x + X.i;
+            X.point[1].y = start.y + X.j;
+            X.point[1].index = -1;
+            X.length = length_v(X);
             /* find the initial tesselations of edges */
-            edges = edge_search(segments, root.index, points, size);
-            /* find the index in edges that matches path[1] */
-            if(index_match(edges, path[1]) > -1) {
-                remove.push_back(index_match(edges, path[1]));
-            }
-            sort(remove.begin(), remove.end());
-            /* erasing the edges already traversed */
-            for(i = 0; i < remove.size(); i++) {
-                edges.erase(edges.begin() + remove[i] - i);
-            }
-            /* erasing the ending edge, no backtracking will occur */
-            if(index_match(edges, path[path.size() - 2]) > -1) {
-                edges.erase(edges.begin() + index_match(edges, path[path.size() - 2]));
-            }
-            break;
-        case 'l':
-            /* find the initial direction */
-            path.push_back(edges[0][0]);
-            path = init_path(path, edges, points, prev, X, Y, 'l');
+            edges = edge_search(segments, start.index, points, size);
+            path = add_path(path, edges, points, X, Y, type);
             if(path.size() == 0) {
-                continue;
+                break;
             }
-            printf("PATH: %d %d ", points[path[0]].index, points[path[1]].index);
-            start.x = points[path[0]].x;
-            start.y = points[path[0]].y;
-            start.index = points[path[0]].index;
-            j = 1;
-            complete = 0;
-            inserted = 0;
-            while(!complete) {
-                prev.x = start.x;
-                prev.y = start.y;
-                prev.index = start.index;
-                start.x = points[path[j]].x;
-                start.y = points[path[j]].y;
-                start.index = points[path[j]].index;
-                /* initialize axis vectors */
-                Y.point[0].x = start.x;
-                Y.point[0].y = start.y;
-                Y.point[0].index = start.index;
-                Y.i = (start.x - prev.x) / distance_p(prev, start);
-                Y.j = (start.y - prev.y) / distance_p(prev, start);
-                Y.point[1].x = start.x + Y.i;
-                Y.point[1].y = start.y + Y.j;
-                Y.point[1].index = -1;
-                Y.length = length_v(Y);
-                X.point[0].x = start.x;
-                X.point[0].y = start.y;
-                X.point[0].index = start.index;
-                X.i = Y.j;
-                X.j = -Y.i;
-                X.point[1].x = start.x + X.i;
-                X.point[1].y = start.y + X.j;
-                X.point[1].index = -1;
-                X.length = length_v(X);
-                /* find the initial tesselations of edges */
-                edges = edge_search(segments, start.index, points, size);
-                path = add_path(path, edges, points, prev, X, Y, 'l');
-                if(path.size() == 0) {
-                    break;
-                }
-                printf("%d ", points[path[j + 1]].index);
-                if(path[j + 1] == path[0]) {
-                    complete = 1;
-                }
-                j++;
+            printf("%d ", points[path[j + 1]].index);
+            if(path[j + 1] == path[0]) {
+                complete = 1;
             }
-            if(!complete) {
-                path.clear();
-                remove.clear();
-                continue;
-            }
-            printf("\n\n");
-            tesselations.push_back(path);
-            /* find the initial tesselations of edges */
-            edges = edge_search(segments, root.index, points, size);
-            /* find the index in edges that matches path[1] */
-            if(index_match(edges, path[1]) > -1) {
-                remove.push_back(index_match(edges, path[1]));
-            }
-            sort(remove.begin(), remove.end());
-            /* erasing the edges already traversed */
-            for(i = 0; i < remove.size(); i++) {
-                edges.erase(edges.begin() + remove[i] - i);
-            }
-            /* erasing the ending edge, no backtracking will occur */
-            if(index_match(edges, path[path.size() - 2]) > -1) {
-                edges.erase(edges.begin() + index_match(edges, path[path.size() - 2]));
-            }
-            break;
+            j++;
+        }
+        if(!complete) {
+            path.clear();
+            remove.clear();
+            continue;
+        }
+        printf("\n\n");
+        tesselations.push_back(path);
+        /* find the initial tesselations of edges */
+        edges = edge_search(segments, root.index, points, size);
+        /* find the index in edges that matches path[1] */
+        if(index_match(edges, path[1]) > -1) {
+            remove.push_back(index_match(edges, path[1]));
+        }
+        sort(remove.begin(), remove.end());
+        /* erasing the edges already traversed */
+        for(j = 0; j < remove.size(); j++) {
+            edges.erase(edges.begin() + remove[j] - j);
+        }
+        /* erasing the ending edge, no backtracking will occur */
+        if(index_match(edges, path[path.size() - 2]) > -1) {
+            edges.erase(edges.begin() + index_match(edges, path[path.size() - 2]));
         }
         path.clear();
         remove.clear();
@@ -1062,8 +971,8 @@ vector<vector<int> > tesselate(vector<vector<int> > tesselations, vector<int *> 
     return tesselations;
 }
 
-/* adds to the path from a vertex */
-vector<int> add_path(vector<int> path, vector<int *> edges, struct point_t *points, struct point_t prev, struct vector_t X, struct vector_t Y, char type)
+/* initializes the path from a vertex */
+vector<int> init_path(vector<int> path, vector<int *> edges, struct point_t *points, struct vector_t X, struct vector_t Y, char type)
 {
     struct vector_t E; //edge vector
     E.name = new char [2];
@@ -1105,7 +1014,7 @@ vector<int> add_path(vector<int> path, vector<int *> edges, struct point_t *poin
             }
         }
         else {
-            if(dot_product(E, Y) >= 0) {
+            if(dot_product(E, Y) > 0) {
                 quads[i] = 2;
             }
             else {
@@ -1113,15 +1022,12 @@ vector<int> add_path(vector<int> path, vector<int *> edges, struct point_t *poin
             }
         }
     }
-    /* check for which direction to add */
+    /* check for which direction to initialize to */
     switch(type) {
     case 'r':
-        /* first check for an edge in quadrant 4 */
+        /* first check for an edge in quadrant 1 */
         for(i = 0; i < edges.size(); i++) {
-            if(quads[i] == 4) {
-                if(edges[i][1] == prev.index) {
-                    continue;
-                }
+            if(quads[i] == 1) {
                 found = 1;
                 if(!init) {
                     curr = i;
@@ -1133,13 +1039,10 @@ vector<int> add_path(vector<int> path, vector<int *> edges, struct point_t *poin
                 }
             }
         }
-        /* now check for an edge in quadrant 1 */
+        /* now check for an edge in quadrant 4 */
         if(!found) {
             for(i = 0; i < edges.size(); i++) {
-                if(quads[i] == 1) {
-                    if(edges[i][1] == prev.index) {
-                        continue;
-                    }
+                if(quads[i] == 4) {
                     found = 1;
                     if(!init) {
                         curr = i;
@@ -1154,12 +1057,9 @@ vector<int> add_path(vector<int> path, vector<int *> edges, struct point_t *poin
         }
         break;
     case 'l':
-        /* first check for an edge in quadrant 3 */
+        /* first check for an edge in quadrant 2 */
         for(i = 0; i < edges.size(); i++) {
-            if(quads[i] == 3) {
-                if(edges[i][1] == prev.index) {
-                    continue;
-                }
+            if(quads[i] == 2) {
                 found = 1;
                 if(!init) {
                     curr = i;
@@ -1171,13 +1071,10 @@ vector<int> add_path(vector<int> path, vector<int *> edges, struct point_t *poin
                 }
             }
         }
-        /* now check for an edge in quadrant 2 */
+        /* now check for an edge in quadrant 3 */
         if(!found) {
             for(i = 0; i < edges.size(); i++) {
-                if(quads[i] == 2) {
-                    if(edges[i][1] == prev.index) {
-                        continue;
-                    }
+                if(quads[i] == 3) {
                     found = 1;
                     if(!init) {
                         curr = i;
@@ -1210,8 +1107,8 @@ vector<int> add_path(vector<int> path, vector<int *> edges, struct point_t *poin
     return path;
 }
 
-/* initializes the path from a vertex */
-vector<int> init_path(vector<int> path, vector<int *> edges, struct point_t *points, struct point_t prev, struct vector_t X, struct vector_t Y, char type)
+/* adds to the path from a vertex */
+vector<int> add_path(vector<int> path, vector<int *> edges, struct point_t *points, struct vector_t X, struct vector_t Y, char type)
 {
     struct vector_t E; //edge vector
     E.name = new char [2];
@@ -1227,8 +1124,8 @@ vector<int> init_path(vector<int> path, vector<int *> edges, struct point_t *poi
     int found = 0;
     /* initialize the quadrant flags for each edge */
     for(i = 0; i < edges.size(); i++) {
-        X_flags[i] = 0.0;
-        Y_flags[i] = 0.0;
+        X_flags[i] = DBL_MAX;
+        Y_flags[i] = DBL_MAX;
     }
     /* calculate and set flags for each edge */
     for(i = 0; i < edges.size(); i++) {
@@ -1252,24 +1149,30 @@ vector<int> init_path(vector<int> path, vector<int *> edges, struct point_t *poi
                 quads[i] = 4;
             }
         }
-        else {
-            if(dot_product(E, Y) >= 0) {
+        else if(dot_product(E, X) < 0) {
+            if(dot_product(E, Y) > 0) {
                 quads[i] = 2;
             }
             else {
                 quads[i] = 3;
             }
         }
+        else {
+            if(dot_product(E, Y) > 0) {
+                quads[i] = 5;
+            }
+            /* if the segement is directly behind then stop */
+            else {
+                quads[i] = 0;
+            }
+        }
     }
-    /* check for which direction to initialize to */
+    /* check for which direction to add */
     switch(type) {
     case 'r':
-        /* first check for an edge in quadrant 1 */
+        /* first check for an edge in quadrant 4 */
         for(i = 0; i < edges.size(); i++) {
-            if(quads[i] == 1) {
-                if(edges[i][1] == prev.index) {
-                    continue;
-                }
+            if(quads[i] == 4) {
                 found = 1;
                 if(!init) {
                     curr = i;
@@ -1281,13 +1184,10 @@ vector<int> init_path(vector<int> path, vector<int *> edges, struct point_t *poi
                 }
             }
         }
-        /* now check for an edge in quadrant 4 */
+        /* now check for an edge in quadrant 1 */
         if(!found) {
             for(i = 0; i < edges.size(); i++) {
-                if(quads[i] == 4) {
-                    if(edges[i][1] == prev.index) {
-                        continue;
-                    }
+                if(quads[i] == 1) {
                     found = 1;
                     if(!init) {
                         curr = i;
@@ -1300,14 +1200,20 @@ vector<int> init_path(vector<int> path, vector<int *> edges, struct point_t *poi
                 }
             }
         }
+        /* now check if it is in both quadrant 1 and 2 */
+        if(!found) {
+            for(i = 0; i < edges.size(); i++) {
+                if(quads[i] == 5) {
+                    curr = i;
+                    break;
+                }
+            }
+        }
         break;
     case 'l':
-        /* first check for an edge in quadrant 2 */
+        /* first check for an edge in quadrant 3 */
         for(i = 0; i < edges.size(); i++) {
-            if(quads[i] == 2) {
-                if(edges[i][1] == prev.index) {
-                    continue;
-                }
+            if(quads[i] == 3) {
                 found = 1;
                 if(!init) {
                     curr = i;
@@ -1319,13 +1225,10 @@ vector<int> init_path(vector<int> path, vector<int *> edges, struct point_t *poi
                 }
             }
         }
-        /* now check for an edge in quadrant 3 */
+        /* now check for an edge in quadrant 2 */
         if(!found) {
             for(i = 0; i < edges.size(); i++) {
-                if(quads[i] == 3) {
-                    if(edges[i][1] == prev.index) {
-                        continue;
-                    }
+                if(quads[i] == 2) {
                     found = 1;
                     if(!init) {
                         curr = i;
@@ -1338,6 +1241,15 @@ vector<int> init_path(vector<int> path, vector<int *> edges, struct point_t *poi
                 }
             }
         }
+        /* now check if it is in both quadrant 1 and 2 */
+        if(!found) {
+            for(i = 0; i < edges.size(); i++) {
+                if(quads[i] == 5) {
+                    curr = i;
+                    break;
+                }
+            }
+        }
         break;
     default:
         printf("\nDIRECTION NOT SET!\n\n");
@@ -1346,8 +1258,9 @@ vector<int> init_path(vector<int> path, vector<int *> edges, struct point_t *poi
     /* use curr to create the link in the path */
     if(curr > -1) {
         path.push_back(edges[curr][1]);
+        /* if path is not a viable loop */
         if(duplicate_search(path)) {
-            printf("duplicate found: %d\n", edges[curr][1]);
+            printf("duplicate found: %d\n", points[edges[curr][1]].index);
             path.clear();
             return path;
         }
