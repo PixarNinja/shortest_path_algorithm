@@ -44,23 +44,25 @@ struct point_t generate_random(struct point_t *points, int size)
     int redo = 1;
     double r_x = 0.0;
     double r_y = 0.0;
-    double sign = 0.0;
+    double sign_x = 0.0;
+    double sign_y = 0.0;
     /* ensures point is unique */
     while(redo) {
         r_x = (double)(rand() % size);
         r_y = (double)(rand() % size);
-        sign = 2 * (double)rand() / (double)RAND_MAX - 1;
+        sign_x = 2 * (double)rand() / (double)RAND_MAX - 1;
+        sign_y = 2 * (double)rand() / (double)RAND_MAX - 1;
         redo = 0;
         for(i = 0; i < size; i++) {
-            if(points[i].x == r_x * sign) {
-                if(points[i].y == r_y * sign) {
+            if(points[i].x == (int)(r_x * sign_x)) {
+                if(points[i].y == (int)(r_y * sign_y)) {
                     redo = 1;
                     break;
                 }
             }
         }
     }
-    point.x = r_x * sign;
-    point.y = r_y * sign;
+    point.x = (int)(r_x * sign_x);
+    point.y = (int)(r_y * sign_y);
     return point;
 }
