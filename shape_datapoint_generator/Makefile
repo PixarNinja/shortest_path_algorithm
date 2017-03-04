@@ -1,7 +1,7 @@
 CC=gcc
 CFLAGS=-g -Wall
 
-all: circles cardioid ellipse square triangle two_circles
+all: circles cardioid ellipse square triangle random
 
 circles:
 	$(CC) $(CFLAGS) circle.c -o circle -lm
@@ -23,5 +23,8 @@ square:
 triangle:
 	$(CC) $(CFLAGS) triangle.c -o triangle -lm
 
+random:
+	$(CC) $(CFLAGS) random.c -o random -lm
+
 clean: 
-	rm circle cardioid donut ellipse square triangle two_circles
+	rm circle cardioid donut ellipse square triangle two_circles overlap glob random
