@@ -267,7 +267,7 @@ void construct_segments(vector<int *> *segments, struct point_t *points, struct 
         curr[i].x = DBL_MAX;
         curr[i].y = DBL_MAX;
         curr[i].tao_distance = DBL_MAX;
-        curr[i].index = INT_MAX;
+        curr[i].index = -1;
         tmp_segments[i] = new int [2];
         tmp_segments[i][0] = INT_MAX;
         tmp_segments[i][1] = INT_MAX;
@@ -275,10 +275,10 @@ void construct_segments(vector<int *> *segments, struct point_t *points, struct 
     tmp_segments[i] = new int [2];
     tmp_segments[i][0] = INT_MAX;
     tmp_segments[i][1] = INT_MAX;
-    best.x = DBL_MAX;
-    best.y = DBL_MAX;
-    best.tao_distance = DBL_MAX;
-    best.index = INT_MAX;
+    best.x = DBL_MIN;
+    best.y = DBL_MIN;
+    best.tao_distance = DBL_MIN;
+    best.index = -1;
     /* calculate average point */
     for(i = 0; i < size; i++) {
         sum_x += points[i].x;
@@ -388,6 +388,16 @@ void construct_segments(vector<int *> *segments, struct point_t *points, struct 
                 best.curvature = curr[i].curvature;
                 best.tao_distance = curr[i].tao_distance;
                 k = i;
+                
+            }
+        }
+        /* displays points of equal tao-distance */
+        for(i = 0; i < size; i++) {
+            if(best.index == curr[i].index) {
+                ;
+            }
+            else if(best.tao_distance == curr[i].tao_distance) {
+                printf("(%d) %lf = (%d) %lf\n", best.index, best.tao_distance, curr[i].index, curr[i].tao_distance);
             }
         }
         /* record path */
@@ -396,17 +406,6 @@ void construct_segments(vector<int *> *segments, struct point_t *points, struct 
         if(visited[best.index] == 1) {
             m--;
             if(m != 0) {
-                /* check if the loop has finished elsewhere
-                if(loop[m] != loop[j]) {
-                    for(j = m; j > 0; j--) {
-                        if(loop[j] != loop[0]) {
-                            m--;
-                        }
-                        else {
-                            break;
-                        }
-                    }
-                }*/
                 for(j = 0; j < m; j++) {
                     printf("%d->", points[loop[j]].index);
                     mapped[loop[j]] = 1;
@@ -417,8 +416,6 @@ void construct_segments(vector<int *> *segments, struct point_t *points, struct 
                     tmp_segments[j][0] = loop[j];
                     tmp_segments[j][1] = loop[j + 1];
                 }
-                //tmp_segments[m][0] = loop[m];
-                //tmp_segments[m][1] = loop[0];
                 /* calculates the tmp_segments for each contour */
                 for(j = 0; j < m; j++) {
                     /* skips over recorded tmp_segments */
@@ -2022,8 +2019,8 @@ void remove_crosses(vector<int *> *segments, struct point_t *points, int size, F
             if(i == j) {
                 continue;
             }
-            printf("checking (%d,%d): <%d,%d> ", i, j, points[(*segments)[i][0]].index, points[(*segments)[i][1]].index);
-            printf("and <%d,%d>\n", points[(*segments)[j][0]].index, points[(*segments)[j][1]].index);
+            //printf("checking (%d,%d): <%d,%d> ", i, j, points[(*segments)[i][0]].index, points[(*segments)[i][1]].index);
+            //printf("and <%d,%d>\n", points[(*segments)[j][0]].index, points[(*segments)[j][1]].index);
             p1 = points[(*segments)[i][0]];
             p2 = points[(*segments)[i][1]];
             p3 = points[(*segments)[j][0]];
@@ -2045,6 +2042,17 @@ void remove_crosses(vector<int *> *segments, struct point_t *points, int size, F
             }
             /* find the left and right boundaries of intersection on the x-axis */
             if(p1.x >= p3.x) {
+                /*           p1       */
+                /*            .       */
+                /*            .       */
+                /*      p3---------p4 */
+                /*            .       */
+                /*            .       */
+                /*            p2      */
+                if(p2.x == p1.x) {
+                    p1.x -= 0.000001;
+                    p2.x += 0.000001;
+                }
                 l = p1.x;
                 /* p3--------------------p4 */
                 /*      p1---------p2 */
@@ -2058,6 +2066,17 @@ void remove_crosses(vector<int *> *segments, struct point_t *points, int size, F
                 }
             }
             else if(p2.x >= p3.x) {
+                /*           p3       */
+                /*            .       */
+                /*            .       */
+                /*      p1---------p2 */
+                /*            .       */
+                /*            .       */
+                /*            p4      */
+                if(p3.x == p4.x) {
+                    p3.x -= 0.000001;
+                    p4.x += 0.000001;
+                }
                 l = p3.x;
                 /* p1--------------------p2 */
                 /*      p3---------p4 */
@@ -2091,22 +2110,23 @@ void remove_crosses(vector<int *> *segments, struct point_t *points, int size, F
             /* solve linear system */
             x = (b2 - b1) / (m1 - m2);
             y = m1 * x + b1;
-            if(x < r && x > l) {
+            //printf("r = %0.2lf, l = %0.2lf\n", r, l);
+            if(x <= r && x >= l) {
+                /* remove the intersection
                 printf("\nINTERSECTION FOUND!!!\n");
-                /* remove the intersection */
                 printf("intersection: (%0.2lf, %0.2lf), ", x, y);
                 printf("<%d,%d> ", points[(*segments)[i][0]].index, points[(*segments)[i][1]].index);
-                printf("<%d,%d>\n", points[(*segments)[j][0]].index, points[(*segments)[j][1]].index);
+                printf("<%d,%d>\n", points[(*segments)[j][0]].index, points[(*segments)[j][1]].index); */
                 if(i < j) {
                     segments->erase(segments->begin() + j);
+                    j--;
                     segments->erase(segments->begin() + i);
                 }
                 else {
                     segments->erase(segments->begin() + i);
+                    i--;
                     segments->erase(segments->begin() + j);
                 }
-                i = 0;
-                j = 0;
             }
         }
     }
