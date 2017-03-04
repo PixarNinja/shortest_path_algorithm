@@ -60,7 +60,7 @@ int segment_match(vector<int *> segments, int beginning, int end);
 int duplicate_search(vector<int> shape);
 vector<struct polygon_t> delete_duplicates(vector<struct polygon_t> polygons);
 vector<struct polygon_t> optimize_polygons(vector<struct polygon_t> polygons, vector<int *> *segments, struct point_t *points, int size, FILE *gnu_files[NUM_FILES]);
-void remove_crosses(vector<struct polygon_t> polygons, vector<int *> *segments, struct point_t *points, int size, FILE *gnu_files[NUM_FILES]);
+void remove_crosses(vector<int *> *segments, struct point_t *points, int size, FILE *gnu_files[NUM_FILES]);
 int point_match(struct point_t *points, int size, int vertex);
 double calculate_curvature(struct vector_t T1, struct vector_t T2, double tao);
 double angle_t(double tao);
@@ -173,23 +173,27 @@ int main(int argc, char *argv[])
             join_segment(segments, points, points[edges[0][1]], points[i], edges[0][1], i, size, gnu_files);
         }
     }
-    /* find polygons */
+    /* get rid of crossing lines */
+    remove_crosses(segments, points, size, gnu_files);
+    /* optimize tesselations */
     do {
+        /* find polygons */
         polygons = construct_polygons(*segments, points, size, gnu_files);
         polygons = delete_duplicates(polygons);
         /* ensure each polygon is optimal */
         count = segments->size();
         polygons = optimize_polygons(polygons, segments, points, size, gnu_files);
+        /* get rid of crossing lines */
+        remove_crosses(segments, points, size, gnu_files);
     } while(count < segments->size());
+    /* find polygons again */
+    polygons = construct_polygons(*segments, points, size, gnu_files);
+    polygons = delete_duplicates(polygons);
     /* print segment information */
     printf("\nSEGMENTS:\n");
     for(i = 0; i < segments->size(); i++) {
         printf("%d: <%d,%d>\n", i, points[(*segments)[i][0]].index, points[(*segments)[i][1]].index);
     }
-    /* get rid of crossing lines */
-    remove_crosses(polygons, segments, points, size, gnu_files);
-    /* find polygons again */
-    polygons = construct_polygons(*segments, points, size, gnu_files);
     /* plot segment information */
     for(i = 0; i < segments->size(); i++) {
         fprintf(gnu_files[2], "%lf %lf %d\n", points[(*segments)[i][0]].x, points[(*segments)[i][0]].y, points[(*segments)[i][0]].index);
@@ -825,14 +829,9 @@ vector<struct polygon_t> construct_polygons(vector<int *> segments, struct point
     vector<vector<int> > tesselations;
     vector<struct polygon_t> polygons;
     struct polygon_t polygon;
-    struct point_t center;
-    int *visited = new int [size]();
-    int i = 0;
-    int count = 0;
-    int remaining = -1;
-    double curr = -1;
     double sum_x = 0.0;
     double sum_y = 0.0;
+    int i = 0;
 
     /* right-side addition */
     tesselations = tesselate(tesselations, segments, points, size, 'r', gnu_files);
@@ -895,11 +894,13 @@ vector<vector<int> > tesselate(vector<vector<int> > tesselations, vector<int *> 
         X.point[1].index = -1;
         X.length = length_v(X);
         /* prints the initial cluster of edges */
+        printf("\n");
+        printf("TYPE: %c | ", type);
         printf("INITIAL: ");
         for(j = 0; j < edges.size(); j++) {
             printf("%d ", points[edges[j][1]].index);
         }
-        printf("\n\n");
+        printf("| ");
         /* find the initial direction */
         path.push_back(edges[0][0]);
         path = init_path(path, edges, points, X, Y, type);
@@ -1013,7 +1014,7 @@ vector<int> init_path(vector<int> path, vector<int *> edges, struct point_t *poi
                 quads[i] = 4;
             }
         }
-        else {
+        else if(dot_product(E, X) < 0) {
             if(dot_product(E, Y) > 0) {
                 quads[i] = 2;
             }
@@ -1021,25 +1022,41 @@ vector<int> init_path(vector<int> path, vector<int *> edges, struct point_t *poi
                 quads[i] = 3;
             }
         }
+        else {
+            if(dot_product(E, Y) > 0) {
+                quads[i] = 5;
+            }
+            else {
+                quads[i] = 6;
+            }
+        }
     }
     /* check for which direction to initialize to */
     switch(type) {
     case 'r':
-        /* first check for an edge in quadrant 1 */
+        /* first check for an edge in both quadrants 1 and 2 */
         for(i = 0; i < edges.size(); i++) {
+            if(quads[i] == 5) {
+                curr = i;
+                found = 1;
+                break;
+            }
+        }
+        /* check for an edge in quadrant 1 */
+        if(!found) {
             if(quads[i] == 1) {
                 found = 1;
                 if(!init) {
                     curr = i;
                     init = 1;
                 }
-                /* find the smallest Y value */
-                else if(Y_flags[i] < Y_flags[curr]) {
+                /* find the greatest Y value */
+                else if(Y_flags[i] > Y_flags[curr]) {
                     curr = i;
                 }
             }
         }
-        /* now check for an edge in quadrant 4 */
+        /* check for an edge in quadrant 4 */
         if(!found) {
             for(i = 0; i < edges.size(); i++) {
                 if(quads[i] == 4) {
@@ -1048,15 +1065,32 @@ vector<int> init_path(vector<int> path, vector<int *> edges, struct point_t *poi
                         curr = i;
                         init = 1;
                     }
-                    /* find the smallest Y value */
-                    else if(Y_flags[i] < Y_flags[curr]) {
+                    /* find the greatest Y value */
+                    else if(Y_flags[i] > Y_flags[curr]) {
                         curr = i;
                     }
                 }
             }
         }
+        /* check for an edge in both quadrants 3 and 4 */
+        if(!found) {
+            for(i = 0; i < edges.size(); i++) {
+                if(quads[i] == 6) {
+                    curr = i;
+                    break;
+                }
+            }
+        }
         break;
     case 'l':
+        /* first check for an edge in both quadrants 1 and 2 */
+        for(i = 0; i < edges.size(); i++) {
+            if(quads[i] == 5) {
+                curr = i;
+                found = 1;
+                break;
+            }
+        }
         /* first check for an edge in quadrant 2 */
         for(i = 0; i < edges.size(); i++) {
             if(quads[i] == 2) {
@@ -1084,6 +1118,15 @@ vector<int> init_path(vector<int> path, vector<int *> edges, struct point_t *poi
                     else if(Y_flags[i] > Y_flags[curr]) {
                         curr = i;
                     }
+                }
+            }
+        }
+        /* now check for an edge in both quadrants 3 and 4 */
+        if(!found) {
+            for(i = 0; i < edges.size(); i++) {
+                if(quads[i] == 6) {
+                    curr = i;
+                    break;
                 }
             }
         }
@@ -1124,8 +1167,8 @@ vector<int> add_path(vector<int> path, vector<int *> edges, struct point_t *poin
     int found = 0;
     /* initialize the quadrant flags for each edge */
     for(i = 0; i < edges.size(); i++) {
-        X_flags[i] = DBL_MAX;
-        Y_flags[i] = DBL_MAX;
+        X_flags[i] = 0.0;
+        Y_flags[i] = 0.0;
     }
     /* calculate and set flags for each edge */
     for(i = 0; i < edges.size(); i++) {
@@ -1209,6 +1252,38 @@ vector<int> add_path(vector<int> path, vector<int *> edges, struct point_t *poin
                 }
             }
         }
+        /* now check for an edge in quadrant 2 */
+        if(!found) {
+            for(i = 0; i < edges.size(); i++) {
+                if(quads[i] == 2) {
+                    found = 1;
+                    if(!init) {
+                        curr = i;
+                        init = 1;
+                    }
+                    /* find the greatest Y value */
+                    else if(Y_flags[i] > Y_flags[curr]) {
+                        curr = i;
+                    }
+                }
+            }
+        }
+        /* finally check for an edge in quadrant 3 */
+        if(!found) {
+            for(i = 0; i < edges.size(); i++) {
+                if(quads[i] == 3) {
+                    found = 1;
+                    if(!init) {
+                        curr = i;
+                        init = 1;
+                    }
+                    /* find the greatest Y value */
+                    else if(Y_flags[i] > Y_flags[curr]) {
+                        curr = i;
+                    }
+                }
+            }
+        }
         break;
     case 'l':
         /* first check for an edge in quadrant 3 */
@@ -1247,6 +1322,38 @@ vector<int> add_path(vector<int> path, vector<int *> edges, struct point_t *poin
                 if(quads[i] == 5) {
                     curr = i;
                     break;
+                }
+            }
+        }
+        /* now check for an edge in quadrant 1 */
+        if(!found) {
+            for(i = 0; i < edges.size(); i++) {
+                if(quads[i] == 1) {
+                    found = 1;
+                    if(!init) {
+                        curr = i;
+                        init = 1;
+                    }
+                    /* find the smallest Y value */
+                    else if(Y_flags[i] < Y_flags[curr]) {
+                        curr = i;
+                    }
+                }
+            }
+        }
+        /* finally check for an edge in quadrant 4 */
+        if(!found) {
+            for(i = 0; i < edges.size(); i++) {
+                if(quads[i] == 4) {
+                    found = 1;
+                    if(!init) {
+                        curr = i;
+                        init = 1;
+                    }
+                    /* find the smallest Y value */
+                    else if(Y_flags[i] < Y_flags[curr]) {
+                        curr = i;
+                    }
                 }
             }
         }
@@ -1880,18 +1987,15 @@ vector<struct polygon_t> optimize_polygons(vector<struct polygon_t> polygons, ve
 }
 
 /* returns the polygons with all crosses removed */
-void remove_crosses(vector<struct polygon_t> polygons, vector<int *> *segments, struct point_t *points, int size, FILE *gnu_files[NUM_FILES])
+void remove_crosses(vector<int *> *segments, struct point_t *points, int size, FILE *gnu_files[NUM_FILES])
 {
-    int *tmp = NULL;
-    int p1 = 0;
-    int p2 = 0;
-    int p3 = 0;
-    int p4 = 0;
+    struct point_t p1;
+    struct point_t p2;
+    struct point_t p3;
+    struct point_t p4;
+    struct point_t tmp;
     int i = 0;
     int j = 0;
-    int k = 0;
-    int s = 0;
-    double linsys[2][3] = {0.0};
     double y = 0.0;
     double x = 0.0;
     double m1 = 0.0;
@@ -1901,102 +2005,98 @@ void remove_crosses(vector<struct polygon_t> polygons, vector<int *> *segments, 
     double r = DBL_MAX;
     double l = DBL_MIN;
 
-    /* loops through all polygon */
-    for(i = 0; i < polygons.size(); i++) {
-        /* loops through shape */
-        for(j = 0; j < (polygons[i]).shape.size() - 1; j++) {
-            for(k = 0; k < segments->size(); k++) {
-                if((points[(*segments)[k][0]].index == points[polygons[i].shape[j]].index) || (points[(*segments)[k][1]].index == points[polygons[i].shape[j]].index) || (points[(*segments)[k][0]].index == points[polygons[i].shape[j + 1]].index) || (points[(*segments)[k][1]].index == points[polygons[i].shape[j + 1]].index)) { //if the indices of the segment match the indices of the shape's edge
-                    continue;
+    /* loops through all segments */
+    for(i = 0; i < segments->size(); i++) {
+        /* loops through all segments */
+        for(j = 0; j < segments->size(); j++) {
+            if(i == j) {
+                continue;
+            }
+            printf("checking (%d,%d): <%d,%d> ", i, j, points[(*segments)[i][0]].index, points[(*segments)[i][1]].index);
+            printf("and <%d,%d>\n", points[(*segments)[j][0]].index, points[(*segments)[j][1]].index);
+            p1 = points[(*segments)[i][0]];
+            p2 = points[(*segments)[i][1]];
+            p3 = points[(*segments)[j][0]];
+            p4 = points[(*segments)[j][1]];
+            /* find intersection area */
+            if (p2.x < p1.x) {
+                tmp = p1;
+                p1 = p2;
+                p2 = tmp;
+            }
+            if (p4.x < p3.x) {
+                tmp = p3;
+                p3 = p4;
+                p4 = tmp;
+            }
+            /* make sure none of the nodes are the same */
+            if((p1.index == p3.index) || (p1.index == p4.index) || (p2.index == p3.index) || (p2.index == p4.index)) {
+                continue;
+            }
+            /* find the left and right boundaries of intersection on the x-axis */
+            if(p1.x >= p3.x) {
+                l = p1.x;
+                /* p3--------------------p4 */
+                /*      p1---------p2 */
+                if(p2.x <= p4.x) {
+                    r = p2.x;
                 }
-                /* find intersection area */
-                p1 = j;
-                p2 = j + 1;
-                p3 = 0;
-                p4 = 1;
-                if (points[polygons[i].shape[p2]].x < points[polygons[i].shape[p1]].x) {
-                    p1 = j + 1;
-                    p2 = j;
-                }
-                if (points[(*segments)[k][p4]].x < points[(*segments)[k][p3]].x) {
-                    p3 = 1;
-                    p4 = 0;
-                }
-                /* make sure the left nodes are not the same */
-                if(points[polygons[i].shape[p1]].index == points[(*segments)[k][p3]].index) {
-                    continue;
-                }
-                /* make sure the right nodes are not the same */
-                if(points[polygons[i].shape[p2]].index == points[(*segments)[k][p4]].index) {
-                    continue;
-                }
-                /* find the left and right boundaries of intersection on the x-axis */
-                if(points[polygons[i].shape[p1]].x >= points[(*segments)[k][p3]].x) {
-                    l = points[polygons[i].shape[p1]].x;
-                    /* p3--------------------p4 */
-                    /*      p1---------p2 */
-                    if(points[polygons[i].shape[p2]].x <= points[(*segments)[k][p4]].x) {
-                        r = points[polygons[i].shape[p2]].x;
-                    }
-                    /* p3--------------------p4 */
-                    /*      p1-------------------------p2 */
-                    else {
-                        r = points[(*segments)[k][p4]].x;
-                    }
-                }
-                else if(points[polygons[i].shape[p2]].x >= points[(*segments)[k][p3]].x) {
-                    l = points[(*segments)[k][p3]].x;
-                    /* p1--------------------p2 */
-                    /*      p3---------p4 */
-                    if(points[polygons[i].shape[p2]].x >= points[(*segments)[k][p4]].x) {
-                        r = points[(*segments)[k][p4]].x;
-                    }
-                    /* p1--------------------p2 */
-                    /*      p3-------------------------p4 */
-                    else {
-                        r = points[polygons[i].shape[p2]].x;
-                    }
-                }
-                /* p1---------p2  p3---------p4 */
+                /* p3-----------p4 */
+                /*        p1-----------p2 */
                 else {
-                    continue;
+                    r = p4.x;
                 }
-                /* p3---------p4  p1---------p2 */
-                if(l >= r) {
-                    continue;
+            }
+            else if(p2.x >= p3.x) {
+                l = p3.x;
+                /* p1--------------------p2 */
+                /*      p3---------p4 */
+                if(p2.x >= p4.x) {
+                    r = p4.x;
                 }
-                /* create first equation */
-                y = points[polygons[i].shape[p1]].y;
-                m1 = (points[polygons[i].shape[p2]].y - points[polygons[i].shape[p1]].y) / (points[polygons[i].shape[p2]].x - points[polygons[i].shape[p1]].x);
-                x = points[polygons[i].shape[p1]].x;
-                b1 = y - m1 * x;
-                /* create second equation */
-                y = points[(*segments)[k][p3]].y;
-                m2 = (points[(*segments)[k][p4]].y - points[(*segments)[k][p3]].y) / (points[(*segments)[k][p4]].x - points[(*segments)[k][p3]].x);
-                x = points[(*segments)[k][p3]].x;
-                b2 = y - m2 * x;
-                /* solve linear system */
-                x = (b2 - b1) / (m1 - m2);
-                y = m1 * x + b1;
-                if(x < r && x > l) {
-                    printf("\nINTERSECTION FOUND!!!\n");
-                    /* replace the intersection */
-                    printf("searching for: <%d,%d>\n", points[polygons[i].shape[p1]].index, points[polygons[i].shape[p2]].index);
-                    s = segment_match(*segments, polygons[i].shape[p1], polygons[i].shape[p2]);
-                    if(s == -1) {
-                        break;
-                    }
-                    printf("intersection: (%0.2lf, %0.2lf), ", x, y);
-                    printf("segments: <%d,%d>\n", points[(*segments)[s][0]].index, points[(*segments)[s][1]].index);
-                    printf("points: <%d,%d>\n", points[(*segments)[k][0]].index, points[(*segments)[k][1]].index);
-                    (*segments).erase((*segments).begin() + s);
-                    k--;
-                    (*segments).erase((*segments).begin() + k);
-                    k--;
-                    i = 0;
-                    j = 0;
-                    break;
+                /* p1-----------p2 */
+                /*        p3-----------p4 */
+                else {
+                    r = p2.x;
                 }
+            }
+            /* p1---------p2  p3---------p4 */
+            else {
+                continue;
+            }
+            /* p3---------p4  p1---------p2 */
+            if(l >= r) {
+                continue;
+            }
+            /* create first equation */
+            y = p1.y;
+            m1 = (p2.y - p1.y) / (p2.x - p1.x);
+            x = p1.x;
+            b1 = y - m1 * x;
+            /* create second equation */
+            y = p3.y;
+            m2 = (p4.y - p3.y) / (p4.x - p3.x);
+            x = p3.x;
+            b2 = y - m2 * x;
+            /* solve linear system */
+            x = (b2 - b1) / (m1 - m2);
+            y = m1 * x + b1;
+            if(x < r && x > l) {
+                printf("\nINTERSECTION FOUND!!!\n");
+                /* remove the intersection */
+                printf("intersection: (%0.2lf, %0.2lf), ", x, y);
+                printf("<%d,%d> ", points[(*segments)[i][0]].index, points[(*segments)[i][1]].index);
+                printf("<%d,%d>\n", points[(*segments)[j][0]].index, points[(*segments)[j][1]].index);
+                if(i < j) {
+                    segments->erase(segments->begin() + j);
+                    segments->erase(segments->begin() + i);
+                }
+                else {
+                    segments->erase(segments->begin() + i);
+                    segments->erase(segments->begin() + j);
+                }
+                i = 0;
+                j = 0;
             }
         }
     }
