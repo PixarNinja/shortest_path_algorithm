@@ -48,8 +48,8 @@ void construct_segments(vector<int *> *segments, struct point_t *points, struct 
 void join_vertex(vector<int *> *segments, struct point_t *points, struct point_t begin, int n, int size, FILE *gnu_files[NUM_FILES]);
 void join_segment(vector<int *> *segments, struct point_t *points, struct point_t begin, struct point_t end, int n, int m, int size, FILE *gnu_files[NUM_FILES]);
 vector<struct polygon_t> construct_polygons(vector<int *> segments, struct point_t *points, int size, FILE *gnu_files[NUM_FILES]);
-vector<vector<int> > tesselate(vector<vector<int> > tesselations, vector<int *> segments, struct point_t *points, int size, char init, char add, FILE *gnu_files[NUM_FILES]);
-vector<int> init_path(vector<int> path, vector<int *> edges, struct point_t *points, struct vector_t X, struct vector_t Y, char type);
+vector<vector<int> > tesselate(vector<vector<int> > tesselations, vector<int *> segments, struct point_t *points, int size, char init, char add, int branch, FILE *gnu_files[NUM_FILES]);
+vector<int> init_path(vector<int> path, vector<int *> edges, struct point_t *points, struct vector_t X, struct vector_t Y, char type, int branch);
 vector<int> add_path(vector<int> path, vector<int *> edges, struct point_t *points, struct vector_t X, struct vector_t Y, char type);
 vector<int *> edge_search(vector<int *> segments, int vertex, struct point_t *points, int size);
 int index_match(vector<int *> segments, int vertex);
@@ -210,7 +210,8 @@ int main(int argc, char *argv[])
         }
         center.x = sum_x / (double)((polygons[i]).shape.size() - 1);
         center.y = sum_y / (double)((polygons[i]).shape.size() - 1);
-        fprintf(gnu_files[3], "%lf %lf %0.2lf\n", center.x, center.y, polygons[i].perimeter);
+        //fprintf(gnu_files[3], "%lf %lf %0.2lf\n", center.x, center.y, polygons[i].perimeter);
+        fprintf(gnu_files[3], "%lf %lf\n", center.x, center.y);
     }
     /* print polygon information */
     printf("\nPOLYGONS:\n");
@@ -829,28 +830,28 @@ vector<struct polygon_t> construct_polygons(vector<int *> segments, struct point
     double sum_x = 0.0;
     double sum_y = 0.0;
     int i = 0;
-
-    /* right-right addition */
-    tesselations = tesselate(tesselations, segments, points, size, 'r', 'r', gnu_files);
-    /* right-left addition */
-    tesselations = tesselate(tesselations, segments, points, size, 'r', 'l', gnu_files);
-    /* left-left addition */
-    tesselations = tesselate(tesselations, segments, points, size, 'l', 'l', gnu_files);
-    /* left-right addition */
-    tesselations = tesselate(tesselations, segments, points, size, 'l', 'r', gnu_files);
-
+    /* traverse the i-th branch of each point */
+    for(i = 0; i < size; i++) {
+        /* right-right addition */
+        tesselations = tesselate(tesselations, segments, points, size, 'r', 'r', i, gnu_files);
+        /* right-left addition */
+        tesselations = tesselate(tesselations, segments, points, size, 'r', 'l', i, gnu_files);
+        /* left-left addition */
+        tesselations = tesselate(tesselations, segments, points, size, 'l', 'l', i, gnu_files);
+        /* left-right addition */
+        tesselations = tesselate(tesselations, segments, points, size, 'l', 'r', i, gnu_files);
+    }
     /* stores in polygon_t structure format */
     for(i = 0; i < tesselations.size(); i++) {
         polygon.shape = tesselations[i];
         polygon.perimeter = find_perimeter(tesselations[i], points);
         polygons.push_back(polygon);
     }
-
     return polygons;
 }
 
 /* calculate tesselations of polygons given all contoured segments */
-vector<vector<int> > tesselate(vector<vector<int> > tesselations, vector<int *> segments, struct point_t *points, int size, char init, char add, FILE *gnu_files[NUM_FILES])
+vector<vector<int> > tesselate(vector<vector<int> > tesselations, vector<int *> segments, struct point_t *points, int size, char init, char add, int branch, FILE *gnu_files[NUM_FILES])
 {
     struct vector_t X; //X-axis vector
     X.name = new char [2];
@@ -875,6 +876,10 @@ vector<vector<int> > tesselate(vector<vector<int> > tesselations, vector<int *> 
         point_t root = points[i];
         /* find the initial cluster of edges */
         edges = edge_search(segments, start.index, points, size);
+        /* skip if the requested branch is out of bounds */
+        if(edges.size() < branch) {
+            break;
+        }
         /* initialize axis vectors */
         Y.point[0].x = start.x;
         Y.point[0].y = start.y;
@@ -904,7 +909,7 @@ vector<vector<int> > tesselate(vector<vector<int> > tesselations, vector<int *> 
         printf("| ");
         /* find the initial direction */
         path.push_back(edges[0][0]);
-        path = init_path(path, edges, points, X, Y, init);
+        path = init_path(path, edges, points, X, Y, init, branch);
         if(path.size() == 0) {
             continue;
         }
@@ -974,7 +979,7 @@ vector<vector<int> > tesselate(vector<vector<int> > tesselations, vector<int *> 
 }
 
 /* initializes the path from a vertex */
-vector<int> init_path(vector<int> path, vector<int *> edges, struct point_t *points, struct vector_t X, struct vector_t Y, char type)
+vector<int> init_path(vector<int> path, vector<int *> edges, struct point_t *points, struct vector_t X, struct vector_t Y, char type, int branch)
 {
     struct vector_t E; //edge vector
     E.name = new char [2];
@@ -987,7 +992,7 @@ vector<int> init_path(vector<int> path, vector<int *> edges, struct point_t *poi
     int i = 0;
     int curr = -1;
     int init = 0;
-    int found = 0;
+    int count = -1;
     /* calculate and set flags for each edge */
     for(i = 0; i < edges.size(); i++) {
         /* set edge vector */
@@ -997,8 +1002,6 @@ vector<int> init_path(vector<int> path, vector<int *> edges, struct point_t *poi
         E.point[1].x = points[edges[i][1]].x;
         E.point[1].y = points[edges[i][1]].y;
         E.point[1].index = points[edges[i][1]].index;
-        //E.i = (points[edges[i][1]].x - points[edges[i][0]].x) / distance_p(points[edges[i][1]], points[edges[i][0]]);
-        //E.j = (points[edges[i][1]].y - points[edges[i][0]].y) / distance_p(points[edges[i][1]], points[edges[i][0]]);
         E.i = (points[edges[i][1]].x - points[edges[i][0]].x);
         E.j = (points[edges[i][1]].y - points[edges[i][0]].y);
         E.length = length_v(E);
@@ -1042,47 +1045,52 @@ vector<int> init_path(vector<int> path, vector<int *> edges, struct point_t *poi
         /* first check for an edge in both quadrants 1 and 2 */
         for(i = 0; i < edges.size(); i++) {
             if(quads[i] == 5) {
+                count++;
                 curr = i;
-                found = 1;
                 break;
             }
         }
         /* check for an edge in quadrant 1 */
-        if(!found) {
+        if(count != branch) {
             for(i = 0; i < edges.size(); i++) {
                 if(quads[i] == 1) {
-                    found = 1;
+                    count++;
                     if(!init) {
                         curr = i;
                         init = 1;
                     }
-                    /* find the greatest Y value */
                     else if(Y_flags[i] > Y_flags[curr]) {
                         curr = i;
+                    }
+                    if(count == branch) {
+                        break;
                     }
                 }
             }
         }
         /* check for an edge in quadrant 4 */
-        if(!found) {
+        if(count != branch) {
             for(i = 0; i < edges.size(); i++) {
                 if(quads[i] == 4) {
-                    found = 1;
+                    count++;
                     if(!init) {
                         curr = i;
                         init = 1;
                     }
-                    /* find the greatest Y value */
                     else if(Y_flags[i] > Y_flags[curr]) {
                         curr = i;
+                    }
+                    if(count == branch) {
+                        break;
                     }
                 }
             }
         }
         /* check for an edge in both quadrants 3 and 4 */
-        if(!found) {
+        if(count != branch) {
             for(i = 0; i < edges.size(); i++) {
                 if(quads[i] == 6) {
+                    count++;
                     curr = i;
                     break;
                 }
@@ -1093,45 +1101,52 @@ vector<int> init_path(vector<int> path, vector<int *> edges, struct point_t *poi
         /* first check for an edge in both quadrants 1 and 2 */
         for(i = 0; i < edges.size(); i++) {
             if(quads[i] == 5) {
+                count++;
                 curr = i;
-                found = 1;
                 break;
             }
         }
-        /* first check for an edge in quadrant 2 */
-        for(i = 0; i < edges.size(); i++) {
-            if(quads[i] == 2) {
-                found = 1;
-                if(!init) {
-                    curr = i;
-                    init = 1;
-                }
-                /* find the greatest Y value */
-                else if(Y_flags[i] > Y_flags[curr]) {
-                    curr = i;
-                }
-            }
-        }
-        /* now check for an edge in quadrant 3 */
-        if(!found) {
+        /* check for an edge in quadrant 2 */
+        if(count != branch) {
             for(i = 0; i < edges.size(); i++) {
-                if(quads[i] == 3) {
-                    found = 1;
+                if(quads[i] == 2) {
+                    count++;
                     if(!init) {
                         curr = i;
                         init = 1;
                     }
-                    /* find the greatest Y value */
                     else if(Y_flags[i] > Y_flags[curr]) {
                         curr = i;
+                    }
+                    if(count == branch) {
+                        break;
                     }
                 }
             }
         }
-        /* now check for an edge in both quadrants 3 and 4 */
-        if(!found) {
+        /* check for an edge in quadrant 3 */
+        if(count != branch) {
+            for(i = 0; i < edges.size(); i++) {
+                if(quads[i] == 3) {
+                    count++;
+                    if(!init) {
+                        curr = i;
+                        init = 1;
+                    }
+                    else if(Y_flags[i] > Y_flags[curr]) {
+                        curr = i;
+                    }
+                    if(count == branch) {
+                        break;
+                    }
+                }
+            }
+        }
+        /* check for an edge in both quadrants 3 and 4 */
+        if(count != branch) {
             for(i = 0; i < edges.size(); i++) {
                 if(quads[i] == 6) {
+                    count++;
                     curr = i;
                     break;
                 }
@@ -1143,7 +1158,7 @@ vector<int> init_path(vector<int> path, vector<int *> edges, struct point_t *poi
         exit(EXIT_FAILURE);
     }
     /* use curr to create the link in the path */
-    if(curr > -1) {
+    if((curr > -1) && (count == branch)) {
         path.push_back(edges[curr][1]);
         if(duplicate_search(path)) {
             printf("duplicate found: %d\n", edges[curr][1]);
