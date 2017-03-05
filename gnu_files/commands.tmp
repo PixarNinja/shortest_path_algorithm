@@ -1,7 +1,7 @@
-set xrange [-5.000000:5.000000]
-set yrange [-5.000000:5.000000]
+set xrange [-9.000000:9.000000]
+set yrange [-9.000000:9.000000]
 set size ratio 1
 set grid
-set title "Contour Construction Algorithm"
+set title "Shortest Path Algorithm"
 set style line 1 lc rgb "black" lw 1
-plot './gnu_files/lines.tmp' using 1:2 with lines ls 1 title "shortest path",'./gnu_files/points.tmp' using 1:2 with points pt 7 notitle,'' using 1:2:3 with labels point pt 7 offset char -1,-1 notitle
+plot './gnu_files/lines.tmp' using 1:2 with lines ls 1 title "shortest path",'./gnu_files/datapoints.tmp' using 1:2 with points pt 7 notitle,'' using 1:2:3 with labels point pt 7 offset char -1,-1 notitle,'./gnu_files/extrapoints.tmp' using 1:2:3 with labels point pt 3 offset char -1,-1 notitle, './gnu_files/centerpoint.tmp' using 1:2:3 with labels point pt 2 offset char -1,-1 notitle

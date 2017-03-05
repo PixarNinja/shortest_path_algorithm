@@ -201,7 +201,6 @@ int main(int argc, char *argv[])
     /* find polygons again */
     polygons = construct_polygons(*segments, points, size, gnu_files);
     polygons = delete_duplicates(polygons);
-
     /* print segment information */
     printf("\nSEGMENTS:\n");
     for(i = 0; i < segments->size(); i++) {
@@ -2020,6 +2019,8 @@ void remove_crosses(vector<int *> *segments, struct point_t *points, int size, F
     double b2 = 0.0;
     double r = DBL_MAX;
     double l = DBL_MIN;
+    double pos_epsilon = 0.000001;
+    double neg_epsilon = -0.000001;
     int erase = 0;
     int i = 0;
     int j = 0;
@@ -2121,25 +2122,55 @@ void remove_crosses(vector<int *> *segments, struct point_t *points, int size, F
             x = (b2 - b1) / (m1 - m2);
             y = m1 * x + b1;
             //printf("r = %0.2lf, l = %0.2lf\n", r, l);
-            if(x <= r && x >= l) {
-                /* erase the compared segment */
-                if(i < j) {
-                    ;
+            /* don't erase the segment if it is not an overlap */
+            if((b2 == b1) && (m1 == m2)) {
+                if(p3.x >= p2.x) {
+                    break;
                 }
-                else {
+                else if(p1.x >= p4.x) {
+                    break;
+                }
+            }
+            if(x <= r && x >= l) {
+                /* erase the largest segment */
+                printf("RELATION: <%d,%d> = %lf", points[(*segments)[i][0]].index, points[(*segments)[i][1]].index, distance_p(p1, p2));
+                if(((distance_p(p1, p2) - distance_p(p3, p4)) > pos_epsilon) && ((distance_p(p1, p2) - distance_p(p3, p4)) > 0.0)) { //erase the i-segment
+                    printf(" > ");
+                    printf("<%d,%d> = %lf\n", points[(*segments)[j][0]].index, points[(*segments)[j][1]].index, distance_p(p3, p4));
+                    if(i < j) {
+                        j--;
+                    }
+                    segments->erase(segments->begin() + i);
                     i--;
                 }
-                segments->erase(segments->begin() + j);
-                j--;
-                erase = 1;
+                else if(((distance_p(p1, p2) - distance_p(p3, p4)) < neg_epsilon) && ((distance_p(p1, p2) - distance_p(p3, p4)) < 0.0)) { //erase the j-segment
+                    printf(" < ");
+                    printf("<%d,%d> = %lf\n", points[(*segments)[j][0]].index, points[(*segments)[j][1]].index, distance_p(p3, p4));
+                    if(i > j) {
+                        i--;
+                    }
+                    segments->erase(segments->begin() + j);
+                    j--;
+                }
+                else { //erase both segments
+                    printf(" = ");
+                    printf("<%d,%d> = %lf\n", points[(*segments)[j][0]].index, points[(*segments)[j][1]].index, distance_p(p3, p4));
+                    /*
+                    if(i < j) {
+                        segments->erase(segments->begin() + j);
+                        j--;
+                        segments->erase(segments->begin() + i);
+                    }
+                    else {
+                        segments->erase(segments->begin() + i);
+                        i--;
+                        segments->erase(segments->begin() + j);
+                    }
+                    i--;
+                    j--;
+                    */
+                }
             }
-        }
-        /* erase the reference segment */
-        if(erase) {
-            printf("ERASING: <%d,%d>\n", points[(*segments)[i][0]].index, points[(*segments)[i][1]].index);
-            erase = 0;
-            segments->erase(segments->begin() + i);
-            i--;
         }
     }
 }
@@ -2282,8 +2313,19 @@ void finalize_segments(vector<int *> *segments, struct point_t *points, int size
                 x = (b2 - b1) / (m1 - m2);
                 y = m1 * x + b1;
                 //printf("r = %0.2lf, l = %0.2lf\n", r, l);
+                /* don't push the segment if it is an overlap */
+                if((b2 == b1) && (m1 == m2)) {
+                    if(p3.x < p2.x) {
+                        push = 0;
+                        break;
+                    }
+                    else if(p1.x < p4.x) {
+                        push = 0;
+                        break;
+                    }
+                }
                 /* don't push the segment if there is an intersection */
-                if(x <= r && x >= l) {
+                else if(x <= r && x >= l) {
                     push = 0;
                     break;
                 }

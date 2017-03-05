@@ -20,9 +20,13 @@ int factorial(int n);
 int *global_shortest;
 int global_count = 0;
 
-int main(void)
+int main(int argc, char *argv[])
 {
-    FILE *data = fopen("./datapoints/pill.dat", "r");
+    if(argc == 1) {
+        printf("\nPlease enter the path of the .dat file to read from. Exiting Program. Good Day.\n\n");
+        exit(EXIT_FAILURE);
+    }
+    FILE *data = fopen(argv[argc - 1], "r");
     struct point_t *point;
     struct point_t *shortest;
     char buf[1024];
@@ -40,7 +44,7 @@ int main(void)
     }
     i = 0;
     fclose(data);
-    data = fopen("./datapoints/pill.dat", "r");
+    data = fopen(argv[argc - 1], "r");
     point = malloc(sizeof(struct point_t) * size);
     while(fscanf(data, "%d: (%lf, %lf)", &point[i].index, &point[i].x, &point[i].y) > 0) {
         point[i].curr = DBL_MAX;
