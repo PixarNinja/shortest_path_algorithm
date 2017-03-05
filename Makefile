@@ -3,7 +3,7 @@ CPP=g++
 CFLAGS=-g
 CPPFLAGS=-g -std=c++11
 
-all: multiple shortest tao2 pop tessellate
+all: tessellate
 
 shortest: shortest.c
 	$(CC) $(CPPFLAGS) shortest.c -o shortest -lm

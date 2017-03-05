@@ -14,7 +14,7 @@
 #include <iterator>
 #include <array>
 
-#define NUM_FILES 5
+#define NUM_FILES 6
 
 using namespace std;
 
@@ -61,6 +61,7 @@ int duplicate_search(vector<int> shape);
 vector<struct polygon_t> delete_duplicates(vector<struct polygon_t> polygons);
 vector<struct polygon_t> optimize_polygons(vector<struct polygon_t> polygons, vector<int *> *segments, struct point_t *points, int size, FILE *gnu_files[NUM_FILES]);
 void remove_crosses(vector<int *> *segments, struct point_t *points, int size, FILE *gnu_files[NUM_FILES]);
+void finalize_segments(vector<int *> *segments, struct point_t *points, int size, FILE *gnu_files[NUM_FILES]);
 int point_match(struct point_t *points, int size, int vertex);
 double calculate_curvature(struct vector_t T1, struct vector_t T2, double tao);
 double angle_t(double tao);
@@ -76,9 +77,14 @@ void memory_error(void);
 
 int main(int argc, char *argv[])
 {
+    if(argc == 1) {
+        printf("\nPlease enter the path of the .dat file to read from. Exiting Program. Good Day.\n\n");
+        exit(EXIT_FAILURE);
+    }
     FILE *data;
     FILE *gnu_files[NUM_FILES];
     vector<struct polygon_t> polygons;
+    struct polygon_t tmp_polygon;
     struct point_t *points;
     struct point_t center;
     char buf[1024];
@@ -96,14 +102,12 @@ int main(int argc, char *argv[])
     int k = 0;
     int count = 0;
 
-    if(argc == 1) {
-        printf("\n\nPlease enter the path of the .dat file to read from. Exiting Program. Good Day.\n\n");
-    }
     gnu_files[0] = fopen ("./gnu_files/commands.tmp", "w+");
     gnu_files[1] = fopen("./gnu_files/datapoints.tmp", "w+");
     gnu_files[2] = fopen("./gnu_files/lines.tmp", "w+");
     gnu_files[3] = fopen("./gnu_files/extrapoints.tmp", "w+");
-    gnu_files[4] = fopen("./gnu_files/polygons.tmp", "w+");
+    gnu_files[4] = fopen("./gnu_files/centerpoint.tmp", "w+");
+    gnu_files[5] = fopen("./gnu_files/polygons.tmp", "w+");
     printf("%s\n", argv[1]);
     data = fopen(argv[1], "r");
     while(fgets(buf, 1024, data)) {
@@ -189,6 +193,15 @@ int main(int argc, char *argv[])
     /* find polygons again */
     polygons = construct_polygons(*segments, points, size, gnu_files);
     polygons = delete_duplicates(polygons);
+
+    /* TODO: for points of less than 3 connections, add all possible connects that don't cross current segments */
+    finalize_segments(segments, points, size, gnu_files);
+    /* get rid of crossing lines */
+    remove_crosses(segments, points, size, gnu_files);
+    /* find polygons again */
+    polygons = construct_polygons(*segments, points, size, gnu_files);
+    polygons = delete_duplicates(polygons);
+
     /* print segment information */
     printf("\nSEGMENTS:\n");
     for(i = 0; i < segments->size(); i++) {
@@ -200,6 +213,16 @@ int main(int argc, char *argv[])
         fprintf(gnu_files[2], "%lf %lf %d\n", points[(*segments)[i][1]].x, points[(*segments)[i][1]].y, points[(*segments)[i][1]].index);
         fprintf(gnu_files[2], "\n");
     }
+    /* bubble sort polygons by perimeter */
+    for(i = 0; i < polygons.size(); i++) {
+        for(j = polygons.size() - 1; j > i; j--) {
+            if(polygons[j].perimeter < polygons[j - 1].perimeter) {
+                tmp_polygon = polygons[j];
+                polygons[j] = polygons[j - 1];
+                polygons[j - 1] = tmp_polygon;
+            }
+        }
+    }
     /* plot perimeter data */
     for(i = 0; i < polygons.size(); i++) {
         sum_x = 0.0;
@@ -210,8 +233,8 @@ int main(int argc, char *argv[])
         }
         center.x = sum_x / (double)((polygons[i]).shape.size() - 1);
         center.y = sum_y / (double)((polygons[i]).shape.size() - 1);
-        //fprintf(gnu_files[3], "%lf %lf %0.2lf\n", center.x, center.y, polygons[i].perimeter);
-        fprintf(gnu_files[3], "%lf %lf\n", center.x, center.y);
+        fprintf(gnu_files[3], "%lf %lf %d\n", center.x, center.y, i);
+        //fprintf(gnu_files[3], "%lf %lf\n", center.x, center.y);
     }
     /* print polygon information */
     printf("\nPOLYGONS:\n");
@@ -226,7 +249,8 @@ int main(int argc, char *argv[])
     fprintf(gnu_files[0], "plot './gnu_files/lines.tmp' using 1:2 with lines ls 1 title \"shortest path\",");
     fprintf(gnu_files[0], "'./gnu_files/datapoints.tmp' using 1:2 with points pt 7 notitle,");
     fprintf(gnu_files[0], "'' using 1:2:3 with labels point pt 7 offset char -1,-1 notitle,");
-    fprintf(gnu_files[0], "'./gnu_files/extrapoints.tmp' using 1:2:3 with labels point pt 3 offset char -1,-1 notitle\n");
+    fprintf(gnu_files[0], "'./gnu_files/extrapoints.tmp' using 1:2:3 with labels point pt 3 offset char -1,-1 notitle, ");
+    fprintf(gnu_files[0], "'./gnu_files/centerpoint.tmp' using 1:2:3 with labels point pt 2 offset char -1,-1 notitle\n");
     printf("\n");
     printf("Total Permutations: %d\n", permutations);
     printf("\n");
@@ -234,8 +258,9 @@ int main(int argc, char *argv[])
     fclose(gnu_files[1]);
     fclose(gnu_files[2]);
     fclose(gnu_files[3]);
-    system("gnuplot -persistent ./gnu_files/commands.tmp");
     fclose(gnu_files[4]);
+    system("gnuplot -persistent ./gnu_files/commands.tmp");
+    fclose(gnu_files[5]);
     return 0;
 }
 
@@ -288,7 +313,8 @@ void construct_segments(vector<int *> *segments, struct point_t *points, struct 
     center.x = sum_x / size;
     center.y = sum_y / size;
     /* plot center point */
-    fprintf(gnu_files[3], "%lf %lf %s\n", center.x, center.y, "C");
+    //fprintf(gnu_files[4], "%lf %lf %s\n", center.x, center.y, "C");
+    fprintf(gnu_files[4], "%lf %lf\n", center.x, center.y);
     printf("begin = %d\n", begin.index);
     printf("\n");
     start.x = begin.x;
@@ -1226,7 +1252,7 @@ vector<int> add_path(vector<int> path, vector<int *> edges, struct point_t *poin
             if(dot_product(E, Y) > 0) {
                 quads[i] = 5;
             }
-            /* if the segement is directly behind then stop */
+            /* disregaurd segment if it is directly behind */
             else {
                 quads[i] = 0;
             }
@@ -1975,36 +2001,6 @@ vector<struct polygon_t> optimize_polygons(vector<struct polygon_t> polygons, ve
             i--;
         }
     }
-    /* make sure each 2-edge point is optimal
-    for(i = 0; i < size; i++) {
-        edges = edge_search(*segments, points[i].index, points, size);
-        printf("EDGES: %d\n", edges.size());
-        if(edges.size() == 2) {
-            /* check that the point is optimal
-            best.tao_distance = DBL_MAX;
-            for(j = 0; j < size; j++) {
-                if(i == j) {
-                    continue;
-                }
-                curr->tao_distance = distance_p(points[i], points[j]);
-                if(curr->tao_distance < best.tao_distance) {
-                    best.tao_distance = curr->tao_distance;
-                    n = j;
-                }
-            }
-            /* record path
-            for(k = 0; k < segments->size(); k++) {
-                if(segment_match(*segments, points[i].index, points[n].index) == -1) {
-                    tmp = new int [2];
-                    tmp[0] = points[i].index;
-                    tmp[1] = points[n].index;
-                    segments->push_back(tmp);
-                    printf("added: <%d,%d>\n", points[i].index, points[n].index);
-                    break;
-                }
-            }
-        }
-    }*/
     return polygons;
 }
 
@@ -2016,8 +2012,6 @@ void remove_crosses(vector<int *> *segments, struct point_t *points, int size, F
     struct point_t p3;
     struct point_t p4;
     struct point_t tmp;
-    int i = 0;
-    int j = 0;
     double y = 0.0;
     double x = 0.0;
     double m1 = 0.0;
@@ -2026,6 +2020,9 @@ void remove_crosses(vector<int *> *segments, struct point_t *points, int size, F
     double b2 = 0.0;
     double r = DBL_MAX;
     double l = DBL_MIN;
+    int erase = 0;
+    int i = 0;
+    int j = 0;
 
     /* loops through all segments */
     for(i = 0; i < segments->size(); i++) {
@@ -2034,8 +2031,6 @@ void remove_crosses(vector<int *> *segments, struct point_t *points, int size, F
             if(i == j) {
                 continue;
             }
-            //printf("checking (%d,%d): <%d,%d> ", i, j, points[(*segments)[i][0]].index, points[(*segments)[i][1]].index);
-            //printf("and <%d,%d>\n", points[(*segments)[j][0]].index, points[(*segments)[j][1]].index);
             p1 = points[(*segments)[i][0]];
             p2 = points[(*segments)[i][1]];
             p3 = points[(*segments)[j][0]];
@@ -2127,23 +2122,184 @@ void remove_crosses(vector<int *> *segments, struct point_t *points, int size, F
             y = m1 * x + b1;
             //printf("r = %0.2lf, l = %0.2lf\n", r, l);
             if(x <= r && x >= l) {
-                /* remove the intersection
-                printf("\nINTERSECTION FOUND!!!\n");
-                printf("intersection: (%0.2lf, %0.2lf), ", x, y);
-                printf("<%d,%d> ", points[(*segments)[i][0]].index, points[(*segments)[i][1]].index);
-                printf("<%d,%d>\n", points[(*segments)[j][0]].index, points[(*segments)[j][1]].index); */
+                /* erase the compared segment */
                 if(i < j) {
-                    segments->erase(segments->begin() + j);
-                    j--;
-                    segments->erase(segments->begin() + i);
+                    ;
                 }
                 else {
-                    segments->erase(segments->begin() + i);
                     i--;
-                    segments->erase(segments->begin() + j);
                 }
+                segments->erase(segments->begin() + j);
+                j--;
+                erase = 1;
             }
         }
+        /* erase the reference segment */
+        if(erase) {
+            printf("ERASING: <%d,%d>\n", points[(*segments)[i][0]].index, points[(*segments)[i][1]].index);
+            erase = 0;
+            segments->erase(segments->begin() + i);
+            i--;
+        }
+    }
+}
+
+void finalize_segments(vector<int *> *segments, struct point_t *points, int size, FILE *gnu_files[NUM_FILES])
+{
+    struct point_t p1;
+    struct point_t p2;
+    struct point_t p3;
+    struct point_t p4;
+    struct point_t tmp;
+    double y = 0.0;
+    double x = 0.0;
+    double m1 = 0.0;
+    double m2 = 0.0;
+    double b1 = 0.0;
+    double b2 = 0.0;
+    double r = DBL_MAX;
+    double l = DBL_MIN;
+    vector<int *> edges;
+    vector<int *> tmp_segments;
+    int *pushed_segment = NULL;
+    int push = 1;
+    int i = 0;
+    int j = 0;
+    int k = 0;
+    int m = 0;
+
+    /* finds points with less than 3 edges */
+    for(i = 0; i < size; i++) {
+        edges = edge_search(*segments, points[i].index, points, size);
+        if(edges.size() >= 3) {
+            continue;
+        }
+        /* goes through all prospective points */
+        for(j = 0; j < size; j++) {
+            push = 1;
+            if(i == j) {
+                continue;
+            }
+            /* skip segments that are in tmp_segments */
+            if(segment_match(tmp_segments, i, j) > -1) {
+                printf("ALREADY PUSHED <%d,%d>\n", points[i].index, points[j].index);
+                continue;
+            }
+            /* skip segments that are already recorded */
+            if(segment_match(*segments, i, j) > -1) {
+                printf("SKIP <%d,%d>\n", points[i].index, points[j].index);
+                continue;
+            }
+            /* goes through all segments */
+            for(k = 0; k < segments->size(); k++) {
+                p1 = points[i];
+                p2 = points[j]; //prospective segment
+                p3 = points[(*segments)[k][0]];
+                p4 = points[(*segments)[k][1]];
+                /* find intersection area */
+                if (p2.x < p1.x) {
+                    tmp = p1;
+                    p1 = p2;
+                    p2 = tmp;
+                }
+                if (p4.x < p3.x) {
+                    tmp = p3;
+                    p3 = p4;
+                    p4 = tmp;
+                }
+                /* make sure none of the nodes are the same */
+                if((p1.index == p3.index) || (p1.index == p4.index) || (p2.index == p3.index) || (p2.index == p4.index)) {
+                    continue;
+                }
+                /* find the left and right boundaries of intersection on the x-axis */
+                if(p1.x >= p3.x) {
+                    /*           p1       */
+                    /*            .       */
+                    /*            .       */
+                    /*      p3---------p4 */
+                    /*            .       */
+                    /*            .       */
+                    /*            p2      */
+                    if(p2.x == p1.x) {
+                        p1.x -= 0.000001;
+                        p2.x += 0.000001;
+                    }
+                    l = p1.x;
+                    /* p3--------------------p4 */
+                    /*      p1---------p2 */
+                    if(p2.x <= p4.x) {
+                        r = p2.x;
+                    }
+                    /* p3-----------p4 */
+                    /*        p1-----------p2 */
+                    else {
+                        r = p4.x;
+                    }
+                }
+                else if(p2.x >= p3.x) {
+                    /*           p3       */
+                    /*            .       */
+                    /*            .       */
+                    /*      p1---------p2 */
+                    /*            .       */
+                    /*            .       */
+                    /*            p4      */
+                    if(p3.x == p4.x) {
+                        p3.x -= 0.000001;
+                        p4.x += 0.000001;
+                    }
+                    l = p3.x;
+                    /* p1--------------------p2 */
+                    /*      p3---------p4 */
+                    if(p2.x >= p4.x) {
+                        r = p4.x;
+                    }
+                    /* p1-----------p2 */
+                    /*        p3-----------p4 */
+                    else {
+                        r = p2.x;
+                    }
+                }
+                /* p1---------p2  p3---------p4 */
+                else {
+                    continue;
+                }
+                /* p3---------p4  p1---------p2 */
+                if(l >= r) {
+                    continue;
+                }
+                /* create first equation */
+                y = p1.y;
+                m1 = (p2.y - p1.y) / (p2.x - p1.x);
+                x = p1.x;
+                b1 = y - m1 * x;
+                /* create second equation */
+                y = p3.y;
+                m2 = (p4.y - p3.y) / (p4.x - p3.x);
+                x = p3.x;
+                b2 = y - m2 * x;
+                /* solve linear system */
+                x = (b2 - b1) / (m1 - m2);
+                y = m1 * x + b1;
+                //printf("r = %0.2lf, l = %0.2lf\n", r, l);
+                /* don't push the segment if there is an intersection */
+                if(x <= r && x >= l) {
+                    push = 0;
+                    break;
+                }
+            }
+            if(push) {
+                printf("PUSHING: <%d,%d>\n", points[i].index, points[j].index);
+                pushed_segment = new int [2];
+                pushed_segment[0] = i;
+                pushed_segment[1] = j;
+                tmp_segments.push_back(pushed_segment);
+            }
+        }
+    }
+    /* pushes new segments */
+    for(i = 0; i < tmp_segments.size(); i++) {
+        segments->push_back(tmp_segments[i]);
     }
 }
 
