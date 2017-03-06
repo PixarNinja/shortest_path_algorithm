@@ -147,7 +147,7 @@ int main(int argc, char *argv[])
     fprintf(gnu_files[0], "set yrange [%lf:%lf]\n", -(range + 1), range + 1);
     fprintf(gnu_files[0], "set size ratio 1\n");
     fprintf(gnu_files[0], "set grid\n");
-    fprintf(gnu_files[0], "set title \"Shortest Path Algorithm\"\n");
+    fprintf(gnu_files[0], "set title \"%s\"\n", argv[1]);
     fprintf(gnu_files[0], "set style line 1 lc rgb \"black\" lw 1\n");
     /* runs tao-distance algorithm on data */
     for(i = 0; i < size; i++) {
@@ -195,8 +195,7 @@ int main(int argc, char *argv[])
     polygons = construct_polygons(*segments, points, size, gnu_files);
     polygons = delete_duplicates(polygons);
 
-    /* for points of less than 3 connections, add all possible
-     * connections that don't cross current segments */
+    /* add all possible connections that don't cross current segments */
     finalize_segments(segments, points, size, gnu_files);
     /* get rid of crossing lines */
     remove_crosses(segments, points, size, gnu_files);
@@ -2163,9 +2162,9 @@ void remove_crosses(vector<int *> *segments, struct point_t *points, int size, F
                 for(k = 0; k < edges.size(); k++) {
                     sum_j += distance_p(points[(*segments)[j][1]], points[edges[k][1]]);
                 }
-                /* compare the perimeter sums */
+                /* compare the segment lengths */
                 //printf("RELATION: <%d,%d> = %lf", points[(*segments)[i][0]].index, points[(*segments)[i][1]].index, sum_i);
-                if(((sum_i - sum_j) > pos_epsilon) && ((sum_i - sum_j) > 0.0)) { //erase the j-segment
+                if((distance_p(p1, p2) - distance_p(p3, p4)) < neg_epsilon) { //erase the j-segment
                     //printf(" < ");
                     //printf("<%d,%d> = %lf\n", points[(*segments)[j][0]].index, points[(*segments)[j][1]].index, sum_j);
                     if(i > j) {
@@ -2174,7 +2173,7 @@ void remove_crosses(vector<int *> *segments, struct point_t *points, int size, F
                     segments->erase(segments->begin() + j);
                     j--;
                 }
-                else if(((sum_i - sum_j) < neg_epsilon) && ((sum_i - sum_j) < 0.0)) { //erase the i-segment
+                else if((distance_p(p1, p2) - distance_p(p3, p4)) > pos_epsilon) { //erase the i-segment
                     //printf(" > ");
                     //printf("<%d,%d> = %lf\n", points[(*segments)[j][0]].index, points[(*segments)[j][1]].index, sum_j);
                     if(i < j) {
@@ -2183,23 +2182,36 @@ void remove_crosses(vector<int *> *segments, struct point_t *points, int size, F
                     segments->erase(segments->begin() + i);
                     i--;
                 }
-                else { //erase both segments
-                    //printf(" = ");
-                    //printf("<%d,%d> = %lf\n", points[(*segments)[j][0]].index, points[(*segments)[j][1]].index, sum_j);
-                    /*
-                    if(i < j) {
+                else {
+                    /* compare the perimeter sums */
+                    if((sum_i - sum_j) < neg_epsilon) { //erase the j-segment
+                        if(i > j) {
+                            i--;
+                        }
                         segments->erase(segments->begin() + j);
                         j--;
-                        segments->erase(segments->begin() + i);
                     }
-                    else {
+                    else if((sum_i - sum_j) > pos_epsilon) { //erase the i-segment
+                        if(i < j) {
+                            j--;
+                        }
                         segments->erase(segments->begin() + i);
                         i--;
-                        segments->erase(segments->begin() + j);
                     }
-                    i--;
-                    j--;
-                    */
+                    else { //erase both segments
+                        if(i < j) {
+                            segments->erase(segments->begin() + j);
+                            j--;
+                            segments->erase(segments->begin() + i);
+                        }
+                        else {
+                            segments->erase(segments->begin() + i);
+                            i--;
+                            segments->erase(segments->begin() + j);
+                        }
+                        i--;
+                        j--;
+                    }
                 }
             }
         }
@@ -2230,12 +2242,8 @@ void finalize_segments(vector<int *> *segments, struct point_t *points, int size
     int k = 0;
     int m = 0;
 
-    /* finds points with less than 3 edges */
     for(i = 0; i < size; i++) {
         edges = edge_search(*segments, points[i].index, points, size);
-        if(edges.size() >= 3) {
-            continue;
-        }
         /* goes through all prospective points */
         for(j = 0; j < size; j++) {
             push = 1;

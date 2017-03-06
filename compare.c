@@ -9,8 +9,8 @@ int main(int argc, char *argv[])
         printf("Usage: ./compare [tessellations path] [shortest path]\n");
         exit(EXIT_FAILURE);
     }
-    FILE *tess = fopen(argv[1], "w+");
-    FILE *path = fopen(argv[2], "w+");
+    FILE *tess = fopen(argv[1], "r");
+    FILE *path = fopen(argv[2], "r");
     if(tess == NULL || path == NULL) {
         printf("File(s) not found. Exiting Program. Good Day.\n");
         exit(EXIT_FAILURE);
@@ -35,8 +35,13 @@ int main(int argc, char *argv[])
 
     printf("\n... comparing %s and %s\n", argv[1], argv[2]);
 
+    fclose(path);
+    path = fopen(argv[2], "r");
     for(i = 0; i < path_size; i++) {
         fscanf(path, "%d %d", &p1, &p2);
+        fclose(tess);
+        tess = fopen(argv[1], "r");
+        found = 0;
         for(j = 0; j < tess_size; j++) {
             fscanf(tess, "%d %d", &p3, &p4);
             if(((p1 == p3) && (p2 == p4)) || ((p2 == p3) && (p1 == p4))) {
@@ -49,7 +54,9 @@ int main(int argc, char *argv[])
             break;
         }
     }
-    printf("... PATH FOUND\n\n");
+    if(found) {
+        printf("... PATH FOUND\n\n");
+    }
     fclose(path);
     fclose(tess);
     return 0;
