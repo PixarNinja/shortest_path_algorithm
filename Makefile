@@ -3,10 +3,10 @@ CPP=g++
 CFLAGS=-g
 CPPFLAGS=-g -std=c++11
 
-all: tessellate
+all: compare shortest tessellate
 
 shortest: shortest.c
-	$(CC) $(CPPFLAGS) shortest.c -o shortest -lm
+	$(CC) $(CFLAGS) shortest.c -o shortest -lm
 
 tao2: tao2.c construct_contour.c
 	$(CC) $(CPPFLAGS) construct_contour.c -c -lm
@@ -21,5 +21,8 @@ pop: pop_reverse.cpp
 tessellate: tessellate.cpp
 	$(CPP) $(CPPFLAGS) tessellate.cpp -o tessellate -lm
 
+compare: compare.c
+	$(CC) $(CFLAGS) compare.c -o compare
+
 clean: 
-	rm shortest multiple_contours tao2 pop_reverse tessellate
+	rm shortest multiple_contours tao2 pop_reverse tessellate compare

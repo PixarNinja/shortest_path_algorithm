@@ -22,11 +22,12 @@ int global_count = 0;
 
 int main(int argc, char *argv[])
 {
-    if(argc == 1) {
-        printf("\nPlease enter the path of the .dat file to read from. Exiting Program. Good Day.\n\n");
+    if(argc != 3) {
+        printf("\nUsage: ./shortest [datapoint path] [output path]\n\n");
         exit(EXIT_FAILURE);
     }
-    FILE *data = fopen(argv[argc - 1], "r");
+    FILE *data = fopen(argv[1], "r");
+    FILE *output = fopen(argv[2], "w+");
     struct point_t *point;
     struct point_t *shortest;
     char buf[1024];
@@ -44,25 +45,28 @@ int main(int argc, char *argv[])
     }
     i = 0;
     fclose(data);
-    data = fopen(argv[argc - 1], "r");
+    data = fopen(argv[1], "r");
     point = malloc(sizeof(struct point_t) * size);
     while(fscanf(data, "%d: (%lf, %lf)", &point[i].index, &point[i].x, &point[i].y) > 0) {
         point[i].curr = DBL_MAX;
         i++;
     }
-    fclose(data);
     shortest = point;
     /* fills array with permutations */
     permute(point, shortest, start, n);
-    printf("\n");
-    printf("Shortest Path: %d->", global_shortest[0]);
-    for(i = 0; i < n; i++) {
-        printf("%d->", global_shortest[i + 1]);
+    printf("\nSHORTEST PATH: %d->", global_shortest[0]);
+    fprintf(output, "%d %d\n", global_shortest[0], global_shortest[1]);
+    for(i = 1; i < n; i++) {
+        printf("%d->", global_shortest[i]);
+        fprintf(output, "%d %d\n", global_shortest[i], global_shortest[i + 1]);
     }
-    printf("%d\n", global_shortest[i + 1]);
-    printf("Total Permutations: %d\n", global_count);
-    printf("Distance: %lf\n", shortest[0].curr);
-    printf("\n");
+    printf("%d->%d", global_shortest[i], global_shortest[0]);
+    fprintf(output, "%d %d\n", global_shortest[i], global_shortest[0]);
+    //printf("Total Permutations: %d\n", global_count);
+    //printf("Distance: %lf\n", shortest[0].curr);
+    //printf("\n");
+    fclose(output);
+    fclose(data);
     return 0;
 }
 

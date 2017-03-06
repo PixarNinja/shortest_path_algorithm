@@ -48,7 +48,7 @@ void construct_segments(vector<int *> *segments, struct point_t *points, struct 
 void join_vertex(vector<int *> *segments, struct point_t *points, struct point_t begin, int n, int size, FILE *gnu_files[NUM_FILES]);
 void join_segment(vector<int *> *segments, struct point_t *points, struct point_t begin, struct point_t end, int n, int m, int size, FILE *gnu_files[NUM_FILES]);
 vector<struct polygon_t> construct_polygons(vector<int *> segments, struct point_t *points, int size, FILE *gnu_files[NUM_FILES]);
-vector<vector<int> > tesselate(vector<vector<int> > tesselations, vector<int *> segments, struct point_t *points, int size, char init, char add, int branch, FILE *gnu_files[NUM_FILES]);
+vector<vector<int> > tessellate(vector<vector<int> > tessellations, vector<int *> segments, struct point_t *points, int size, char init, char add, int branch, FILE *gnu_files[NUM_FILES]);
 vector<int> init_path(vector<int> path, vector<int *> edges, struct point_t *points, struct vector_t X, struct vector_t Y, char type, int branch);
 vector<int> add_path(vector<int> path, vector<int *> edges, struct point_t *points, struct vector_t X, struct vector_t Y, char type);
 vector<int *> edge_search(vector<int *> segments, int vertex, struct point_t *points, int size);
@@ -77,11 +77,12 @@ void memory_error(void);
 
 int main(int argc, char *argv[])
 {
-    if(argc == 1) {
-        printf("\nPlease enter the path of the .dat file to read from. Exiting Program. Good Day.\n\n");
+    if(argc != 3) {
+        printf("\nUsage: ./tessellate [datapoint path] [output path]\n\n");
         exit(EXIT_FAILURE);
     }
     FILE *data;
+    FILE *output;
     FILE *gnu_files[NUM_FILES];
     vector<struct polygon_t> polygons;
     struct polygon_t tmp_polygon;
@@ -108,8 +109,9 @@ int main(int argc, char *argv[])
     gnu_files[3] = fopen("./gnu_files/extrapoints.tmp", "w+");
     gnu_files[4] = fopen("./gnu_files/centerpoint.tmp", "w+");
     gnu_files[5] = fopen("./gnu_files/polygons.tmp", "w+");
-    printf("%s\n", argv[1]);
+    //printf("%s\n", argv[1]);
     data = fopen(argv[1], "r");
+    output = fopen(argv[2], "w+");
     while(fgets(buf, 1024, data)) {
         size++;
     }
@@ -136,7 +138,6 @@ int main(int argc, char *argv[])
         }
         i++;
     }
-    fclose(data);
     /* plot datapoints */
     for(i = 0; i < size; i++) {
         fprintf(gnu_files[1], "%lf %lf %d\n", points[i].x, points[i].y, points[i].index);
@@ -173,13 +174,13 @@ int main(int argc, char *argv[])
     for(i = 0; i < size; i++) {
         edges = edge_search(*segments, points[i].index, points, size);
         if(edges.size() == 1) {
-            printf("CLEANUP: <%d,%d>\n", points[edges[0][1]].index, points[i].index);
+            //printf("CLEANUP: <%d,%d>\n", points[edges[0][1]].index, points[i].index);
             join_segment(segments, points, points[edges[0][1]], points[i], edges[0][1], i, size, gnu_files);
         }
     }
     /* get rid of crossing lines */
     remove_crosses(segments, points, size, gnu_files);
-    /* optimize tesselations */
+    /* optimize tessellations */
     do {
         /* find polygons */
         polygons = construct_polygons(*segments, points, size, gnu_files);
@@ -194,23 +195,26 @@ int main(int argc, char *argv[])
     polygons = construct_polygons(*segments, points, size, gnu_files);
     polygons = delete_duplicates(polygons);
 
-    /* TODO: for points of less than 3 connections, add all possible connects that don't cross current segments */
+    /* for points of less than 3 connections, add all possible
+     * connections that don't cross current segments */
     finalize_segments(segments, points, size, gnu_files);
     /* get rid of crossing lines */
     remove_crosses(segments, points, size, gnu_files);
     /* find polygons again */
     polygons = construct_polygons(*segments, points, size, gnu_files);
     polygons = delete_duplicates(polygons);
-    /* print segment information */
+    /* print segment information
     printf("\nSEGMENTS:\n");
     for(i = 0; i < segments->size(); i++) {
         printf("%d: <%d,%d>\n", i, points[(*segments)[i][0]].index, points[(*segments)[i][1]].index);
-    }
+    } */
     /* plot segment information */
     for(i = 0; i < segments->size(); i++) {
         fprintf(gnu_files[2], "%lf %lf %d\n", points[(*segments)[i][0]].x, points[(*segments)[i][0]].y, points[(*segments)[i][0]].index);
         fprintf(gnu_files[2], "%lf %lf %d\n", points[(*segments)[i][1]].x, points[(*segments)[i][1]].y, points[(*segments)[i][1]].index);
         fprintf(gnu_files[2], "\n");
+        /* write segments to output file */
+        fprintf(output, "%d %d\n", points[(*segments)[i][0]].index, points[(*segments)[i][1]].index);
     }
     /* bubble sort polygons by perimeter */
     for(i = 0; i < polygons.size(); i++) {
@@ -235,7 +239,7 @@ int main(int argc, char *argv[])
         fprintf(gnu_files[3], "%lf %lf %d\n", center.x, center.y, i);
         //fprintf(gnu_files[3], "%lf %lf\n", center.x, center.y);
     }
-    /* print polygon information */
+    /* print polygon information
     printf("\nPOLYGONS:\n");
     for(i = 0; i < polygons.size(); i++) {
         printf("%d: ", i);
@@ -243,16 +247,18 @@ int main(int argc, char *argv[])
             printf("%d ", points[(polygons[i]).shape[j]].index);
         }
         printf("= %0.2lf\n", polygons[i].perimeter);
-    }
+    } */
     /* plot */
     fprintf(gnu_files[0], "plot './gnu_files/lines.tmp' using 1:2 with lines ls 1 title \"shortest path\",");
     fprintf(gnu_files[0], "'./gnu_files/datapoints.tmp' using 1:2 with points pt 7 notitle,");
     fprintf(gnu_files[0], "'' using 1:2:3 with labels point pt 7 offset char -1,-1 notitle,");
     fprintf(gnu_files[0], "'./gnu_files/extrapoints.tmp' using 1:2:3 with labels point pt 3 offset char -1,-1 notitle, ");
     fprintf(gnu_files[0], "'./gnu_files/centerpoint.tmp' using 1:2:3 with labels point pt 2 offset char -1,-1 notitle\n");
-    printf("\n");
-    printf("Total Permutations: %d\n", permutations);
-    printf("\n");
+    //printf("\n");
+    //printf("Total Permutations: %d\n", permutations);
+    //printf("\n");
+    fclose(output);
+    fclose(data);
     fclose(gnu_files[0]);
     fclose(gnu_files[1]);
     fclose(gnu_files[2]);
@@ -314,8 +320,8 @@ void construct_segments(vector<int *> *segments, struct point_t *points, struct 
     /* plot center point */
     //fprintf(gnu_files[4], "%lf %lf %s\n", center.x, center.y, "C");
     fprintf(gnu_files[4], "%lf %lf\n", center.x, center.y);
-    printf("begin = %d\n", begin.index);
-    printf("\n");
+    //printf("begin = %d\n", begin.index);
+    //printf("\n");
     start.x = begin.x;
     start.y = begin.y;
     start.index = begin.index;
@@ -423,7 +429,7 @@ void construct_segments(vector<int *> *segments, struct point_t *points, struct 
                 ;
             }
             else if(best.tao_distance == curr[i].tao_distance) {
-                printf("(%d) %lf = (%d) %lf\n", best.index, best.tao_distance, curr[i].index, curr[i].tao_distance);
+                //printf("(%d) %lf = (%d) %lf\n", best.index, best.tao_distance, curr[i].index, curr[i].tao_distance);
             }
         }
         /* record path */
@@ -433,10 +439,10 @@ void construct_segments(vector<int *> *segments, struct point_t *points, struct 
             m--;
             if(m != 0) {
                 for(j = 0; j < m; j++) {
-                    printf("%d->", points[loop[j]].index);
+                    //printf("%d->", points[loop[j]].index);
                     mapped[loop[j]] = 1;
                 }
-                printf("%d\n", points[loop[m]].index);
+                //printf("%d\n", points[loop[m]].index);
                 for(j = 0; j < m; j++) {
                     /* record segment */
                     tmp_segments[j][0] = loop[j];
@@ -455,7 +461,7 @@ void construct_segments(vector<int *> *segments, struct point_t *points, struct 
                     segments->push_back(pushed_segment);
                     recorded[tmp_segments[j][0]][tmp_segments[j][1]] = 1;
                     /* book-keeping */
-                    printf("%d = (%d, %d): <%d,%d>\n", j, tmp_segments[j][0], tmp_segments[j][1], points[tmp_segments[j][0]].index, points[tmp_segments[j][1]].index);
+                    //printf("%d = (%d, %d): <%d,%d>\n", j, tmp_segments[j][0], tmp_segments[j][1], points[tmp_segments[j][0]].index, points[tmp_segments[j][1]].index);
                 }
             }
             return;
@@ -838,7 +844,7 @@ void join_segment(vector<int *> *segments, struct point_t *points, struct point_
     /* record segment */
     tmp_segments[m][0] = m;
     tmp_segments[m][1] = k;
-    printf("... joining: <%d,%d>\n", points[n].index, points[k].index);
+    //printf("... joining: <%d,%d>\n", points[n].index, points[k].index);
     /* pushes new segments */
     pushed_segment = new int [2];
     pushed_segment[0] = tmp_segments[m][0];
@@ -849,7 +855,7 @@ void join_segment(vector<int *> *segments, struct point_t *points, struct point_
 
 vector<struct polygon_t> construct_polygons(vector<int *> segments, struct point_t *points, int size, FILE *gnu_files[NUM_FILES])
 {
-    vector<vector<int> > tesselations;
+    vector<vector<int> > tessellations;
     vector<struct polygon_t> polygons;
     struct polygon_t polygon;
     double sum_x = 0.0;
@@ -858,25 +864,25 @@ vector<struct polygon_t> construct_polygons(vector<int *> segments, struct point
     /* traverse the i-th branch of each point */
     for(i = 0; i < size; i++) {
         /* right-right addition */
-        tesselations = tesselate(tesselations, segments, points, size, 'r', 'r', i, gnu_files);
+        tessellations = tessellate(tessellations, segments, points, size, 'r', 'r', i, gnu_files);
         /* right-left addition */
-        tesselations = tesselate(tesselations, segments, points, size, 'r', 'l', i, gnu_files);
+        tessellations = tessellate(tessellations, segments, points, size, 'r', 'l', i, gnu_files);
         /* left-left addition */
-        tesselations = tesselate(tesselations, segments, points, size, 'l', 'l', i, gnu_files);
+        tessellations = tessellate(tessellations, segments, points, size, 'l', 'l', i, gnu_files);
         /* left-right addition */
-        tesselations = tesselate(tesselations, segments, points, size, 'l', 'r', i, gnu_files);
+        tessellations = tessellate(tessellations, segments, points, size, 'l', 'r', i, gnu_files);
     }
     /* stores in polygon_t structure format */
-    for(i = 0; i < tesselations.size(); i++) {
-        polygon.shape = tesselations[i];
-        polygon.perimeter = find_perimeter(tesselations[i], points);
+    for(i = 0; i < tessellations.size(); i++) {
+        polygon.shape = tessellations[i];
+        polygon.perimeter = find_perimeter(tessellations[i], points);
         polygons.push_back(polygon);
     }
     return polygons;
 }
 
-/* calculate tesselations of polygons given all contoured segments */
-vector<vector<int> > tesselate(vector<vector<int> > tesselations, vector<int *> segments, struct point_t *points, int size, char init, char add, int branch, FILE *gnu_files[NUM_FILES])
+/* calculate tessellations of polygons given all contoured segments */
+vector<vector<int> > tessellate(vector<vector<int> > tessellations, vector<int *> segments, struct point_t *points, int size, char init, char add, int branch, FILE *gnu_files[NUM_FILES])
 {
     struct vector_t X; //X-axis vector
     X.name = new char [2];
@@ -925,20 +931,20 @@ vector<vector<int> > tesselate(vector<vector<int> > tesselations, vector<int *> 
         X.point[1].index = -1;
         X.length = 1;
         /* prints the initial cluster of edges */
-        printf("\n");
-        printf("TYPE: %c %c | ", init, add);
-        printf("INITIAL: ");
+        //printf("\n");
+        //printf("TYPE: %c %c | ", init, add);
+        //printf("INITIAL: ");
         for(j = 0; j < edges.size(); j++) {
-            printf("%d ", points[edges[j][1]].index);
+            //printf("%d ", points[edges[j][1]].index);
         }
-        printf("| ");
+        //printf("| ");
         /* find the initial direction */
         path.push_back(edges[0][0]);
         path = init_path(path, edges, points, X, Y, init, branch);
         if(path.size() == 0) {
             continue;
         }
-        printf("PATH: %d %d ", points[path[0]].index, points[path[1]].index);
+        //printf("PATH: %d %d ", points[path[0]].index, points[path[1]].index);
         j = 1;
         complete = 0;
         while(!complete) {
@@ -963,13 +969,13 @@ vector<vector<int> > tesselate(vector<vector<int> > tesselations, vector<int *> 
             X.point[1].y = start.y + X.j;
             X.point[1].index = -1;
             X.length = length_v(X);
-            /* find the initial tesselations of edges */
+            /* find the initial tessellations of edges */
             edges = edge_search(segments, start.index, points, size);
             path = add_path(path, edges, points, X, Y, add);
             if(path.size() == 0) {
                 break;
             }
-            printf("%d ", points[path[j + 1]].index);
+            //printf("%d ", points[path[j + 1]].index);
             if(path[j + 1] == path[0]) {
                 complete = 1;
             }
@@ -980,9 +986,9 @@ vector<vector<int> > tesselate(vector<vector<int> > tesselations, vector<int *> 
             remove.clear();
             continue;
         }
-        printf("\n\n");
-        tesselations.push_back(path);
-        /* find the initial tesselations of edges */
+        //printf("\n\n");
+        tessellations.push_back(path);
+        /* find the initial tessellations of edges */
         edges = edge_search(segments, root.index, points, size);
         /* find the index in edges that matches path[1] */
         if(index_match(edges, path[1]) > -1) {
@@ -1000,7 +1006,7 @@ vector<vector<int> > tesselate(vector<vector<int> > tesselations, vector<int *> 
         path.clear();
         remove.clear();
     }
-    return tesselations;
+    return tessellations;
 }
 
 /* initializes the path from a vertex */
@@ -1032,12 +1038,12 @@ vector<int> init_path(vector<int> path, vector<int *> edges, struct point_t *poi
         E.length = length_v(E);
         X_flags[i] = dot_product(E, X);
         Y_flags[i] = dot_product(E, Y);
-        printf("\n");
-        print_v(E);
-        print_v(X);
-        print_v(Y);
-        printf("DOTX: %0.2lf, ", X_flags[i]);
-        printf("DOTY: %0.2lf, ", Y_flags[i]);
+        //printf("\n");
+        //print_v(E);
+        //print_v(X);
+        //print_v(Y);
+        //printf("DOTX: %0.2lf, ", X_flags[i]);
+        //printf("DOTY: %0.2lf, ", Y_flags[i]);
         if(dot_product(E, X) > 0) {
             if(dot_product(E, Y) > 0) {
                 quads[i] = 1;
@@ -1062,7 +1068,7 @@ vector<int> init_path(vector<int> path, vector<int *> edges, struct point_t *poi
                 quads[i] = 6;
             }
         }
-        printf("QUAD: %d\n", quads[i]);
+        //printf("QUAD: %d\n", quads[i]);
     }
     /* check for which direction to initialize to */
     switch(type) {
@@ -1179,14 +1185,14 @@ vector<int> init_path(vector<int> path, vector<int *> edges, struct point_t *poi
         }
         break;
     default:
-        printf("\nDIRECTION NOT SET!\n\n");
+        //printf("\nDIRECTION NOT SET!\n\n");
         exit(EXIT_FAILURE);
     }
     /* use curr to create the link in the path */
     if((curr > -1) && (count == branch)) {
         path.push_back(edges[curr][1]);
         if(duplicate_search(path)) {
-            printf("duplicate found: %d\n", edges[curr][1]);
+            //printf("duplicate found: %d\n", edges[curr][1]);
             path.clear();
             return path;
         }
@@ -1406,7 +1412,7 @@ vector<int> add_path(vector<int> path, vector<int *> edges, struct point_t *poin
         }
         break;
     default:
-        printf("\nDIRECTION NOT SET!\n\n");
+        printf("\nError: direction not set\n\n");
         exit(EXIT_FAILURE);
     }
     /* use curr to create the link in the path */
@@ -1414,7 +1420,7 @@ vector<int> add_path(vector<int> path, vector<int *> edges, struct point_t *poin
         path.push_back(edges[curr][1]);
         /* if path is not a viable loop */
         if(duplicate_search(path)) {
-            printf("duplicate found: %d\n", points[edges[curr][1]].index);
+            //printf("duplicate found: %d\n", points[edges[curr][1]].index);
             path.clear();
             return path;
         }
@@ -1570,11 +1576,11 @@ vector<struct polygon_t> delete_duplicates(vector<struct polygon_t> polygons)
     /* sort each entry */
     for(i = 0; i < tmp.size(); i++) {
         sort((tmp[i]).shape.begin(), (tmp[i]).shape.end());
-        printf("new: ");
+        //printf("new: ");
         for(j = 0; j < (tmp[i]).shape.size(); j++) {
-            printf("%d ", tmp[i].shape[j]);
+            //printf("%d ", tmp[i].shape[j]);
         }
-        printf("\n");
+        //printf("\n");
     }
     /* check for an equal entry
     */
@@ -1587,11 +1593,11 @@ vector<struct polygon_t> delete_duplicates(vector<struct polygon_t> polygons)
                     }
                 }
                 if(k == (tmp[i]).shape.size()) {
-                    printf("%d. deleting: ", j);
+                    //printf("%d. deleting: ", j);
                     for(k = 0; k < (tmp[j]).shape.size(); k++) {
-                        printf("%d ", tmp[j].shape[k]);
+                        //printf("%d ", tmp[j].shape[k]);
                     }
-                    printf("\n");
+                    //printf("\n");
                     tmp.erase(tmp.begin() + j);
                     polygons.erase(polygons.begin() + j);
                     j--;
@@ -1745,7 +1751,7 @@ vector<struct polygon_t> optimize_polygons(vector<struct polygon_t> polygons, ve
                     tmp[0] = (polygons[i]).shape[j];
                     tmp[1] = n;
                     (*segments).push_back(tmp);
-                    printf("added: <%d,%d>\n", points[(polygons[i]).shape[j]].index, points[n].index);
+                    //printf("added: <%d,%d>\n", points[(polygons[i]).shape[j]].index, points[n].index);
                     break;
                 }
             }
@@ -1866,7 +1872,7 @@ vector<struct polygon_t> optimize_polygons(vector<struct polygon_t> polygons, ve
                     tmp[0] = (polygons[i]).shape[j];
                     tmp[1] = n;
                     (*segments).push_back(tmp);
-                    printf("added: <%d,%d>\n", points[(polygons[i]).shape[j]].index, points[n].index);
+                    //printf("added: <%d,%d>\n", points[(polygons[i]).shape[j]].index, points[n].index);
                     break;
                 }
             }
@@ -1987,7 +1993,7 @@ vector<struct polygon_t> optimize_polygons(vector<struct polygon_t> polygons, ve
                     tmp[0] = (polygons[i]).shape[j];
                     tmp[1] = n;
                     (*segments).push_back(tmp);
-                    printf("added: <%d,%d>\n", points[(polygons[i]).shape[j]].index, points[n].index);
+                    //printf("added: <%d,%d>\n", points[(polygons[i]).shape[j]].index, points[n].index);
                     break;
                 }
             }
@@ -2021,9 +2027,13 @@ void remove_crosses(vector<int *> *segments, struct point_t *points, int size, F
     double l = DBL_MIN;
     double pos_epsilon = 0.000001;
     double neg_epsilon = -0.000001;
+    double sum_i = 0.0;
+    double sum_j = 0.0;
+    vector<int *> edges;
     int erase = 0;
     int i = 0;
     int j = 0;
+    int k = 0;
 
     /* loops through all segments */
     for(i = 0; i < segments->size(); i++) {
@@ -2132,29 +2142,50 @@ void remove_crosses(vector<int *> *segments, struct point_t *points, int size, F
                 }
             }
             if(x <= r && x >= l) {
-                /* erase the largest segment */
-                printf("RELATION: <%d,%d> = %lf", points[(*segments)[i][0]].index, points[(*segments)[i][1]].index, distance_p(p1, p2));
-                if(((distance_p(p1, p2) - distance_p(p3, p4)) > pos_epsilon) && ((distance_p(p1, p2) - distance_p(p3, p4)) > 0.0)) { //erase the i-segment
-                    printf(" > ");
-                    printf("<%d,%d> = %lf\n", points[(*segments)[j][0]].index, points[(*segments)[j][1]].index, distance_p(p3, p4));
-                    if(i < j) {
-                        j--;
-                    }
-                    segments->erase(segments->begin() + i);
-                    i--;
+                /* erase the segment with the largest perimeter sum */
+                sum_i = 0.0;
+                sum_j = 0.0;
+                /* calcualte the perimeter sum for segment i */
+                edges = edge_search(*segments, points[(*segments)[i][0]].index, points, size);
+                for(k = 0; k < edges.size(); k++) {
+                    sum_i += distance_p(points[(*segments)[i][0]], points[edges[k][1]]);
                 }
-                else if(((distance_p(p1, p2) - distance_p(p3, p4)) < neg_epsilon) && ((distance_p(p1, p2) - distance_p(p3, p4)) < 0.0)) { //erase the j-segment
-                    printf(" < ");
-                    printf("<%d,%d> = %lf\n", points[(*segments)[j][0]].index, points[(*segments)[j][1]].index, distance_p(p3, p4));
+                edges = edge_search(*segments, points[(*segments)[i][1]].index, points, size);
+                for(k = 0; k < edges.size(); k++) {
+                    sum_i += distance_p(points[(*segments)[i][1]], points[edges[k][1]]);
+                }
+                /* calcualte the perimeter sum for segment j */
+                edges = edge_search(*segments, points[(*segments)[j][0]].index, points, size);
+                for(k = 0; k < edges.size(); k++) {
+                    sum_j += distance_p(points[(*segments)[j][0]], points[edges[k][1]]);
+                }
+                edges = edge_search(*segments, points[(*segments)[j][1]].index, points, size);
+                for(k = 0; k < edges.size(); k++) {
+                    sum_j += distance_p(points[(*segments)[j][1]], points[edges[k][1]]);
+                }
+                /* compare the perimeter sums */
+                //printf("RELATION: <%d,%d> = %lf", points[(*segments)[i][0]].index, points[(*segments)[i][1]].index, sum_i);
+                if(((sum_i - sum_j) > pos_epsilon) && ((sum_i - sum_j) > 0.0)) { //erase the j-segment
+                    //printf(" < ");
+                    //printf("<%d,%d> = %lf\n", points[(*segments)[j][0]].index, points[(*segments)[j][1]].index, sum_j);
                     if(i > j) {
                         i--;
                     }
                     segments->erase(segments->begin() + j);
                     j--;
                 }
+                else if(((sum_i - sum_j) < neg_epsilon) && ((sum_i - sum_j) < 0.0)) { //erase the i-segment
+                    //printf(" > ");
+                    //printf("<%d,%d> = %lf\n", points[(*segments)[j][0]].index, points[(*segments)[j][1]].index, sum_j);
+                    if(i < j) {
+                        j--;
+                    }
+                    segments->erase(segments->begin() + i);
+                    i--;
+                }
                 else { //erase both segments
-                    printf(" = ");
-                    printf("<%d,%d> = %lf\n", points[(*segments)[j][0]].index, points[(*segments)[j][1]].index, distance_p(p3, p4));
+                    //printf(" = ");
+                    //printf("<%d,%d> = %lf\n", points[(*segments)[j][0]].index, points[(*segments)[j][1]].index, sum_j);
                     /*
                     if(i < j) {
                         segments->erase(segments->begin() + j);
@@ -2213,12 +2244,12 @@ void finalize_segments(vector<int *> *segments, struct point_t *points, int size
             }
             /* skip segments that are in tmp_segments */
             if(segment_match(tmp_segments, i, j) > -1) {
-                printf("ALREADY PUSHED <%d,%d>\n", points[i].index, points[j].index);
+                //printf("ALREADY PUSHED <%d,%d>\n", points[i].index, points[j].index);
                 continue;
             }
             /* skip segments that are already recorded */
             if(segment_match(*segments, i, j) > -1) {
-                printf("SKIP <%d,%d>\n", points[i].index, points[j].index);
+                //printf("SKIP <%d,%d>\n", points[i].index, points[j].index);
                 continue;
             }
             /* goes through all segments */
@@ -2331,7 +2362,7 @@ void finalize_segments(vector<int *> *segments, struct point_t *points, int size
                 }
             }
             if(push) {
-                printf("PUSHING: <%d,%d>\n", points[i].index, points[j].index);
+                //printf("PUSHING: <%d,%d>\n", points[i].index, points[j].index);
                 pushed_segment = new int [2];
                 pushed_segment[0] = i;
                 pushed_segment[1] = j;
