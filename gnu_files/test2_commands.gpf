@@ -1,0 +1,7 @@
+set xrange [-9.000000:9.000000]
+set yrange [-9.000000:9.000000]
+set size ratio 1
+set grid
+set title "./datapoints/tests/test2.dat"
+set style line 1 lc rgb "black" lw 1
+plot './gnu_files/test2_lines.gpf' using 1:2 with lines ls 1 title "shortest path",'./gnu_files/test2_datapoints.gpf' using 1:2 with points pt 7 notitle,'' using 1:2:3 with labels point pt 7 offset char -1,-1 notitle,'./gnu_files/test2_extrapoints.gpf' using 1:2:3 with labels point pt 3 offset char -1,-1 notitle, './gnu_files/test2_centerpoint.gpf' using 1:2:3 with labels point pt 2 offset char -1,-1 notitle

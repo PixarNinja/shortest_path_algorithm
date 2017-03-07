@@ -3,7 +3,7 @@ CPP=g++
 CFLAGS=-g
 CPPFLAGS=-g -std=c++11
 
-all: compare shortest tessellate
+all: compare shortest tessellate plot
 
 shortest: shortest.c
 	$(CC) $(CFLAGS) shortest.c -o shortest -lm
@@ -24,5 +24,8 @@ tessellate: tessellate.cpp
 compare: compare.c
 	$(CC) $(CFLAGS) compare.c -o compare
 
+plot: plot.c
+	$(CC) $(CFLAGS) plot.c -o plot
+
 clean: 
-	rm shortest multiple_contours tao2 pop_reverse tessellate compare
+	rm shortest multiple_contours tao2 pop_reverse tessellate compare plot

@@ -5,4 +5,5 @@ compare
 multiple_contours
 tessellate
 pop_reverse
+plot
 *.txt

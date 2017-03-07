@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <math.h>
 #include <limits.h>
 #include <float.h>
@@ -40,9 +41,6 @@ struct polygon_t {
     vector<int> shape;
     double perimeter;
 };
-
-/* global variables */
-int permutations = 1;
 
 void construct_segments(vector<int *> *segments, struct point_t *points, struct point_t begin, int n, int size, FILE *gnu_files[NUM_FILES], int *mapped, int **recorded);
 void join_vertex(vector<int *> *segments, struct point_t *points, struct point_t begin, int n, int size, FILE *gnu_files[NUM_FILES]);
@@ -102,14 +100,37 @@ int main(int argc, char *argv[])
     int j = 0;
     int k = 0;
     int count = 0;
-
-    gnu_files[0] = fopen ("./gnu_files/commands.tmp", "w+");
-    gnu_files[1] = fopen("./gnu_files/datapoints.tmp", "w+");
-    gnu_files[2] = fopen("./gnu_files/lines.tmp", "w+");
-    gnu_files[3] = fopen("./gnu_files/extrapoints.tmp", "w+");
-    gnu_files[4] = fopen("./gnu_files/centerpoint.tmp", "w+");
-    gnu_files[5] = fopen("./gnu_files/polygons.tmp", "w+");
-    //printf("%s\n", argv[1]);
+    /* grabs name for output files */
+    char *name = new char [1024];
+    char *tmp = new char [strlen(argv[1]) + 1];
+    for(i = 0; i < strlen(argv[1]) + 1; i++)
+        tmp[i] = argv[1][i];
+    tmp = strtok(tmp, "/");
+    while (tmp != NULL) {
+        for(i = 0; i < strlen(tmp) + 1; i++)
+            name[i] = tmp[i];
+        tmp = strtok (NULL, "/");
+    }
+    name = strtok(name, ".");
+    const char *gnu_path = "./gnu_files/";
+    char *commands = new char [strlen(gnu_path) + strlen(name) + strlen("_commands.gpf") + 1];
+    char *datapoints = new char [strlen(gnu_path) + strlen(name) + strlen("_datapoints.gpf") + 1];
+    char *lines = new char [strlen(gnu_path) + strlen(name) + strlen("_lines.gpf") + 1];
+    char *extrapoints = new char [strlen(gnu_path) + strlen(name) + strlen("_lines.gpf") + 1];
+    char *centerpoint = new char [strlen(gnu_path) + strlen(name) + strlen("_centerpoint.gpf") + 1];
+    char *gnu_tmp = new char [strlen(gnu_path) + strlen("tmp.gpf") + 1];
+    sprintf(commands, "%s%s_commands.gpf", gnu_path, name);
+    sprintf(datapoints, "%s%s_datapoints.gpf", gnu_path, name);
+    sprintf(lines, "%s%s_lines.gpf", gnu_path, name);
+    sprintf(extrapoints, "%s%s_extrapoints.gpf", gnu_path, name);
+    sprintf(centerpoint, "%s%s_centerpoint.gpf", gnu_path, name);
+    sprintf(gnu_tmp, "%stmp.gpf", gnu_path);
+    gnu_files[0] = fopen (commands, "w+");
+    gnu_files[1] = fopen(datapoints, "w+");
+    gnu_files[2] = fopen(lines, "w+");
+    gnu_files[3] = fopen(extrapoints, "w+");
+    gnu_files[4] = fopen(centerpoint, "w+");
+    gnu_files[5] = fopen(gnu_tmp, "w+");
     data = fopen(argv[1], "r");
     output = fopen(argv[2], "w+");
     while(fgets(buf, 1024, data)) {
@@ -174,7 +195,6 @@ int main(int argc, char *argv[])
     for(i = 0; i < size; i++) {
         edges = edge_search(*segments, points[i].index, points, size);
         if(edges.size() == 1) {
-            //printf("CLEANUP: <%d,%d>\n", points[edges[0][1]].index, points[i].index);
             join_segment(segments, points, points[edges[0][1]], points[i], edges[0][1], i, size, gnu_files);
         }
     }
@@ -202,11 +222,6 @@ int main(int argc, char *argv[])
     /* find polygons again */
     polygons = construct_polygons(*segments, points, size, gnu_files);
     polygons = delete_duplicates(polygons);
-    /* print segment information
-    printf("\nSEGMENTS:\n");
-    for(i = 0; i < segments->size(); i++) {
-        printf("%d: <%d,%d>\n", i, points[(*segments)[i][0]].index, points[(*segments)[i][1]].index);
-    } */
     /* plot segment information */
     for(i = 0; i < segments->size(); i++) {
         fprintf(gnu_files[2], "%lf %lf %d\n", points[(*segments)[i][0]].x, points[(*segments)[i][0]].y, points[(*segments)[i][0]].index);
@@ -248,14 +263,11 @@ int main(int argc, char *argv[])
         printf("= %0.2lf\n", polygons[i].perimeter);
     } */
     /* plot */
-    fprintf(gnu_files[0], "plot './gnu_files/lines.tmp' using 1:2 with lines ls 1 title \"shortest path\",");
-    fprintf(gnu_files[0], "'./gnu_files/datapoints.tmp' using 1:2 with points pt 7 notitle,");
+    fprintf(gnu_files[0], "plot '%s' using 1:2 with lines ls 1 title \"shortest path\",", lines);
+    fprintf(gnu_files[0], "'%s' using 1:2 with points pt 7 notitle,", datapoints);
     fprintf(gnu_files[0], "'' using 1:2:3 with labels point pt 7 offset char -1,-1 notitle,");
-    fprintf(gnu_files[0], "'./gnu_files/extrapoints.tmp' using 1:2:3 with labels point pt 3 offset char -1,-1 notitle, ");
-    fprintf(gnu_files[0], "'./gnu_files/centerpoint.tmp' using 1:2:3 with labels point pt 2 offset char -1,-1 notitle\n");
-    //printf("\n");
-    //printf("Total Permutations: %d\n", permutations);
-    //printf("\n");
+    fprintf(gnu_files[0], "'%s' using 1:2:3 with labels point pt 3 offset char -1,-1 notitle, ", extrapoints);
+    fprintf(gnu_files[0], "'%s' using 1:2:3 with labels point pt 2 offset char -1,-1 notitle\n", centerpoint);
     fclose(output);
     fclose(data);
     fclose(gnu_files[0]);
@@ -263,7 +275,9 @@ int main(int argc, char *argv[])
     fclose(gnu_files[2]);
     fclose(gnu_files[3]);
     fclose(gnu_files[4]);
-    system("gnuplot -persistent ./gnu_files/commands.tmp");
+    char plot[1024];
+    sprintf(plot, "gnuplot -persistent %s", commands);
+    system(plot);
     fclose(gnu_files[5]);
     return 0;
 }
@@ -507,7 +521,6 @@ void construct_segments(vector<int *> *segments, struct point_t *points, struct 
         V.j = 0;
         V.length = 0;
         count = 0;
-        permutations++;
         visited_count++;
     }
     return;
@@ -711,7 +724,6 @@ void join_vertex(vector<int *> *segments, struct point_t *points, struct point_t
         V.j = 0;
         V.length = 0;
         count = 0;
-        permutations++;
     }
     return;
 }
