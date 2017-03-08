@@ -60,6 +60,7 @@ vector<struct polygon_t> delete_duplicates(vector<struct polygon_t> polygons);
 vector<struct polygon_t> optimize_polygons(vector<struct polygon_t> polygons, vector<int *> *segments, struct point_t *points, int size, FILE *gnu_files[NUM_FILES]);
 void remove_crosses(vector<int *> *segments, struct point_t *points, int size, FILE *gnu_files[NUM_FILES]);
 void finalize_segments(vector<int *> *segments, struct point_t *points, int size, FILE *gnu_files[NUM_FILES]);
+struct polygon_t find_shortest_path(vector<struct polygon_t> polygons);
 int point_match(struct point_t *points, int size, int vertex);
 double calculate_curvature(struct vector_t T1, struct vector_t T2, double tao);
 double angle_t(double tao);
@@ -84,6 +85,7 @@ int main(int argc, char *argv[])
     FILE *gnu_files[NUM_FILES];
     vector<struct polygon_t> polygons;
     struct polygon_t tmp_polygon;
+    struct polygon_t shortest_path;
     struct point_t *points;
     struct point_t center;
     char buf[1024];
@@ -240,6 +242,12 @@ int main(int argc, char *argv[])
             }
         }
     }
+    /* find shortest path */
+    shortest_path = find_shortest_path(polygons, size);
+    /* plot shortest path */
+    for(i = 0; i < shortest_path.shape.size(); i++) {
+        ;
+    }
     /* plot perimeter data */
     for(i = 0; i < polygons.size(); i++) {
         sum_x = 0.0;
@@ -251,9 +259,8 @@ int main(int argc, char *argv[])
         center.x = sum_x / (double)((polygons[i]).shape.size() - 1);
         center.y = sum_y / (double)((polygons[i]).shape.size() - 1);
         fprintf(gnu_files[3], "%lf %lf %d\n", center.x, center.y, i);
-        //fprintf(gnu_files[3], "%lf %lf\n", center.x, center.y);
     }
-    /* print polygon information
+    /* print polygon information */
     printf("\nPOLYGONS:\n");
     for(i = 0; i < polygons.size(); i++) {
         printf("%d: ", i);
@@ -261,7 +268,7 @@ int main(int argc, char *argv[])
             printf("%d ", points[(polygons[i]).shape[j]].index);
         }
         printf("= %0.2lf\n", polygons[i].perimeter);
-    } */
+    }
     /* plot */
     fprintf(gnu_files[0], "plot '%s' using 1:2 with lines ls 1 title \"shortest path\",", lines);
     fprintf(gnu_files[0], "'%s' using 1:2 with points pt 7 notitle,", datapoints);
@@ -1486,7 +1493,7 @@ vector<int *> edge_search(vector<int *> segments, int vertex, struct point_t *po
     return edges;
 }
 
-/* return the index of the matching element */
+/* return the index of the matching element from a vector of segments */
 int index_match(vector<int *> segments, int vertex)
 {
     /* check if the segment is found */
@@ -1499,18 +1506,6 @@ int index_match(vector<int *> segments, int vertex)
         }
     }
     return -1;
-}
-
-/* searches through a shape for a matching vertex */
-int shape_search(vector<int> shape, int vertex)
-{
-    /* check if the vertex is found */
-    if(find(shape.begin(), shape.end(), vertex) != shape.end()) {
-        return 1;
-    }
-    else {
-        return 0;
-    }
 }
 
 /* searches through a vector of polygons for a matching vertex */
@@ -2394,6 +2389,91 @@ void finalize_segments(vector<int *> *segments, struct point_t *points, int size
     for(i = 0; i < tmp_segments.size(); i++) {
         segments->push_back(tmp_segments[i]);
     }
+}
+
+struct polygon_t find_shortest_path(vector<struct polygon_t> polygons, int size)
+{
+    struct polygon_t shortest_path;
+    double epsilon = 0.000001
+    int *visited = new int [size] (0);
+    int i = 0;
+    int shared_edges = 0;
+
+    shortest_path = polygons[0];
+    i = 1;
+    /* add the smallest shapes to larger shapes */
+    while(i < size) {
+        shared_edges = find_shared_edges(shortest_path, polygons[i]);
+        if(shared_edges != 1) {
+            /* remove the smallest shape */
+            if((shortest_path.perimeter - polygons[i].perimeter) > epsilon) {
+                shortest_path = polygons[i];
+            }
+        }
+        /* add the shape to the path */
+        else {
+            shortest_path = add_shapes(shortest_path, polygons[i]);
+        }
+        visit(visited, polygons[i]);
+        i++;
+    }
+
+    return shortest_path;
+}
+
+int find_shared_edges(struct polygon_t A, struct polygon_t B)
+{
+    int i = 0;
+    int count = 0;
+
+    for(i = 0; i < A.shape.size() - 1; i++) {
+        if((shape_search(B.shape, A.shape[i]) > -1) && (shape_search(B.shape, A.shape[i + 1]) > -1)) {
+            count++;
+        }
+    }
+    if((shape_search(B.shape, A.shape[0]) > -1) && (shape_search(B.shape, A.shape[i]) > -1)) {
+        count++;
+    }
+
+    return count;
+}
+
+/* searches through a shape for a matching vertex */
+int shape_search(vector<int> shape, int vertex)
+{
+    int i = 0;
+    /* check if the vertex is found */
+    if((i = find(shape.begin(), shape.end(), vertex)) != shape.end()) {
+        return i;
+    }
+    else {
+        return -1;
+    }
+}
+
+struct polygon_t add_polygons(struct polygon_t A, struct polygon_t B)
+{
+    struct polygon_t C; //A + B
+    int i = 0;
+    int j = 0;
+    int p1 = 0;
+    int p2 = 0;
+    
+    for(i = 0; i < A.shape.size() - 1; i++) {
+        if(((p1 = shape_search(B.shape, A.shape[i])) > -1) && ((p2 = shape_search(B.shape, A.shape[i + 1])) > -1)) {
+            for(j = 0; j <= i; j++) {
+                C.shape.push_back(A.shape[j]);
+            }
+            for(j = p1; j <= p2; j++) {
+                C.shape.push_back(B.shape[j]);
+            }
+        }
+    }
+    if((shape_search(B.shape, A.shape[0]) > -1) && (shape_search(B.shape, A.shape[i]) > -1)) {
+        count++;
+    }
+ 
+    return C;
 }
 
 /* returns the index of the requested vertex */
