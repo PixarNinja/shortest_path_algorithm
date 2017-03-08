@@ -49,19 +49,18 @@ struct point_t generate_random(struct point_t *points, int size)
     double epsilon = 0.000001;
     /* ensures point is unique */
     while(redo) {
-        r_x = (double)rand() % size;
-        r_y = (double)rand() % size;
+        r_x = ((double)rand() / (double)RAND_MAX) * size;
+        r_y = ((double)rand() / (double)RAND_MAX) * size;
         sign_x = 2 * (double)rand() / (double)RAND_MAX - 1;
         sign_y = 2 * (double)rand() / (double)RAND_MAX - 1;
         if(sign_x >= 0)
-            sign_x = 1;
+            sign_x = 1.0;
         else
-            sign_x = -1;
+            sign_x = -1.0;
         if(sign_y >= 0)
-            sign_y = 1;
+            sign_y = 1.0;
         else
-            sign_y = -1;
-        redo = 0;
+            sign_y = -1.0;
         redo = 0;
         for(i = 0; i < size; i++) {
             if(fabs(points[i].x - (r_x * sign_x)) < epsilon) {
