@@ -15,7 +15,7 @@
 #include <iterator>
 #include <array>
 
-#define NUM_FILES 6
+#define NUM_FILES 7
 
 using namespace std;
 
@@ -60,7 +60,12 @@ vector<struct polygon_t> delete_duplicates(vector<struct polygon_t> polygons);
 vector<struct polygon_t> optimize_polygons(vector<struct polygon_t> polygons, vector<int *> *segments, struct point_t *points, int size, FILE *gnu_files[NUM_FILES]);
 void remove_crosses(vector<int *> *segments, struct point_t *points, int size, FILE *gnu_files[NUM_FILES]);
 void finalize_segments(vector<int *> *segments, struct point_t *points, int size, FILE *gnu_files[NUM_FILES]);
-struct polygon_t find_shortest_path(vector<struct polygon_t> polygons);
+struct polygon_t find_shortest_path(vector<struct polygon_t> polygons, struct point_t *points, int size);
+int smallest_neighbour(vector<struct polygon_t> polygons, struct polygon_t source, int n);
+int shared_edges(struct polygon_t A, struct polygon_t B);
+int shared_points(struct polygon_t A, struct polygon_t B);
+void visit_polygon(int *visited, struct polygon_t polygon, struct point_t *points);
+struct polygon_t add_polygons(struct polygon_t A, struct polygon_t B, struct point_t *points);
 int point_match(struct point_t *points, int size, int vertex);
 double calculate_curvature(struct vector_t T1, struct vector_t T2, double tao);
 double angle_t(double tao);
@@ -120,19 +125,22 @@ int main(int argc, char *argv[])
     char *lines = new char [strlen(gnu_path) + strlen(name) + strlen("_lines.gpf") + 1];
     char *extrapoints = new char [strlen(gnu_path) + strlen(name) + strlen("_lines.gpf") + 1];
     char *centerpoint = new char [strlen(gnu_path) + strlen(name) + strlen("_centerpoint.gpf") + 1];
+    char *shortest = new char [strlen(gnu_path) + strlen(name) + strlen("_shortest_path.gpf") + 1];
     char *gnu_tmp = new char [strlen(gnu_path) + strlen("tmp.gpf") + 1];
     sprintf(commands, "%s%s_commands.gpf", gnu_path, name);
     sprintf(datapoints, "%s%s_datapoints.gpf", gnu_path, name);
     sprintf(lines, "%s%s_lines.gpf", gnu_path, name);
     sprintf(extrapoints, "%s%s_extrapoints.gpf", gnu_path, name);
     sprintf(centerpoint, "%s%s_centerpoint.gpf", gnu_path, name);
+    sprintf(shortest, "%s%s_shortest_path.gpf", gnu_path, name);
     sprintf(gnu_tmp, "%stmp.gpf", gnu_path);
     gnu_files[0] = fopen (commands, "w+");
     gnu_files[1] = fopen(datapoints, "w+");
     gnu_files[2] = fopen(lines, "w+");
     gnu_files[3] = fopen(extrapoints, "w+");
     gnu_files[4] = fopen(centerpoint, "w+");
-    gnu_files[5] = fopen(gnu_tmp, "w+");
+    gnu_files[5] = fopen(shortest, "w+");
+    gnu_files[6] = fopen(gnu_tmp, "w+");
     data = fopen(argv[1], "r");
     output = fopen(argv[2], "w+");
     while(fgets(buf, 1024, data)) {
@@ -172,6 +180,7 @@ int main(int argc, char *argv[])
     fprintf(gnu_files[0], "set grid\n");
     fprintf(gnu_files[0], "set title \"%s\"\n", argv[1]);
     fprintf(gnu_files[0], "set style line 1 lc rgb \"black\" lw 1\n");
+    fprintf(gnu_files[0], "set style line 2 lc rgb \"red\" lw 2\n");
     /* runs tao-distance algorithm on data */
     for(i = 0; i < size; i++) {
         for(j = 0; j < size; j++) {
@@ -243,11 +252,14 @@ int main(int argc, char *argv[])
         }
     }
     /* find shortest path */
-    shortest_path = find_shortest_path(polygons, size);
+    shortest_path = find_shortest_path(polygons, points, size);
     /* plot shortest path */
+    printf("\nSHORTEST PATH: ");
     for(i = 0; i < shortest_path.shape.size(); i++) {
-        ;
+        printf("%d->", points[shortest_path.shape[i]].index);
+        fprintf(gnu_files[5], "%lf %lf\n", points[shortest_path.shape[i]].x, points[shortest_path.shape[i]].y);
     }
+    printf("%d\n\n", points[shortest_path.shape[0]].index);
     /* plot perimeter data */
     for(i = 0; i < polygons.size(); i++) {
         sum_x = 0.0;
@@ -270,11 +282,12 @@ int main(int argc, char *argv[])
         printf("= %0.2lf\n", polygons[i].perimeter);
     }
     /* plot */
-    fprintf(gnu_files[0], "plot '%s' using 1:2 with lines ls 1 title \"shortest path\",", lines);
+    fprintf(gnu_files[0], "plot '%s' using 1:2 with lines ls 1 title \"Tessellations\",", lines);
     fprintf(gnu_files[0], "'%s' using 1:2 with points pt 7 notitle,", datapoints);
     fprintf(gnu_files[0], "'' using 1:2:3 with labels point pt 7 offset char -1,-1 notitle,");
     fprintf(gnu_files[0], "'%s' using 1:2:3 with labels point pt 3 offset char -1,-1 notitle, ", extrapoints);
-    fprintf(gnu_files[0], "'%s' using 1:2:3 with labels point pt 2 offset char -1,-1 notitle\n", centerpoint);
+    fprintf(gnu_files[0], "'%s' using 1:2:3 with labels point pt 2 offset char -1,-1 notitle, ", centerpoint);
+    fprintf(gnu_files[0], "'%s' using 1:2 with lines ls 2 title \"Shortest Path\"\n", shortest);
     fclose(output);
     fclose(data);
     fclose(gnu_files[0]);
@@ -282,10 +295,11 @@ int main(int argc, char *argv[])
     fclose(gnu_files[2]);
     fclose(gnu_files[3]);
     fclose(gnu_files[4]);
+    fclose(gnu_files[5]);
     char plot[1024];
     sprintf(plot, "gnuplot -persistent %s", commands);
     system(plot);
-    fclose(gnu_files[5]);
+    fclose(gnu_files[6]);
     return 0;
 }
 
@@ -2391,42 +2405,146 @@ void finalize_segments(vector<int *> *segments, struct point_t *points, int size
     }
 }
 
-struct polygon_t find_shortest_path(vector<struct polygon_t> polygons, int size)
+struct polygon_t find_shortest_path(vector<struct polygon_t> polygons, struct point_t *points, int size)
 {
+    vector<struct polygon_t> bridge;
     struct polygon_t shortest_path;
-    double epsilon = 0.000001
-    int *visited = new int [size] (0);
+    double epsilon = 0.000001;
+    int *visited = new int [size] ();
     int i = 0;
-    int shared_edges = 0;
+    int j = 0;
+    int k = 0;
+    int complete = 0;
+    int found_edges = 0;
+    int found_points = 0;
 
     shortest_path = polygons[0];
+    visit_polygon(visited, polygons[0], points);
+    /* plot shortest path */
+    printf("\nSHORTEST PATH: ");
+    for(k = 0; k < shortest_path.shape.size() - 1; k++) {
+        printf("%d->", points[shortest_path.shape[k]].index);
+    }
+    printf("%d\n", points[shortest_path.shape[k]].index);
+    /* add the smallest shapes to larger shapes until all are visited */
     i = 1;
-    /* add the smallest shapes to larger shapes */
-    while(i < size) {
-        shared_edges = find_shared_edges(shortest_path, polygons[i]);
-        if(shared_edges != 1) {
-            /* remove the smallest shape */
-            if((shortest_path.perimeter - polygons[i].perimeter) > epsilon) {
-                shortest_path = polygons[i];
+    while(!complete) {
+        found_edges = shared_edges(shortest_path, polygons[i]);
+        found_points = shared_points(shortest_path, polygons[i]);
+        for(j = 0; j < bridge.size(); j++) {
+            if(shared_edges(polygons[i], bridge[j]) == 1) {
+                printf("\nBRIDGE A: ");
+                for(k = 0; k < polygons[i].shape.size() - 1; k++) {
+                    printf("%d->", points[polygons[i].shape[k]].index);
+                }
+                printf("%d\n", points[polygons[i].shape[k]].index);
+                printf("\nBRIDGE B: ");
+                for(k = 0; k < bridge[j].shape.size() - 1; k++) {
+                    printf("%d->", points[bridge[j].shape[k]].index);
+                }
+                printf("%d\n", points[bridge[j].shape[k]].index);
+                polygons[i] = add_polygons(polygons[i], bridge[j], points);
+                bridge.erase(bridge.begin() + j);
+                j = 0;
+            }
+        }
+        printf("\nshared edges: %d, shared points: %d\n", found_edges, found_points);
+        printf("\nCURRENT SHORTEST PATH: ");
+        for(k = 0; k < shortest_path.shape.size() - 1; k++) {
+            printf("%d->", points[shortest_path.shape[k]].index);
+        }
+        printf("%d\n", points[shortest_path.shape[k]].index);
+        printf("\nPROSPECTIVE PATH: ");
+        for(k = 0; k < polygons[i].shape.size() - 1; k++) {
+            printf("%d->", points[polygons[i].shape[k]].index);
+        }
+        printf("%d\n", points[polygons[i].shape[k]].index);
+        if(found_edges != 1) {
+            if(found_edges == 0) {
+                /* check if it needs to be added to bridge vector */
+                if(found_points == 1) {
+                    printf("\nBridge\n");
+                    bridge.push_back(polygons[i]);
+                }
+                else {
+                    /* take the largest shape */
+                    if((polygons[i].perimeter - shortest_path.perimeter) > epsilon) {
+                        shortest_path = polygons[i];
+                    }
+                    printf("\nSHAPE CHANGE: ");
+                    for(k = 0; k < shortest_path.shape.size() - 1; k++) {
+                        printf("%d->", points[shortest_path.shape[k]].index);
+                    }
+                    printf("%d\n", points[shortest_path.shape[k]].index);
+                    /* records points of polygon as visited */
+                    visit_polygon(visited, polygons[i], points);
+                }
+            }
+            else {
+                /* take the largest shape */
+                if((polygons[i].perimeter - shortest_path.perimeter) > epsilon) {
+                    shortest_path = polygons[i];
+                }
+                printf("\nSHAPE CHANGE: ");
+                for(k = 0; k < shortest_path.shape.size() - 1; k++) {
+                    printf("%d->", points[shortest_path.shape[k]].index);
+                }
+                printf("%d\n", points[shortest_path.shape[k]].index);
+                /* records points of polygon as visited */
+                visit_polygon(visited, polygons[i], points);
             }
         }
         /* add the shape to the path */
         else {
-            shortest_path = add_shapes(shortest_path, polygons[i]);
+            shortest_path = add_polygons(shortest_path, polygons[i], points);
+            printf("\nPATH ADDITION: ");
+            for(k = 0; k < shortest_path.shape.size() - 1; k++) {
+                printf("%d->", points[shortest_path.shape[k]].index);
+            }
+            printf("%d\n", points[shortest_path.shape[k]].index);
+            /* records points of polygon as visited */
+            visit_polygon(visited, polygons[i], points);
         }
-        visit(visited, polygons[i]);
+        complete = 1;
+        for(j = 0; j < size; j++) {
+            /* trigger flag if not complete */
+            if(visited[j] == 0) {
+                printf("NOT MAPPED: %d", points[j].index);
+                complete = 0;
+                break;
+            }
+        }
         i++;
     }
-
     return shortest_path;
 }
 
-int find_shared_edges(struct polygon_t A, struct polygon_t B)
+/* finds the smallest neighbour of a polygon */
+int smallest_neighbour(vector<struct polygon_t> polygons, struct polygon_t source, int n)
+{
+    int i = 0;
+    int k = 0;
+    int index = 0;
+    double min = DBL_MAX;
+    for(i = 0; i < polygons.size(); i++) {
+        if(i == n) {
+            continue;
+        }
+        if(shared_edges(polygons[i], source) > 0) {
+            if(min > polygons[i].perimeter) {
+                min = polygons[i].perimeter;
+                index = i;
+            }
+        }
+    }
+    return index;
+}
+
+int shared_edges(struct polygon_t A, struct polygon_t B)
 {
     int i = 0;
     int count = 0;
-
-    for(i = 0; i < A.shape.size() - 1; i++) {
+    for(i = 0; i < A.shape.size() - 2; i++) {
         if((shape_search(B.shape, A.shape[i]) > -1) && (shape_search(B.shape, A.shape[i + 1]) > -1)) {
             count++;
         }
@@ -2434,46 +2552,160 @@ int find_shared_edges(struct polygon_t A, struct polygon_t B)
     if((shape_search(B.shape, A.shape[0]) > -1) && (shape_search(B.shape, A.shape[i]) > -1)) {
         count++;
     }
-
     return count;
+}
+
+int shared_points(struct polygon_t A, struct polygon_t B)
+{
+    int i = 0;
+    int count = 0;
+    for(i = 0; i < A.shape.size() - 1; i++) {
+        if(shape_search(B.shape, A.shape[i]) > -1) {
+            count++;
+        }
+    }
+    return count;
+}
+
+void visit_polygon(int *visited, struct polygon_t polygon, struct point_t *points)
+{
+    for(int i = 0; i < polygon.shape.size(); i++) {
+        visited[points[polygon.shape[i]].index] = 1;
+    }
+}
+
+struct polygon_t add_polygons(struct polygon_t A, struct polygon_t B, struct point_t *points)
+{
+    struct polygon_t C; //A + B
+    int i = 0;
+    int j = 0;
+    int a1 = 0;
+    int a2 = 0;
+    int b1 = 0;
+    int b2 = 0;
+    int tmp = 0;
+    
+    /* print current shapes */
+    printf("\nBEFORE: A = %0.2lf, B = %0.2lf\n", A.perimeter, B.perimeter);
+    C.perimeter = 0.0;
+    for(i = 0; i < A.shape.size() - 1; i++) {
+        /* find the segment that matches */
+        if(((b1 = shape_search(B.shape, A.shape[i])) > -1) && ((b2 = shape_search(B.shape, A.shape[i + 1])) > -1)) {
+            printf("b1 = %d, b2 = %d\n", b1, b2);
+            a1 = i;
+            a2 = i + 1;
+            if(a1 == A.shape.size() - 1) {
+                a1 = 0;
+            }
+            else if(a2 == A.shape.size() - 1) {
+                a2 = 0;
+            }
+            printf("a1 = %d, a2 = %d\n", a1, a2);
+            /* check which direction to traverse */
+            if(b1 == ((b2 + 1) % (B.shape.size() - 1))) {
+                /* traverse A to the right */
+                if(a1 == (a2 + 1) % (A.shape.size() - 1)) {
+                    printf("A: RIGHT\n");
+                    i = a1;
+                    while(i != a2) {
+                        C.shape.push_back(A.shape[i]);
+                        C.perimeter += distance_p(points[A.shape[i]], points[A.shape[i + 1]]);
+                        printf("%d->", points[A.shape[i]].index);
+                        i++;
+                        if(i > A.shape.size() - 2)
+                            i = 0;
+                    }
+                }
+                /* traverse A to the left */
+                else {
+                    printf("A: LEFT\n");
+                    i = a1;
+                    while(i != a2) {
+                        C.shape.push_back(A.shape[i]);
+                        C.perimeter += distance_p(points[A.shape[i]], points[A.shape[i + 1]]);
+                        printf("%d->", points[A.shape[i]].index);
+                        i--;
+                        if(i < 0)
+                            i = A.shape.size() - 2;
+                    }
+                }
+                /* traverse B to the left */
+                printf("B: LEFT\n");
+                j = b2;
+                while(j != b1) {
+                    C.shape.push_back(B.shape[j]);
+                    C.perimeter += distance_p(points[B.shape[j]], points[B.shape[j + 1]]);
+                    printf("%d->", points[B.shape[j]].index);
+                    j--;
+                    if(j < 0)
+                        j = B.shape.size() - 2;
+                }
+                C.shape.push_back(B.shape[j]);
+                C.perimeter += distance_p(points[B.shape[j]], points[B.shape[j + 1]]);
+                printf("%d\n", points[B.shape[j]].index);
+            }
+            else {
+                /* traverse A to the right */
+                if(a1 == (a2 + 1) % (A.shape.size() - 1)) {
+                    printf("A: RIGHT\n");
+                    i = a1;
+                    while(i != a2) {
+                        C.shape.push_back(A.shape[i]);
+                        C.perimeter += distance_p(points[A.shape[i]], points[A.shape[i + 1]]);
+                        printf("%d->", points[A.shape[i]].index);
+                        i++;
+                        if(i > A.shape.size() - 2)
+                            i = 0;
+                    }
+                }
+                /* traverse A to the left */
+                else {
+                    printf("A: LEFT\n");
+                    i = a1;
+                    while(i != a2) {
+                        C.shape.push_back(A.shape[i]);
+                        C.perimeter += distance_p(points[A.shape[i]], points[A.shape[i + 1]]);
+                        printf("%d->", points[A.shape[i]].index);
+                        i--;
+                        if(i < 0)
+                            i = A.shape.size() - 2;
+                    }
+                }
+                /* traverse B to the right */
+                printf("B: RIGHT\n");
+                j = b2;
+                while(j != b1) {
+                    C.shape.push_back(B.shape[j]);
+                    C.perimeter += distance_p(points[B.shape[j]], points[B.shape[j + 1]]);
+                    printf("%d->", points[B.shape[j]].index);
+                    j++;
+                    if(j > B.shape.size() - 2)
+                        j = 0;
+                }
+                C.shape.push_back(B.shape[j]);
+                C.perimeter += distance_p(points[B.shape[j]], points[B.shape[j + 1]]);
+                printf("%d\n", points[B.shape[j]].index);
+            }
+            break;
+        }
+    }
+
+    /* print altered shapes */
+    printf("\nNEW SHAPE: C = %0.2lf\n", C.perimeter);
+ 
+    return C;
 }
 
 /* searches through a shape for a matching vertex */
 int shape_search(vector<int> shape, int vertex)
 {
-    int i = 0;
-    /* check if the vertex is found */
-    if((i = find(shape.begin(), shape.end(), vertex)) != shape.end()) {
-        return i;
-    }
-    else {
-        return -1;
-    }
-}
-
-struct polygon_t add_polygons(struct polygon_t A, struct polygon_t B)
-{
-    struct polygon_t C; //A + B
-    int i = 0;
-    int j = 0;
-    int p1 = 0;
-    int p2 = 0;
-    
-    for(i = 0; i < A.shape.size() - 1; i++) {
-        if(((p1 = shape_search(B.shape, A.shape[i])) > -1) && ((p2 = shape_search(B.shape, A.shape[i + 1])) > -1)) {
-            for(j = 0; j <= i; j++) {
-                C.shape.push_back(A.shape[j]);
-            }
-            for(j = p1; j <= p2; j++) {
-                C.shape.push_back(B.shape[j]);
-            }
+    for(int i = 0; i < shape.size() - 1; i++) {
+        /* check if the vertex is found */
+        if(shape[i] == vertex) {
+            return i;
         }
     }
-    if((shape_search(B.shape, A.shape[0]) > -1) && (shape_search(B.shape, A.shape[i]) > -1)) {
-        count++;
-    }
- 
-    return C;
+    return -1;
 }
 
 /* returns the index of the requested vertex */
