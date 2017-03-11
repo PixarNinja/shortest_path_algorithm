@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <math.h>
 #include <float.h>
+#include <string.h>
 
 #define SIZE 7
 
@@ -28,6 +29,7 @@ int main(int argc, char *argv[])
     }
     FILE *data = fopen(argv[1], "r");
     FILE *output = fopen(argv[2], "w+");
+    FILE *plot;
     struct point_t *point;
     struct point_t *shortest;
     char buf[1024];
@@ -35,6 +37,21 @@ int main(int argc, char *argv[])
     int n;
     int size = 0;
     int i = 0;
+    const char *gnu_path = "./gnu_files/";
+    char *name = malloc(1024);
+    char *tmp = malloc(strlen(argv[1]) + 1);
+    for(i = 0; i < strlen(argv[1]) + 1; i++)
+        tmp[i] = argv[1][i];
+    tmp = strtok(tmp, "/");
+    while (tmp != NULL) {
+        for(i = 0; i < strlen(tmp) + 1; i++)
+            name[i] = tmp[i];
+        tmp = strtok (NULL, "/");
+    }
+    name = strtok(name, ".");
+    char *path = (char *)malloc(strlen(gnu_path) + strlen(name) + strlen("_shortest_path.gpf") + 1);
+    sprintf(path, "%s%s_shortest_path.gpf", gnu_path, name);
+    plot = fopen(path, "w+");
     while(fgets(buf, 1024, data)) {
         size++;
     }
@@ -54,14 +71,19 @@ int main(int argc, char *argv[])
     shortest = point;
     /* fills array with permutations */
     permute(point, shortest, start, n);
+    /* file output */
     printf("\nSHORTEST PATH: %d->", global_shortest[0]);
-    fprintf(output, "%d %d\n", global_shortest[0], global_shortest[1]);
+    fprintf(plot, "%lf %lf\n", point[global_shortest[0]].x, point[global_shortest[0]].y);
+    fprintf(output, "%d %d\n", point[global_shortest[0]].index, point[global_shortest[1]].index);
     for(i = 1; i < n; i++) {
         printf("%d->", global_shortest[i]);
-        fprintf(output, "%d %d\n", global_shortest[i], global_shortest[i + 1]);
+        fprintf(plot, "%lf %lf\n", point[global_shortest[i]].x, point[global_shortest[i]].y);
+        fprintf(output, "%d %d\n", point[global_shortest[i]].index, point[global_shortest[i + 1]].index);
     }
     printf("%d->%d", global_shortest[i], global_shortest[0]);
-    fprintf(output, "%d %d\n", global_shortest[i], global_shortest[0]);
+    fprintf(plot, "%lf %lf\n", point[global_shortest[i]].x, point[global_shortest[i]].y);
+    fprintf(plot, "%lf %lf\n", point[global_shortest[0]].x, point[global_shortest[0]].y);
+    fprintf(output, "%d %d\n", point[global_shortest[i]].index, point[global_shortest[0]].index);
     //printf("Total Permutations: %d\n", global_count);
     //printf("Distance: %lf\n", shortest[0].curr);
     //printf("\n");

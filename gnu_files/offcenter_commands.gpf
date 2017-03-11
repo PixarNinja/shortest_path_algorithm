@@ -1,0 +1,8 @@
+set xrange [-6.000000:6.000000]
+set yrange [-6.000000:6.000000]
+set size ratio 1
+set grid
+set title "datapoints/offcenter.dat"
+set style line 1 lc rgb "black" lw 1
+set style line 2 lc rgb "red" lw 2
+plot './gnu_files/offcenter_lines.gpf' using 1:2 with lines ls 1 title "Tessellations",'./gnu_files/offcenter_datapoints.gpf' using 1:2 with points pt 7 notitle,'' using 1:2:3 with labels point pt 7 offset char -1,-1 notitle,'./gnu_files/offcenter_extrapoints.gpf' using 1:2:3 with labels point pt 3 offset char -1,-1 notitle, './gnu_files/offcenter_centerpoint.gpf' using 1:2:3 with labels point pt 2 offset char -1,-1 notitle, './gnu_files/offcenter_shortest_path.gpf' using 1:2 with lines ls 2 title "Shortest Path"

@@ -15,7 +15,7 @@
 #include <iterator>
 #include <array>
 
-#define NUM_FILES 7
+#define NUM_FILES 8
 
 using namespace std;
 
@@ -128,6 +128,7 @@ int main(int argc, char *argv[])
     char *lines = new char [strlen(gnu_path) + strlen(name) + strlen("_lines.gpf") + 1];
     char *extrapoints = new char [strlen(gnu_path) + strlen(name) + strlen("_lines.gpf") + 1];
     char *centerpoint = new char [strlen(gnu_path) + strlen(name) + strlen("_centerpoint.gpf") + 1];
+    char *path = new char [strlen(gnu_path) + strlen(name) + strlen("_calculated_path.gpf") + 1];
     char *shortest = new char [strlen(gnu_path) + strlen(name) + strlen("_shortest_path.gpf") + 1];
     char *gnu_tmp = new char [strlen(gnu_path) + strlen("tmp.gpf") + 1];
     sprintf(commands, "%s%s_commands.gpf", gnu_path, name);
@@ -135,15 +136,17 @@ int main(int argc, char *argv[])
     sprintf(lines, "%s%s_lines.gpf", gnu_path, name);
     sprintf(extrapoints, "%s%s_extrapoints.gpf", gnu_path, name);
     sprintf(centerpoint, "%s%s_centerpoint.gpf", gnu_path, name);
+    sprintf(path, "%s%s_calculated_path.gpf", gnu_path, name);
     sprintf(shortest, "%s%s_shortest_path.gpf", gnu_path, name);
     sprintf(gnu_tmp, "%stmp.gpf", gnu_path);
-    gnu_files[0] = fopen (commands, "w+");
+    gnu_files[0] = fopen(commands, "w+");
     gnu_files[1] = fopen(datapoints, "w+");
     gnu_files[2] = fopen(lines, "w+");
     gnu_files[3] = fopen(extrapoints, "w+");
     gnu_files[4] = fopen(centerpoint, "w+");
-    gnu_files[5] = fopen(shortest, "w+");
-    gnu_files[6] = fopen(gnu_tmp, "w+");
+    gnu_files[5] = fopen(path, "w+");
+    gnu_files[6] = fopen(shortest, "r");
+    gnu_files[7] = fopen(gnu_tmp, "w+");
     data = fopen(argv[1], "r");
     output = fopen(argv[2], "w+");
     while(fgets(buf, 1024, data)) {
@@ -183,7 +186,8 @@ int main(int argc, char *argv[])
     fprintf(gnu_files[0], "set grid\n");
     fprintf(gnu_files[0], "set title \"%s\"\n", argv[1]);
     fprintf(gnu_files[0], "set style line 1 lc rgb \"black\" lw 1\n");
-    fprintf(gnu_files[0], "set style line 2 lc rgb \"red\" lw 2\n");
+    fprintf(gnu_files[0], "set style line 2 lc rgb \"red\" lw 3\n");
+    fprintf(gnu_files[0], "set style line 3 lc rgb \"blue\" lw 2\n");
     /* runs tao-distance algorithm on data */
     for(i = 0; i < size; i++) {
         for(j = 0; j < size; j++) {
@@ -255,10 +259,10 @@ int main(int argc, char *argv[])
         }
     }
     polygons.pop_back();
-    /* find shortest path */
+    /* find shortest path
     shortest_path = find_shortest_path(polygons, points, size);
-    /* plot shortest path */
-    printf("\nSHORTEST PATH: ");
+    /* plot shortest path
+    printf("\nCALCULATED PATH: ");
     for(i = 0; i < shortest_path.shape.size(); i++) {
         printf("%d->", points[shortest_path.shape[i]].index);
         fprintf(gnu_files[5], "%lf %lf\n", points[shortest_path.shape[i]].x, points[shortest_path.shape[i]].y);
@@ -291,7 +295,8 @@ int main(int argc, char *argv[])
     fprintf(gnu_files[0], "'' using 1:2:3 with labels point pt 7 offset char -1,-1 notitle,");
     fprintf(gnu_files[0], "'%s' using 1:2:3 with labels point pt 3 offset char -1,-1 notitle, ", extrapoints);
     fprintf(gnu_files[0], "'%s' using 1:2:3 with labels point pt 2 offset char -1,-1 notitle, ", centerpoint);
-    fprintf(gnu_files[0], "'%s' using 1:2 with lines ls 2 title \"Shortest Path\"\n", shortest);
+    fprintf(gnu_files[0], "'%s' using 1:2 with lines ls 2 title \"Calculated Path\", ", path);
+    fprintf(gnu_files[0], "'%s' using 1:2 with lines ls 3 title \"Shortest Path\"\n", shortest);
     fclose(output);
     fclose(data);
     fclose(gnu_files[0]);
@@ -303,7 +308,7 @@ int main(int argc, char *argv[])
     char plot[1024];
     sprintf(plot, "gnuplot -persistent %s", commands);
     system(plot);
-    fclose(gnu_files[6]);
+    fclose(gnu_files[7]);
     return 0;
 }
 
@@ -2155,7 +2160,6 @@ void remove_crosses(vector<int *> *segments, struct point_t *points, int size, F
             /* solve linear system */
             x = (b2 - b1) / (m1 - m2);
             y = m1 * x + b1;
-            //printf("r = %0.2lf, l = %0.2lf\n", r, l);
             /* erase the segment if it is an overlap */
             if((b2 == b1) && (m1 == m2)) {
                 if(p3.x >= p2.x) {
@@ -2166,7 +2170,7 @@ void remove_crosses(vector<int *> *segments, struct point_t *points, int size, F
                 }
             }
             if(x <= r && x >= l) {
-                /* erase the segment with the largest perimeter sum */
+                /* erase the segment with the greatest perimeter sum */
                 sum_i = 0.0;
                 sum_j = 0.0;
                 /* calcualte the perimeter sum for segment i */
@@ -2188,19 +2192,14 @@ void remove_crosses(vector<int *> *segments, struct point_t *points, int size, F
                     sum_j += distance_p(points[(*segments)[j][1]], points[edges[k][1]]);
                 }
                 /* compare the segment lengths */
-                //printf("RELATION: <%d,%d> = %lf", points[(*segments)[i][0]].index, points[(*segments)[i][1]].index, sum_i);
-                if((distance_p(p1, p2) - distance_p(p3, p4)) < neg_epsilon) { //erase the j-segment
-                    //printf(" < ");
-                    //printf("<%d,%d> = %lf\n", points[(*segments)[j][0]].index, points[(*segments)[j][1]].index, sum_j);
+                if((distance_p(p1, p2) - distance_p(p3, p4)) < neg_epsilon) { //erase the j-segment, i.e. j.val < i.val
                     if(i > j) {
                         i--;
                     }
                     segments->erase(segments->begin() + j);
                     j--;
                 }
-                else if((distance_p(p1, p2) - distance_p(p3, p4)) > pos_epsilon) { //erase the i-segment
-                    //printf(" > ");
-                    //printf("<%d,%d> = %lf\n", points[(*segments)[j][0]].index, points[(*segments)[j][1]].index, sum_j);
+                else if((distance_p(p1, p2) - distance_p(p3, p4)) > pos_epsilon) { //erase the i-segment, i.e. i.val < j.val
                     if(i < j) {
                         j--;
                     }
@@ -2209,19 +2208,19 @@ void remove_crosses(vector<int *> *segments, struct point_t *points, int size, F
                 }
                 else {
                     /* compare the perimeter sums */
-                    if((sum_i - sum_j) < neg_epsilon) { //erase the j-segment
-                        if(i > j) {
-                            i--;
-                        }
-                        segments->erase(segments->begin() + j);
-                        j--;
-                    }
-                    else if((sum_i - sum_j) > pos_epsilon) { //erase the i-segment
+                    if((sum_i - sum_j) < neg_epsilon) { //erase the i-segment, i.e. i.val < j.val
                         if(i < j) {
                             j--;
                         }
                         segments->erase(segments->begin() + i);
                         i--;
+                    }
+                    else if((sum_i - sum_j) > pos_epsilon) { //erase the j-segment, i.e. j.val < i.val
+                        if(i > j) {
+                            i--;
+                        }
+                        segments->erase(segments->begin() + j);
+                        j--;
                     }
                     else { //erase both segments
                         if(i < j) {
@@ -2277,15 +2276,13 @@ void finalize_segments(vector<int *> *segments, struct point_t *points, int size
             }
             /* skip segments that are in tmp_segments */
             if(segment_match(tmp_segments, i, j) > -1) {
-                //printf("ALREADY PUSHED <%d,%d>\n", points[i].index, points[j].index);
                 continue;
             }
             /* skip segments that are already recorded */
             if(segment_match(*segments, i, j) > -1) {
-                //printf("SKIP <%d,%d>\n", points[i].index, points[j].index);
                 continue;
             }
-            /* goes through all segments */
+            /* goes through all current segments */
             for(k = 0; k < segments->size(); k++) {
                 p1 = points[i];
                 p2 = points[j]; //prospective segment
@@ -2318,6 +2315,8 @@ void finalize_segments(vector<int *> *segments, struct point_t *points, int size
                     if(p2.x == p1.x) {
                         p1.x -= 0.000001;
                         p2.x += 0.000001;
+                        p3.x -= 0.000001;
+                        p4.x += 0.000001;
                     }
                     l = p1.x;
                     /* p3--------------------p4 */
@@ -2340,6 +2339,8 @@ void finalize_segments(vector<int *> *segments, struct point_t *points, int size
                     /*            .       */
                     /*            p4      */
                     if(p3.x == p4.x) {
+                        p1.x -= 0.000001;
+                        p2.x += 0.000001;
                         p3.x -= 0.000001;
                         p4.x += 0.000001;
                     }
@@ -2395,7 +2396,6 @@ void finalize_segments(vector<int *> *segments, struct point_t *points, int size
                 }
             }
             if(push) {
-                //printf("PUSHING: <%d,%d>\n", points[i].index, points[j].index);
                 pushed_segment = new int [2];
                 pushed_segment[0] = i;
                 pushed_segment[1] = j;

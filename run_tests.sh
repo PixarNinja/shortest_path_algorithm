@@ -1,9 +1,12 @@
 #!/bin/bash
 
-for i in {1..5}
-do
-	./shape_datapoint_generator/random "./datapoints/tests/test$i.dat" "10" &&
-	./tessellate "./datapoints/tests/test$i.dat" "./datapoints/tests/test$i.tes" &&
-	./shortest "./datapoints/tests/test$i.dat" "./datapoints/tests/test$i.pth"
-	./compare "./datapoints/tests/test$i.tes" "./datapoints/tests/test$i.pth"
-done
+if (($# == 0)); then
+	echo "Usage: ./run.sh [number of random files to generate]"
+else
+	for ((i=1; i <= $1; i++)); do
+		./shape_datapoint_generator/random "./datapoints/tests/test$i.dat" "10" &&
+		./brute_force "./datapoints/tests/test$i.dat" "./datapoints/tests/test$i.shortest_path"
+		./shortest_path "./datapoints/tests/test$i.dat" "./datapoints/tests/test$i.calculated_path" &&
+		./compare "./datapoints/tests/test$i.calculated_path" "./datapoints/tests/test$i.shortest_path"
+	done
+fi
