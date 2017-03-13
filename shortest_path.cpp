@@ -259,9 +259,9 @@ int main(int argc, char *argv[])
         }
     }
     polygons.pop_back();
-    /* find shortest path
+    /* find shortest path */
     shortest_path = find_shortest_path(polygons, points, size);
-    /* plot shortest path
+    /* plot shortest path */
     printf("\nCALCULATED PATH: ");
     for(i = 0; i < shortest_path.shape.size(); i++) {
         printf("%d->", points[shortest_path.shape[i]].index);
@@ -2412,7 +2412,9 @@ void finalize_segments(vector<int *> *segments, struct point_t *points, int size
 struct polygon_t find_shortest_path(vector<struct polygon_t> polygons, struct point_t *points, int size)
 {
     vector<struct polygon_t> original = polygons;
+    vector<struct polygon_t> base;
     vector<struct polygon_t> bridge;
+    struct polygon_t tmp_polygon;
     struct polygon_t shortest_path;
     double epsilon = 0.000001;
     double min = DBL_MAX;
@@ -2426,129 +2428,208 @@ struct polygon_t find_shortest_path(vector<struct polygon_t> polygons, struct po
     int j = 0;
     int k = 0;
     int n = 0;
+    int m = 0;
     int accepted = 0;
     int complete = 0;
+    int found = 0;
+    int sum_edges = 0;
+    int sum_points = 0;
 
-    shortest_path = polygons[0];
-    visit_polygon(visited, polygons[0], points);
-    /* plot shortest path */
-    printf("\nSHORTEST PATH: ");
-    for(k = 0; k < shortest_path.shape.size() - 1; k++) {
-        printf("%d->", points[shortest_path.shape[k]].index);
+    /* bubble sort polygons by perimeter */
+    for(i = 0; i < polygons.size(); i++) {
+        for(j = polygons.size() - 1; j > i; j--) {
+            if(polygons[j].perimeter > polygons[j - 1].perimeter) {
+                tmp_polygon = polygons[j];
+                polygons[j] = polygons[j - 1];
+                polygons[j - 1] = tmp_polygon;
+            }
+        }
     }
-    printf("%d\n", points[shortest_path.shape[k]].index);
-    /* add the smallest shapes to larger shapes until all are visited */
+    base.push_back(polygons[0]);
+    visit_polygon(visited, polygons[0], points);
+    printf("\nADD BASE: ");
+    for(k = 0; k < polygons[0].shape.size() - 1; k++) {
+        printf("%d->", points[polygons[0].shape[k]].index);
+    }
+    printf("%d\n", points[polygons[0].shape[k]].index);
     i = 1;
-    while((i < polygons.size()) && !complete) {
-        found_edges = shared_edges(shortest_path, polygons[i]);
-        found_points = shared_points(shortest_path, polygons[i]);
-        for(j = 0; j < bridge.size(); j++) {
-            bridge_edges = shared_edges(polygons[i], bridge[j]);
-            if(bridge_edges.size() == 1) {
-                printf("\nBRIDGE A: ");
+    /* first grow shapes from largest to smallest, without touching the same vertices */
+    for(i = 1; i < polygons.size(); i++) {
+        /* print bases */
+        printf("BASES:\n");
+        for(k = 0; k < base.size(); k++) {
+            printf("%d: ", k);
+            for(n = 0; n < base[k].shape.size() - 1; n++) {
+                printf("%d->", points[base[k].shape[n]].index);
+            }
+            printf("%d\n", points[base[k].shape[n]].index);
+        }
+        sum_edges = 0;
+        sum_points = 0;
+        for(j = 0; j < base.size(); j++) {
+            found_edges = shared_edges(base[j], polygons[i]);
+            sum_edges += found_edges.size();
+            found_points = shared_points(base[j], polygons[i]);
+            sum_points += found_points.size();
+        }
+        /* push polygon if there aren't any shared edges or points */
+        if((sum_edges == 0) && (sum_points == 0)) {
+            printf("\nADD BASE: ");
+            for(k = 0; k < polygons[i].shape.size() - 1; k++) {
+                printf("%d->", points[polygons[i].shape[k]].index);
+            }
+            printf("%d\n", points[polygons[i].shape[k]].index);
+            base.push_back(polygons[i]);
+        }
+        /* add polygon if there is only one shared edge */
+        else if(sum_edges == 1) {
+            /* find which base to add to */
+            for(j = 0; j < base.size(); j++) {
+                found_edges = shared_edges(base[j], polygons[i]);
+                if(found_edges.size() == 1) {
+                    break;
+                }
+            }
+            found = 0;
+            /*check if any of the new points are contained in another base */
+            for(k = 0; k < base.size(); k++) {
+                if(k == j) {
+                    continue;
+                }
+                /* loop through all points in each base */
+                for(n = 0; n < base[k].shape.size(); n++) {
+                    /* loop through all points in the addition */
+                    for(m = 0; m < polygons[i].shape.size(); m++) {
+                        /* break if a point matches */
+                        if((points[base[k].shape[n]].index == points[polygons[j].shape[m]].index) || (points[base[k].shape[n]].index == points[polygons[i].shape[m]].index)) {
+                            found = 1;
+                            break;
+                        }
+                    }
+                    if(found) {
+                        break;
+                    }
+                }
+                if(found) {
+                    break;
+                }
+            }
+            /* add shapes if no other base had the new points*/
+            if(!found) {
+                printf("\nADDITION: ");
                 for(k = 0; k < polygons[i].shape.size() - 1; k++) {
                     printf("%d->", points[polygons[i].shape[k]].index);
                 }
                 printf("%d\n", points[polygons[i].shape[k]].index);
-                printf("\nBRIDGE B: ");
-                for(k = 0; k < bridge[j].shape.size() - 1; k++) {
-                    printf("%d->", points[bridge[j].shape[k]].index);
+                printf("\nBASE: ");
+                for(k = 0; k < base[j].shape.size() - 1; k++) {
+                    printf("%d->", points[base[j].shape[k]].index);
                 }
-                printf("%d\n", points[bridge[j].shape[k]].index);
-                polygons[i] = add_polygons(polygons[i], bridge[j], points);
-                bridge.erase(bridge.begin() + j);
-                j = 0;
+                printf("%d\n", points[base[j].shape[k]].index);
+                /* add polygon to base */
+                base[j] = add_polygons(polygons[i], base[j], points);
+                printf("\nNEW BASE: ");
+                for(k = 0; k < base[j].shape.size() - 1; k++) {
+                    printf("%d->", points[base[j].shape[k]].index);
+                }
+                printf("%d\n", points[base[j].shape[k]].index);
             }
         }
-        printf("\nshared edges: %zu, shared points: %zu\n", found_edges.size(), found_points.size());
-        printf("\nCURRENT SHORTEST PATH: ");
-        for(k = 0; k < shortest_path.shape.size() - 1; k++) {
-            printf("%d->", points[shortest_path.shape[k]].index);
-        }
-        printf("%d\n", points[shortest_path.shape[k]].index);
-        printf("\nPROSPECTIVE PATH: ");
-        for(k = 0; k < polygons[i].shape.size() - 1; k++) {
-            printf("%d->", points[polygons[i].shape[k]].index);
-        }
-        printf("%d\n", points[polygons[i].shape[k]].index);
-        if(found_edges.size() != 1) {
-            /* store the shape as a bridge */
-            if(found_edges.size() == 0) {
-                printf("\nBridge\n");
-                bridge.push_back(polygons[i]);
-            }
-            /* subtract the smallest subshape that will accept the new points */
-            else {
-                printf("\nSUBTRACT POLYGONS\n");
-                for(k = 0; k < polygons.size(); k++) {
-                    for(j = 0; j < found_edges.size(); j++) {
-                        tmp = new int [2];
-                        tmp[0] = point_match(points, size, points[shortest_path.shape[found_edges[j][0]]].index);
-                        tmp[1] = point_match(points, size, points[shortest_path.shape[found_edges[j][1]]].index);
-                        ref_edges.push_back(tmp);
-                    }
-                    /* check if the polygon contains any of the edges found */
-                    if(accept_polygon(polygons[k], ref_edges, points)) {
-                        accepted = 1;
-                        /* take the smallest polygon */
-                        if((min - polygons[k].perimeter) > epsilon) {
-                            min = polygons[k].perimeter;
-                            n = k;
-                            printf("Polygon changed...\n");
-                        }
-                    }
-                    while(ref_edges.size() != 0) {
-                        ref_edges.erase(ref_edges.begin());
-                    }
-                }
-                /* change the path only if the polygon was accepted */
-                if(accepted) {
-                    printf("\nSubracting...");
-                    for(k = 0; k < polygons[n].shape.size() - 1; k++) {
-                        printf("%d->", points[polygons[n].shape[k]].index);
-                    }
-                    printf("%d\n", points[polygons[n].shape[k]].index);
-                    shortest_path = sub_polygons(shortest_path, polygons[n], points);
-                    printf("\nAdding...");
-                    for(k = 0; k < polygons[i].shape.size() - 1; k++) {
-                        printf("%d->", points[polygons[i].shape[k]].index);
-                    }
-                    printf("%d\n", points[polygons[i].shape[k]].index);
-                    shortest_path = add_polygons(shortest_path, polygons[i], points);
-                }
-                printf("\nSHAPE CHANGE: ");
-                for(k = 0; k < shortest_path.shape.size() - 1; k++) {
-                    printf("%d->", points[shortest_path.shape[k]].index);
-                }
-                printf("%d\n", points[shortest_path.shape[k]].index);
-                /* records points of polygon as visited */
-                visit_polygon(visited, polygons[i], points);
-            }
-        }
-        /* add the shape to the path */
+        /* skip the polygon if there is more than one shared edge */
         else {
-            shortest_path = add_polygons(shortest_path, polygons[i], points);
-            printf("\nPATH ADDITION: ");
-            for(k = 0; k < shortest_path.shape.size() - 1; k++) {
-                printf("%d->", points[shortest_path.shape[k]].index);
-            }
-            printf("%d\n", points[shortest_path.shape[k]].index);
-            /* records points of polygon as visited */
-            visit_polygon(visited, polygons[i], points);
+            ;
         }
-        complete = 1;
-        for(j = 0; j < size; j++) {
-            /* trigger flag if not complete */
-            if(visited[j] == 0) {
-                printf("NOT MAPPED: %d", points[j].index);
-                complete = 0;
-                break;
-            }
-        }
-        i++;
     }
+    shortest_path = base[1];
     return shortest_path;
 }
+
+//        printf("\nshared edges: %zu, shared points: %zu\n", found_edges.size(), found_points.size());
+//        printf("\nCURRENT SHORTEST PATH: ");
+//        for(k = 0; k < shortest_path.shape.size() - 1; k++) {
+//            printf("%d->", points[shortest_path.shape[k]].index);
+//        }
+//        printf("%d\n", points[shortest_path.shape[k]].index);
+//        printf("\nPROSPECTIVE PATH: ");
+//        for(k = 0; k < polygons[i].shape.size() - 1; k++) {
+//            printf("%d->", points[polygons[i].shape[k]].index);
+//        }
+//        printf("%d\n", points[polygons[i].shape[k]].index);
+//        /* add shape to current base */
+//        if(found_edges.size() == 1) {
+//            shortest_path = add_polygons(shortest_path, polygons[i], points);
+//            printf("\nPATH ADDITION: ");
+//            for(k = 0; k < shortest_path.shape.size() - 1; k++) {
+//                printf("%d->", points[shortest_path.shape[k]].index);
+//            }
+//            printf("%d\n", points[shortest_path.shape[k]].index);
+//            /* records points of polygon as visited */
+//            visit_polygon(visited, polygons[i], points);
+//        }
+//        /* add the shape to the path */
+//        else {
+//            /* store the shape as a bridge */
+//            if(found_edges.size() == 0) {
+//                printf("\nBridge\n");
+//                bridge.push_back(polygons[i]);
+//            }
+//            /* subtract the smallest subshape that will accept the new points */
+//            else {
+//                printf("\nSUBTRACT POLYGONS\n");
+//                for(k = 0; k < polygons.size(); k++) {
+//                    for(j = 0; j < found_edges.size(); j++) {
+//                        tmp = new int [2];
+//                        tmp[0] = point_match(points, size, points[shortest_path.shape[found_edges[j][0]]].index);
+//                        tmp[1] = point_match(points, size, points[shortest_path.shape[found_edges[j][1]]].index);
+//                        ref_edges.push_back(tmp);
+//                    }
+//                    /* check if the polygon contains any of the edges found */
+//                    if(accept_polygon(polygons[k], ref_edges, points)) {
+//                        accepted = 1;
+//                        /* take the smallest polygon */
+//                        if((min - polygons[k].perimeter) > epsilon) {
+//                            min = polygons[k].perimeter;
+//                            n = k;
+//                            printf("Polygon changed...\n");
+//                        }
+//                    }
+//                    while(ref_edges.size() != 0) {
+//                        ref_edges.erase(ref_edges.begin());
+//                    }
+//                }
+//                /* change the path only if the polygon was accepted */
+//                if(accepted) {
+//                    printf("\nSubracting...");
+//                    for(k = 0; k < polygons[n].shape.size() - 1; k++) {
+//                        printf("%d->", points[polygons[n].shape[k]].index);
+//                    }
+//                    printf("%d\n", points[polygons[n].shape[k]].index);
+//                    shortest_path = sub_polygons(shortest_path, polygons[n], points);
+//                    printf("\nAdding...");
+//                    for(k = 0; k < polygons[i].shape.size() - 1; k++) {
+//                        printf("%d->", points[polygons[i].shape[k]].index);
+//                    }
+//                    printf("%d\n", points[polygons[i].shape[k]].index);
+//                    shortest_path = add_polygons(shortest_path, polygons[i], points);
+//                }
+//                printf("\nSHAPE CHANGE: ");
+//                for(k = 0; k < shortest_path.shape.size() - 1; k++) {
+//                    printf("%d->", points[shortest_path.shape[k]].index);
+//                }
+//                printf("%d\n", points[shortest_path.shape[k]].index);
+//                /* records points of polygon as visited */
+//                visit_polygon(visited, polygons[i], points);
+//            }
+//        }
+//        complete = 1;
+//        for(j = 0; j < size; j++) {
+//            /* trigger flag if not complete */
+//            if(visited[j] == 0) {
+//                printf("NOT MAPPED: %d", points[j].index);
+//                complete = 0;
+//                break;
+//            }
+//        }
 
 /* checks which polygon the segments are contained in */
 int accept_polygon(struct polygon_t polygon, vector<int *> segments, struct point_t *points) {
@@ -2651,9 +2732,7 @@ vector<int *> shared_edges(struct polygon_t A, struct polygon_t B)
 vector<int> shared_points(struct polygon_t A, struct polygon_t B)
 {
     vector<int> shared;
-    int i = 0;
-    int count = 0;
-    for(i = 0; i < A.shape.size() - 1; i++) {
+    for(int i = 0; i < A.shape.size() - 1; i++) {
         if(shape_search(B.shape, A.shape[i]) > -1) {
             shared.push_back(i);
         }
