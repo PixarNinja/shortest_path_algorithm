@@ -1,5 +1,5 @@
-set xrange [-10.912012:10.912012]
-set yrange [-10.912012:10.912012]
+set xrange [-10.241029:10.241029]
+set yrange [-10.241029:10.241029]
 set size ratio 1
 set grid
 set title "./datapoints/tests/test5.dat"

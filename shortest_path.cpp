@@ -121,6 +121,7 @@ int main(int argc, char *argv[])
             name[i] = tmp[i];
         tmp = strtok (NULL, "/");
     }
+    /* setup pathnames for plot output */
     name = strtok(name, ".");
     const char *gnu_path = "./gnu_files/";
     char *commands = new char [strlen(gnu_path) + strlen(name) + strlen("_commands.gpf") + 1];
@@ -203,19 +204,8 @@ int main(int argc, char *argv[])
             i = size;
         }
     }
-    /* cleanup unmapped points */
-    for(i = 0; i < size; i++) {
-        if(mapped[i] == 0) {
-            join_vertex(segments, points, points[i], i, size, gnu_files);
-        }
-    }
-    /* cleanup points with only one segment */
-    for(i = 0; i < size; i++) {
-        edges = edge_search(*segments, points[i].index, points, size);
-        if(edges.size() == 1) {
-            join_segment(segments, points, points[edges[0][1]], points[i], edges[0][1], i, size, gnu_files);
-        }
-    }
+    /* finalize segments */
+    finalize_segments(segments, points, size, gnu_files);
     /* get rid of crossing lines */
     remove_crosses(segments, points, size, gnu_files);
     /* optimize tessellations */
@@ -229,17 +219,6 @@ int main(int argc, char *argv[])
         /* get rid of crossing lines */
         remove_crosses(segments, points, size, gnu_files);
     } while(count < segments->size());
-    /* find polygons again */
-    polygons = construct_polygons(*segments, points, size, gnu_files);
-    polygons = delete_duplicates(polygons);
-
-    /* add all possible connections that don't cross current segments */
-    finalize_segments(segments, points, size, gnu_files);
-    /* get rid of crossing lines */
-    remove_crosses(segments, points, size, gnu_files);
-    /* find polygons again */
-    polygons = construct_polygons(*segments, points, size, gnu_files);
-    polygons = delete_duplicates(polygons);
     /* plot segment information */
     for(i = 0; i < segments->size(); i++) {
         fprintf(gnu_files[2], "%lf %lf %d\n", points[(*segments)[i][0]].x, points[(*segments)[i][0]].y, points[(*segments)[i][0]].index);
@@ -259,9 +238,9 @@ int main(int argc, char *argv[])
         }
     }
     polygons.pop_back();
-    /* find shortest path */
+    /* find shortest path
     shortest_path = find_shortest_path(polygons, points, size);
-    /* plot shortest path */
+    /* plot shortest path
     printf("\nCALCULATED PATH: ");
     for(i = 0; i < shortest_path.shape.size(); i++) {
         printf("%d->", points[shortest_path.shape[i]].index);
