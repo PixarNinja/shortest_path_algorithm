@@ -43,10 +43,12 @@ struct polygon_t {
 };
 
 void construct_segments(vector<int *> *segments, struct point_t *points, struct point_t begin, int n, int size, FILE *gnu_files[NUM_FILES], int *mapped, int **recorded);
-void join_vertex(vector<int *> *segments, struct point_t *points, struct point_t begin, int n, int size, FILE *gnu_files[NUM_FILES]);
-void join_segment(vector<int *> *segments, struct point_t *points, struct point_t begin, struct point_t end, int n, int m, int size, FILE *gnu_files[NUM_FILES]);
-vector<struct polygon_t> construct_polygons(vector<int *> segments, struct point_t *points, int size, FILE *gnu_files[NUM_FILES]);
-vector<vector<int> > tessellate(vector<vector<int> > tessellations, vector<int *> segments, struct point_t *points, int size, char init, char add, int branch, FILE *gnu_files[NUM_FILES]);
+void join_vertex(vector<int *> *segments, struct point_t *points, struct point_t begin, int n, int size);
+void join_segment(vector<int *> *segments, struct point_t *points, struct point_t begin, struct point_t end, int n, int m, int size);
+vector<struct polygon_t> construct_polygons(vector<int *> segments, struct point_t *points, int size);
+vector<vector<int> > tessellate(vector<vector<int> > tessellations, vector<int *> segments, struct point_t *points, int size, char init, char add, int branch);
+vector<struct polygon_t> tessellate_cross(vector<int *> segments, int i, int j, struct point_t *points, int size);
+vector<int> *find_shape(vector<int *> segments, struct point_t *points, struct point_t start, int size, char init, char add, struct vector_t X, struct vector_t Y);
 vector<int> init_path(vector<int> path, vector<int *> edges, struct point_t *points, struct vector_t X, struct vector_t Y, char type, int branch);
 vector<int> add_path(vector<int> path, vector<int *> edges, struct point_t *points, struct vector_t X, struct vector_t Y, char type);
 vector<int *> edge_search(vector<int *> segments, int vertex, struct point_t *points, int size);
@@ -57,9 +59,9 @@ double find_perimeter(vector<int> shape, struct point_t *points);
 int segment_match(vector<int *> segments, int beginning, int end);
 int duplicate_search(vector<int> shape);
 vector<struct polygon_t> delete_duplicates(vector<struct polygon_t> polygons);
-vector<struct polygon_t> optimize_polygons(vector<struct polygon_t> polygons, vector<int *> *segments, struct point_t *points, int size, FILE *gnu_files[NUM_FILES]);
-void remove_crosses(vector<int *> *segments, struct point_t *points, int size, FILE *gnu_files[NUM_FILES]);
-void finalize_segments(vector<int *> *segments, struct point_t *points, int size, FILE *gnu_files[NUM_FILES]);
+vector<struct polygon_t> optimize_polygons(vector<struct polygon_t> polygons, vector<int *> *segments, struct point_t *points, int size);
+void remove_crosses(vector<int *> *segments, struct point_t *points, int size);
+void finalize_segments(vector<int *> *segments, struct point_t *points, int size);
 struct polygon_t find_shortest_path(vector<struct polygon_t> polygons, struct point_t *points, int size);
 int accept_polygon(struct polygon_t polygon, vector<int *> segments, struct point_t *points);
 int smallest_neighbour(vector<struct polygon_t> polygons, struct polygon_t source, int n);
@@ -205,28 +207,20 @@ int main(int argc, char *argv[])
         }
     }
     /* finalize segments */
-    finalize_segments(segments, points, size, gnu_files);
+    finalize_segments(segments, points, size);
     /* get rid of crossing lines */
-    remove_crosses(segments, points, size, gnu_files);
+    remove_crosses(segments, points, size);
     /* optimize tessellations */
     do {
         /* find polygons */
-        polygons = construct_polygons(*segments, points, size, gnu_files);
+        polygons = construct_polygons(*segments, points, size);
         polygons = delete_duplicates(polygons);
         /* ensure each polygon is optimal */
         count = segments->size();
-        polygons = optimize_polygons(polygons, segments, points, size, gnu_files);
+        polygons = optimize_polygons(polygons, segments, points, size);
         /* get rid of crossing lines */
-        remove_crosses(segments, points, size, gnu_files);
+        remove_crosses(segments, points, size);
     } while(count < segments->size());
-    /* plot segment information */
-    for(i = 0; i < segments->size(); i++) {
-        fprintf(gnu_files[2], "%lf %lf %d\n", points[(*segments)[i][0]].x, points[(*segments)[i][0]].y, points[(*segments)[i][0]].index);
-        fprintf(gnu_files[2], "%lf %lf %d\n", points[(*segments)[i][1]].x, points[(*segments)[i][1]].y, points[(*segments)[i][1]].index);
-        fprintf(gnu_files[2], "\n");
-        /* write segments to output file */
-        fprintf(output, "%d %d\n", points[(*segments)[i][0]].index, points[(*segments)[i][1]].index);
-    }
     /* bubble sort polygons by perimeter */
     for(i = 0; i < polygons.size(); i++) {
         for(j = polygons.size() - 1; j > i; j--) {
@@ -237,6 +231,7 @@ int main(int argc, char *argv[])
             }
         }
     }
+    /* pop the incorrect polygon */
     polygons.pop_back();
     /* find shortest path
     shortest_path = find_shortest_path(polygons, points, size);
@@ -247,6 +242,14 @@ int main(int argc, char *argv[])
         fprintf(gnu_files[5], "%lf %lf\n", points[shortest_path.shape[i]].x, points[shortest_path.shape[i]].y);
     }
     printf("%d\n\n", points[shortest_path.shape[0]].index);
+    /* plot segment information */
+    for(i = 0; i < segments->size(); i++) {
+        fprintf(gnu_files[2], "%lf %lf %d\n", points[(*segments)[i][0]].x, points[(*segments)[i][0]].y, points[(*segments)[i][0]].index);
+        fprintf(gnu_files[2], "%lf %lf %d\n", points[(*segments)[i][1]].x, points[(*segments)[i][1]].y, points[(*segments)[i][1]].index);
+        fprintf(gnu_files[2], "\n");
+        /* write segments to output file */
+        fprintf(output, "%d %d\n", points[(*segments)[i][0]].index, points[(*segments)[i][1]].index);
+    }
     /* plot perimeter data */
     for(i = 0; i < polygons.size(); i++) {
         sum_x = 0.0;
@@ -536,7 +539,7 @@ void construct_segments(vector<int *> *segments, struct point_t *points, struct 
 }
 
 /* calculates the connections for un-joined vertices */
-void join_vertex(vector<int *> *segments, struct point_t *points, struct point_t begin, int n, int size, FILE *gnu_files[NUM_FILES])
+void join_vertex(vector<int *> *segments, struct point_t *points, struct point_t begin, int n, int size)
 {
     struct vector_t V;
     struct vector_t T1;
@@ -738,7 +741,7 @@ void join_vertex(vector<int *> *segments, struct point_t *points, struct point_t
 }
 
 /* calculates the connections for un-joined segments */
-void join_segment(vector<int *> *segments, struct point_t *points, struct point_t begin, struct point_t end, int n, int m, int size, FILE *gnu_files[NUM_FILES])
+void join_segment(vector<int *> *segments, struct point_t *points, struct point_t begin, struct point_t end, int n, int m, int size)
 {
     struct vector_t V;
     struct vector_t T1;
@@ -873,7 +876,7 @@ void join_segment(vector<int *> *segments, struct point_t *points, struct point_
     return;
 }
 
-vector<struct polygon_t> construct_polygons(vector<int *> segments, struct point_t *points, int size, FILE *gnu_files[NUM_FILES])
+vector<struct polygon_t> construct_polygons(vector<int *> segments, struct point_t *points, int size)
 {
     vector<vector<int> > tessellations;
     vector<struct polygon_t> polygons;
@@ -884,13 +887,13 @@ vector<struct polygon_t> construct_polygons(vector<int *> segments, struct point
     /* traverse the i-th branch of each point */
     for(i = 0; i < size; i++) {
         /* right-right addition */
-        tessellations = tessellate(tessellations, segments, points, size, 'r', 'r', i, gnu_files);
+        tessellations = tessellate(tessellations, segments, points, size, 'r', 'r', i);
         /* right-left addition */
-        tessellations = tessellate(tessellations, segments, points, size, 'r', 'l', i, gnu_files);
+        tessellations = tessellate(tessellations, segments, points, size, 'r', 'l', i);
         /* left-left addition */
-        tessellations = tessellate(tessellations, segments, points, size, 'l', 'l', i, gnu_files);
+        tessellations = tessellate(tessellations, segments, points, size, 'l', 'l', i);
         /* left-right addition */
-        tessellations = tessellate(tessellations, segments, points, size, 'l', 'r', i, gnu_files);
+        tessellations = tessellate(tessellations, segments, points, size, 'l', 'r', i);
     }
     /* stores in polygon_t structure format */
     for(i = 0; i < tessellations.size(); i++) {
@@ -902,8 +905,10 @@ vector<struct polygon_t> construct_polygons(vector<int *> segments, struct point
 }
 
 /* calculate tessellations of polygons given all contoured segments */
-vector<vector<int> > tessellate(vector<vector<int> > tessellations, vector<int *> segments, struct point_t *points, int size, char init, char add, int branch, FILE *gnu_files[NUM_FILES])
+vector<vector<int> > tessellate(vector<vector<int> > tessellations, vector<int *> segments, struct point_t *points, int size, char init, char add, int branch)
 {
+    vector<int *> edges; //pointer contains the index followed by position
+    vector<int> *shape = NULL;
     struct vector_t X; //X-axis vector
     X.name = new char [2];
     X.name[0] = 'X';
@@ -913,25 +918,16 @@ vector<vector<int> > tessellate(vector<vector<int> > tessellations, vector<int *
     Y.name[0] = 'Y';
     Y.name[1] = '\0';
     struct point_t start;
-    struct point_t prev;
-    struct point_t root;
-    vector<int *> edges; //pointer contains the index followed by position
-    vector<int> path; //contains the path of nodes to add as a polygon
-    vector<int> remove; //contains edges to remove
     int i = 0;
-    int j = 0;
-    int complete = 0;
 
     for(i = 0; i < size; i++) {
-        point_t start = points[i];
-        point_t root = points[i];
         /* find the initial cluster of edges */
-        edges = edge_search(segments, start.index, points, size);
+        edges = edge_search(segments, points[i].index, points, size);
         /* skip if the requested branch is out of bounds */
         if(edges.size() < branch) {
             break;
         }
-        /* initialize axis vectors */
+        start = points[i];
         Y.point[0].x = start.x;
         Y.point[0].y = start.y;
         Y.point[0].index = start.index;
@@ -950,83 +946,215 @@ vector<vector<int> > tessellate(vector<vector<int> > tessellations, vector<int *
         X.point[1].y = start.y + X.j;
         X.point[1].index = -1;
         X.length = 1;
-        /* prints the initial cluster of edges */
-        //printf("\n");
-        //printf("TYPE: %c %c | ", init, add);
-        //printf("INITIAL: ");
-        for(j = 0; j < edges.size(); j++) {
-            //printf("%d ", points[edges[j][1]].index);
-        }
-        //printf("| ");
-        /* find the initial direction */
-        path.push_back(edges[0][0]);
-        path = init_path(path, edges, points, X, Y, init, branch);
-        if(path.size() == 0) {
+        shape = find_shape(segments, points, start, size, init, add, X, Y);
+        /* skip NULL shapes */
+        if(!shape) {
             continue;
         }
-        //printf("PATH: %d %d ", points[path[0]].index, points[path[1]].index);
-        j = 1;
-        complete = 0;
-        while(!complete) {
-            prev = start;
-            start = points[path[j]];
-            /* initialize axis vectors */
-            Y.point[0].x = start.x;
-            Y.point[0].y = start.y;
-            Y.point[0].index = start.index;
-            Y.i = (start.x - prev.x) / distance_p(prev, start);
-            Y.j = (start.y - prev.y) / distance_p(prev, start);
-            Y.point[1].x = start.x + Y.i;
-            Y.point[1].y = start.y + Y.j;
-            Y.point[1].index = -1;
-            Y.length = length_v(Y);
-            X.point[0].x = start.x;
-            X.point[0].y = start.y;
-            X.point[0].index = start.index;
-            X.i = Y.j;
-            X.j = -Y.i;
-            X.point[1].x = start.x + X.i;
-            X.point[1].y = start.y + X.j;
-            X.point[1].index = -1;
-            X.length = length_v(X);
-            /* find the initial tessellations of edges */
-            edges = edge_search(segments, start.index, points, size);
-            path = add_path(path, edges, points, X, Y, add);
-            if(path.size() == 0) {
-                break;
-            }
-            //printf("%d ", points[path[j + 1]].index);
-            if(path[j + 1] == path[0]) {
-                complete = 1;
-            }
-            j++;
-        }
-        if(!complete) {
-            path.clear();
-            remove.clear();
-            continue;
-        }
-        //printf("\n\n");
-        tessellations.push_back(path);
-        /* find the initial tessellations of edges */
-        edges = edge_search(segments, root.index, points, size);
-        /* find the index in edges that matches path[1] */
-        if(index_match(edges, path[1]) > -1) {
-            remove.push_back(index_match(edges, path[1]));
-        }
-        sort(remove.begin(), remove.end());
-        /* erasing the edges already traversed */
-        for(j = 0; j < remove.size(); j++) {
-            edges.erase(edges.begin() + remove[j] - j);
-        }
-        /* erasing the ending edge, no backtracking will occur */
-        if(index_match(edges, path[path.size() - 2]) > -1) {
-            edges.erase(edges.begin() + index_match(edges, path[path.size() - 2]));
-        }
-        path.clear();
-        remove.clear();
+        tessellations.push_back(*shape);
     }
     return tessellations;
+}
+
+/* finds the four shapes of a cross, given the indices of the crossing segments */
+vector<struct polygon_t> tessellate_cross(vector<int *> segments, int i, int j, struct point_t *points, int size)
+{
+    vector<struct polygon_t> tessellations;
+    struct polygon_t polygon;
+    struct vector_t X; //X-axis vector
+    X.name = new char [2];
+    X.name[0] = 'X';
+    X.name[1] = '\0';
+    struct vector_t Y; //Y-axis vector
+    Y.name = new char [2];
+    Y.name[0] = 'Y';
+    Y.name[1] = '\0';
+    struct point_t start;
+    struct point_t prev;
+    vector<int> *shape = NULL;
+    vector<int *> segments_i = segments;
+    segments_i.erase(segments_i.begin() + j);
+    vector<int *> segments_j = segments;
+    segments_j.erase(segments_j.begin() + i);
+    if(i > j) {
+        i--;
+    }
+    if(j > i) {
+        j--;
+    }
+    /* find the first shape using segments[i][0] */
+    start = points[segments_i[i][0]];
+    prev = points[segments_i[i][1]];
+    Y.point[0].x = start.x;
+    Y.point[0].y = start.y;
+    Y.point[0].index = start.index;
+    Y.i = (-1) * (start.x - prev.x) / distance_p(prev, start);
+    Y.j = (-1) * (start.y - prev.y) / distance_p(prev, start);
+    Y.point[1].x = start.x + Y.i;
+    Y.point[1].y = start.y + Y.j;
+    Y.point[1].index = -1;
+    Y.length = length_v(Y);
+    X.point[0].x = start.x;
+    X.point[0].y = start.y;
+    X.point[0].index = start.index;
+    X.i = Y.j;
+    X.j = -Y.i;
+    X.point[1].x = start.x + X.i;
+    X.point[1].y = start.y + X.j;
+    X.point[1].index = -1;
+    X.length = length_v(X);
+    shape = find_shape(segments_i, points, start, size, 'r', 'l', X, Y);
+    /* skip NULL shapes */
+    if(shape) {
+        polygon.shape = *shape;
+        polygon.perimeter = find_perimeter(*shape, points);
+        tessellations.push_back(polygon);
+    }
+    /* find the second shape using segments[i][1] */
+    start = points[segments_j[i][1]];
+    prev = points[segments_j[i][0]];
+    Y.point[0].x = start.x;
+    Y.point[0].y = start.y;
+    Y.point[0].index = start.index;
+    Y.i = (-1) * (start.x - prev.x) / distance_p(prev, start);
+    Y.j = (-1) * (start.y - prev.y) / distance_p(prev, start);
+    Y.point[1].x = start.x + Y.i;
+    Y.point[1].y = start.y + Y.j;
+    Y.point[1].index = -1;
+    Y.length = length_v(Y);
+    X.point[0].x = start.x;
+    X.point[0].y = start.y;
+    X.point[0].index = start.index;
+    X.i = Y.j;
+    X.j = -Y.i;
+    X.point[1].x = start.x + X.i;
+    X.point[1].y = start.y + X.j;
+    X.point[1].index = -1;
+    X.length = length_v(X);
+    shape = find_shape(segments_j, points, start, size, 'r', 'l', X, Y);
+    /* skip NULL shapes */
+    if(shape) {
+        polygon.shape = *shape;
+        polygon.perimeter = find_perimeter(*shape, points);
+        tessellations.push_back(polygon);
+    }
+    /* find the third shape using segments[j][0] */
+    start = points[segments_j[j][0]];
+    prev = points[segments_j[j][1]];
+    Y.point[0].x = start.x;
+    Y.point[0].y = start.y;
+    Y.point[0].index = start.index;
+    Y.i = (-1) * (start.x - prev.x) / distance_p(prev, start);
+    Y.j = (-1) * (start.y - prev.y) / distance_p(prev, start);
+    Y.point[1].x = start.x + Y.i;
+    Y.point[1].y = start.y + Y.j;
+    Y.point[1].index = -1;
+    Y.length = length_v(Y);
+    X.point[0].x = start.x;
+    X.point[0].y = start.y;
+    X.point[0].index = start.index;
+    X.i = Y.j;
+    X.j = -Y.i;
+    X.point[1].x = start.x + X.i;
+    X.point[1].y = start.y + X.j;
+    X.point[1].index = -1;
+    X.length = length_v(X);
+    shape = find_shape(segments_j, points, start, size, 'r', 'l', X, Y);
+    /* skip NULL shapes */
+    if(shape) {
+        polygon.shape = *shape;
+        polygon.perimeter = find_perimeter(*shape, points);
+        tessellations.push_back(polygon);
+    }
+    /* find the fourth shape using segments[j][1] */
+    start = points[segments_j[j][1]];
+    prev = points[segments_j[j][0]];
+    Y.point[0].x = start.x;
+    Y.point[0].y = start.y;
+    Y.point[0].index = start.index;
+    Y.i = (-1) * (start.x - prev.x) / distance_p(prev, start);
+    Y.j = (-1) * (start.y - prev.y) / distance_p(prev, start);
+    Y.point[1].x = start.x + Y.i;
+    Y.point[1].y = start.y + Y.j;
+    Y.point[1].index = -1;
+    Y.length = length_v(Y);
+    X.point[0].x = start.x;
+    X.point[0].y = start.y;
+    X.point[0].index = start.index;
+    X.i = Y.j;
+    X.j = -Y.i;
+    X.point[1].x = start.x + X.i;
+    X.point[1].y = start.y + X.j;
+    X.point[1].index = -1;
+    X.length = length_v(X);
+    shape = find_shape(segments_j, points, start, size, 'r', 'l', X, Y);
+    /* skip NULL shapes */
+    if(shape) {
+        polygon.shape = *shape;
+        polygon.perimeter = find_perimeter(*shape, points);
+        tessellations.push_back(polygon);
+    }
+    return tessellations;
+}
+
+/* finds a shape given the index of the starting point and direction for initializing and adding to the path */
+vector<int> *find_shape(vector<int *> segments, struct point_t *points, struct point_t start, int size, char init, char add, struct vector_t X, struct vector_t Y)
+{
+    struct point_t prev = start;
+    struct point_t root = start;
+    vector<int *> edges;
+    vector<int> *shape = new vector<int>;
+    vector<int> path; //contains the path of nodes to add as a polygon
+    int j = 0;
+    int complete = 0;
+    /* find the initial cluster of edges */
+    edges = edge_search(segments, start.index, points, size);
+    /* find the initial direction */
+    path.push_back(edges[0][0]);
+    path = init_path(path, edges, points, X, Y, init, 0);
+    if(path.size() == 0) {
+        printf("ERROR! Path from %d could not be initialized...\n", start.index);
+        return NULL;
+    }
+    j = 1;
+    complete = 0;
+    while(!complete) {
+        prev = start;
+        start = points[path[j]];
+        /* initialize axis vectors */
+        Y.point[0].x = start.x;
+        Y.point[0].y = start.y;
+        Y.point[0].index = start.index;
+        Y.i = (start.x - prev.x) / distance_p(prev, start);
+        Y.j = (start.y - prev.y) / distance_p(prev, start);
+        Y.point[1].x = start.x + Y.i;
+        Y.point[1].y = start.y + Y.j;
+        Y.point[1].index = -1;
+        Y.length = length_v(Y);
+        X.point[0].x = start.x;
+        X.point[0].y = start.y;
+        X.point[0].index = start.index;
+        X.i = Y.j;
+        X.j = -Y.i;
+        X.point[1].x = start.x + X.i;
+        X.point[1].y = start.y + X.j;
+        X.point[1].index = -1;
+        X.length = length_v(X);
+        /* find the initial tessellations of edges */
+        edges = edge_search(segments, start.index, points, size);
+        path = add_path(path, edges, points, X, Y, add);
+        if(path.size() == 0) {
+            printf("ERROR! Path from %d could not be added...\n", start.index);
+            return NULL;
+        }
+        if(path[j + 1] == path[0]) {
+            complete = 1;
+        }
+        j++;
+    }
+    /* return the found shape */
+    *shape = path;
+    return shape;
 }
 
 /* initializes the path from a vertex */
@@ -1618,7 +1746,7 @@ vector<struct polygon_t> delete_duplicates(vector<struct polygon_t> polygons)
 }
 
 /* returns the optimized polygons */
-vector<struct polygon_t> optimize_polygons(vector<struct polygon_t> polygons, vector<int *> *segments, struct point_t *points, int size, FILE *gnu_files[NUM_FILES])
+vector<struct polygon_t> optimize_polygons(vector<struct polygon_t> polygons, vector<int *> *segments, struct point_t *points, int size)
 {
     struct vector_t V;
     struct vector_t T1;
@@ -2018,7 +2146,7 @@ vector<struct polygon_t> optimize_polygons(vector<struct polygon_t> polygons, ve
 }
 
 /* returns the polygons with all crosses removed */
-void remove_crosses(vector<int *> *segments, struct point_t *points, int size, FILE *gnu_files[NUM_FILES])
+void remove_crosses(vector<int *> *segments, struct point_t *points, int size)
 {
     struct point_t p1;
     struct point_t p2;
@@ -2037,12 +2165,16 @@ void remove_crosses(vector<int *> *segments, struct point_t *points, int size, F
     double neg_epsilon = -0.000001;
     double sum_i = 0.0;
     double sum_j = 0.0;
+    double min = DBL_MAX;
+    double prev_min = DBL_MAX;
+    vector<struct polygon_t> cross;
     vector<int *> edges;
     int erase = 0;
     int i = 0;
     int j = 0;
     int k = 0;
-
+    int n = 0;
+    int m = 0;
     /* loops through all segments */
     for(i = 0; i < segments->size(); i++) {
         /* loops through all segments */
@@ -2149,71 +2281,114 @@ void remove_crosses(vector<int *> *segments, struct point_t *points, int size, F
                 }
             }
             if(x <= r && x >= l) {
-                /* erase the segment with the greatest perimeter sum */
-                sum_i = 0.0;
-                sum_j = 0.0;
-                /* calcualte the perimeter sum for segment i */
-                edges = edge_search(*segments, points[(*segments)[i][0]].index, points, size);
-                for(k = 0; k < edges.size(); k++) {
-                    sum_i += distance_p(points[(*segments)[i][0]], points[edges[k][1]]);
+                /* store shapes of cross */
+                printf("Entering cross...\n");
+                cross = tessellate_cross(*segments, i, j, points, size);
+                printf("CROSS (%d,%d):(%d.%d)\n", points[(*segments)[i][0]].index, points[(*segments)[i][1]].index, points[(*segments)[j][0]].index, points[(*segments)[j][1]].index);
+                for(k = 0; k < cross.size(); k++) {
+                    printf("%d: ", k);
+                    for(n = 0; n < cross[k].shape.size() - 1; n++) {
+                        printf("%d->", cross[k].shape[n]);
+                    }
+                    printf("%d = %lf\n", cross[k].shape[n], cross[k].perimeter);
                 }
-                edges = edge_search(*segments, points[(*segments)[i][1]].index, points, size);
-                for(k = 0; k < edges.size(); k++) {
-                    sum_i += distance_p(points[(*segments)[i][1]], points[edges[k][1]]);
+                /* find the first smallest shape */
+                min = DBL_MAX;
+                for(k = 0; k < cross.size(); k++) {
+                    if(min > cross[k].perimeter) {
+                        n = k;
+                        min = cross[k].perimeter;
+                    }
                 }
-                /* calcualte the perimeter sum for segment j */
-                edges = edge_search(*segments, points[(*segments)[j][0]].index, points, size);
-                for(k = 0; k < edges.size(); k++) {
-                    sum_j += distance_p(points[(*segments)[j][0]], points[edges[k][1]]);
+                prev_min = min;
+                min = DBL_MAX;
+                /* find the second smallest shape */
+                for(k = 0; k < cross.size(); k++) {
+                    if((min > cross[k].perimeter) && (prev_min != cross[k].perimeter)) {
+                        m = k;
+                        min = cross[k].perimeter;
+                    }
                 }
-                edges = edge_search(*segments, points[(*segments)[j][1]].index, points, size);
-                for(k = 0; k < edges.size(); k++) {
-                    sum_j += distance_p(points[(*segments)[j][1]], points[edges[k][1]]);
-                }
-                /* compare the segment lengths */
-                if((distance_p(p1, p2) - distance_p(p3, p4)) < neg_epsilon) { //erase the j-segment, i.e. j.val < i.val
+                /* erase the segment with the least shape perimeter */
+                if((cross[n].perimeter - cross[m].perimeter) < neg_epsilon) { //erase the j-segment
                     if(i > j) {
                         i--;
                     }
                     segments->erase(segments->begin() + j);
                     j--;
                 }
-                else if((distance_p(p1, p2) - distance_p(p3, p4)) > pos_epsilon) { //erase the i-segment, i.e. i.val < j.val
+                else if((cross[n].perimeter - cross[m].perimeter) > pos_epsilon) { //erase the i-segment
                     if(i < j) {
                         j--;
                     }
                     segments->erase(segments->begin() + i);
                     i--;
                 }
-                else {
-                    /* compare the perimeter sums */
-                    if((sum_i - sum_j) < neg_epsilon) { //erase the i-segment, i.e. i.val < j.val
-                        if(i < j) {
-                            j--;
-                        }
-                        segments->erase(segments->begin() + i);
-                        i--;
+                else { //compare perimeter sums
+                    sum_i = 0.0;
+                    sum_j = 0.0;
+                    /* calcualte the perimeter sum for i-segment */
+                    edges = edge_search(*segments, points[(*segments)[i][0]].index, points, size);
+                    for(k = 0; k < edges.size(); k++) {
+                        sum_i += distance_p(points[(*segments)[i][0]], points[edges[k][1]]);
                     }
-                    else if((sum_i - sum_j) > pos_epsilon) { //erase the j-segment, i.e. j.val < i.val
+                    edges = edge_search(*segments, points[(*segments)[i][1]].index, points, size);
+                    for(k = 0; k < edges.size(); k++) {
+                        sum_i += distance_p(points[(*segments)[i][1]], points[edges[k][1]]);
+                    }
+                    /* calcualte the perimeter sum for j-segment */
+                    edges = edge_search(*segments, points[(*segments)[j][0]].index, points, size);
+                    for(k = 0; k < edges.size(); k++) {
+                        sum_j += distance_p(points[(*segments)[j][0]], points[edges[k][1]]);
+                    }
+                    edges = edge_search(*segments, points[(*segments)[j][1]].index, points, size);
+                    for(k = 0; k < edges.size(); k++) {
+                        sum_j += distance_p(points[(*segments)[j][1]], points[edges[k][1]]);
+                    }
+                    /* compare the segment lengths */
+                    if((distance_p(p1, p2) - distance_p(p3, p4)) < neg_epsilon) { //erase the j-segment, i.e. j.val > i.val
                         if(i > j) {
                             i--;
                         }
                         segments->erase(segments->begin() + j);
                         j--;
                     }
-                    else { //erase both segments
+                    else if((distance_p(p1, p2) - distance_p(p3, p4)) > pos_epsilon) { //erase the i-segment, i.e. i.val > j.val
                         if(i < j) {
-                            segments->erase(segments->begin() + j);
                             j--;
-                            segments->erase(segments->begin() + i);
                         }
-                        else {
+                        segments->erase(segments->begin() + i);
+                        i--;
+                    }
+                    else { // compare the perimeter sums
+                        if((sum_i - sum_j) < neg_epsilon) { //erase the i-segment, i.e. i.val < j.val
+                            if(i < j) {
+                                j--;
+                            }
                             segments->erase(segments->begin() + i);
                             i--;
-                            segments->erase(segments->begin() + j);
                         }
-                        i--;
-                        j--;
+                        else if((sum_i - sum_j) > pos_epsilon) { //erase the j-segment, i.e. j.val < i.val
+                            if(i > j) {
+                                i--;
+                            }
+                            segments->erase(segments->begin() + j);
+                            j--;
+                        }
+                        else { //erase both segments
+                            if(i < j) {
+                                segments->erase(segments->begin() + j);
+                                j--;
+                                segments->erase(segments->begin() + i);
+                            }
+                            else {
+                                segments->erase(segments->begin() + i);
+                                i--;
+                                segments->erase(segments->begin() + j);
+                            }
+                            i--;
+                            j--;
+                        }
                     }
                 }
             }
@@ -2221,7 +2396,7 @@ void remove_crosses(vector<int *> *segments, struct point_t *points, int size, F
     }
 }
 
-void finalize_segments(vector<int *> *segments, struct point_t *points, int size, FILE *gnu_files[NUM_FILES])
+void finalize_segments(vector<int *> *segments, struct point_t *points, int size)
 {
     struct point_t p1;
     struct point_t p2;
@@ -2522,93 +2697,6 @@ struct polygon_t find_shortest_path(vector<struct polygon_t> polygons, struct po
     shortest_path = base[1];
     return shortest_path;
 }
-
-//        printf("\nshared edges: %zu, shared points: %zu\n", found_edges.size(), found_points.size());
-//        printf("\nCURRENT SHORTEST PATH: ");
-//        for(k = 0; k < shortest_path.shape.size() - 1; k++) {
-//            printf("%d->", points[shortest_path.shape[k]].index);
-//        }
-//        printf("%d\n", points[shortest_path.shape[k]].index);
-//        printf("\nPROSPECTIVE PATH: ");
-//        for(k = 0; k < polygons[i].shape.size() - 1; k++) {
-//            printf("%d->", points[polygons[i].shape[k]].index);
-//        }
-//        printf("%d\n", points[polygons[i].shape[k]].index);
-//        /* add shape to current base */
-//        if(found_edges.size() == 1) {
-//            shortest_path = add_polygons(shortest_path, polygons[i], points);
-//            printf("\nPATH ADDITION: ");
-//            for(k = 0; k < shortest_path.shape.size() - 1; k++) {
-//                printf("%d->", points[shortest_path.shape[k]].index);
-//            }
-//            printf("%d\n", points[shortest_path.shape[k]].index);
-//            /* records points of polygon as visited */
-//            visit_polygon(visited, polygons[i], points);
-//        }
-//        /* add the shape to the path */
-//        else {
-//            /* store the shape as a bridge */
-//            if(found_edges.size() == 0) {
-//                printf("\nBridge\n");
-//                bridge.push_back(polygons[i]);
-//            }
-//            /* subtract the smallest subshape that will accept the new points */
-//            else {
-//                printf("\nSUBTRACT POLYGONS\n");
-//                for(k = 0; k < polygons.size(); k++) {
-//                    for(j = 0; j < found_edges.size(); j++) {
-//                        tmp = new int [2];
-//                        tmp[0] = point_match(points, size, points[shortest_path.shape[found_edges[j][0]]].index);
-//                        tmp[1] = point_match(points, size, points[shortest_path.shape[found_edges[j][1]]].index);
-//                        ref_edges.push_back(tmp);
-//                    }
-//                    /* check if the polygon contains any of the edges found */
-//                    if(accept_polygon(polygons[k], ref_edges, points)) {
-//                        accepted = 1;
-//                        /* take the smallest polygon */
-//                        if((min - polygons[k].perimeter) > epsilon) {
-//                            min = polygons[k].perimeter;
-//                            n = k;
-//                            printf("Polygon changed...\n");
-//                        }
-//                    }
-//                    while(ref_edges.size() != 0) {
-//                        ref_edges.erase(ref_edges.begin());
-//                    }
-//                }
-//                /* change the path only if the polygon was accepted */
-//                if(accepted) {
-//                    printf("\nSubracting...");
-//                    for(k = 0; k < polygons[n].shape.size() - 1; k++) {
-//                        printf("%d->", points[polygons[n].shape[k]].index);
-//                    }
-//                    printf("%d\n", points[polygons[n].shape[k]].index);
-//                    shortest_path = sub_polygons(shortest_path, polygons[n], points);
-//                    printf("\nAdding...");
-//                    for(k = 0; k < polygons[i].shape.size() - 1; k++) {
-//                        printf("%d->", points[polygons[i].shape[k]].index);
-//                    }
-//                    printf("%d\n", points[polygons[i].shape[k]].index);
-//                    shortest_path = add_polygons(shortest_path, polygons[i], points);
-//                }
-//                printf("\nSHAPE CHANGE: ");
-//                for(k = 0; k < shortest_path.shape.size() - 1; k++) {
-//                    printf("%d->", points[shortest_path.shape[k]].index);
-//                }
-//                printf("%d\n", points[shortest_path.shape[k]].index);
-//                /* records points of polygon as visited */
-//                visit_polygon(visited, polygons[i], points);
-//            }
-//        }
-//        complete = 1;
-//        for(j = 0; j < size; j++) {
-//            /* trigger flag if not complete */
-//            if(visited[j] == 0) {
-//                printf("NOT MAPPED: %d", points[j].index);
-//                complete = 0;
-//                break;
-//            }
-//        }
 
 /* checks which polygon the segments are contained in */
 int accept_polygon(struct polygon_t polygon, vector<int *> segments, struct point_t *points) {
