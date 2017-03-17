@@ -54,6 +54,7 @@ vector<int> add_path(vector<int> path, vector<int *> edges, struct point_t *poin
 vector<int *> edge_search(vector<int *> segments, int vertex, struct point_t *points, int size);
 int index_match(vector<int *> segments, int vertex);
 int shape_search(vector<int> shape, int vertex);
+int edge_match(struct polygon_t polygon, int *edge);
 int polygons_search(vector<vector<int> > polygons, int vertex);
 double find_perimeter(vector<int> shape, struct point_t *points);
 int segment_match(vector<int *> segments, int beginning, int end);
@@ -62,6 +63,7 @@ vector<struct polygon_t> delete_duplicates(vector<struct polygon_t> polygons);
 vector<struct polygon_t> optimize_polygons(vector<struct polygon_t> polygons, vector<int *> *segments, struct point_t *points, int size);
 void remove_crosses(vector<int *> *segments, struct point_t *points, int size);
 void finalize_segments(vector<int *> *segments, struct point_t *points, int size);
+int intersection(struct point_t p1, struct point_t p2, struct point_t p3, struct point_t p4);
 struct polygon_t find_shortest_path(vector<struct polygon_t> polygons, struct point_t *points, int size);
 int accept_polygon(struct polygon_t polygon, vector<int *> segments, struct point_t *points);
 int smallest_neighbour(vector<struct polygon_t> polygons, struct polygon_t source, int n);
@@ -221,8 +223,6 @@ int main(int argc, char *argv[])
     } while(count < segments->size());
     /* finalize segments */
     finalize_segments(segments, points, size);
-    /* get rid of crossing lines */
-    remove_crosses(segments, points, size);
     /* find polygons */
     polygons = construct_polygons(*segments, points, size);
     polygons = delete_duplicates(polygons);
@@ -984,9 +984,19 @@ vector<struct polygon_t> tessellate_cross(vector<int *> segments, int i, int j, 
     if(i > j) {
         i--;
     }
-    if(j > i) {
+    else {
         j--;
     }
+    /*
+    int k = 0;
+    printf("I-SEGMENTS:\n");
+    for(k = 0; k < segments_i.size(); k++) {
+        printf("(%d, %d)\n", points[segments_i[k][0]].index, points[segments_i[k][1]].index);
+    }
+    printf("J-SEGMENTS:\n");
+    for(k = 0; k < segments_j.size(); k++) {
+        printf("(%d, %d)\n", points[segments_j[k][0]].index, points[segments_j[k][1]].index);
+    }*/
     /* find the first shape using segments[i][0] */
     start = points[segments_i[i][0]];
     prev = points[segments_i[i][1]];
@@ -1008,7 +1018,7 @@ vector<struct polygon_t> tessellate_cross(vector<int *> segments, int i, int j, 
     X.point[1].y = start.y + X.j;
     X.point[1].index = -1;
     X.length = length_v(X);
-    shape = find_shape(segments_i, points, start, size, 'r', 'l', X, Y);
+    shape = find_shape(segments_i, points, start, size, 'r', 'r', X, Y);
     /* skip NULL shapes */
     if(shape) {
         polygon.shape = *shape;
@@ -1036,7 +1046,7 @@ vector<struct polygon_t> tessellate_cross(vector<int *> segments, int i, int j, 
     X.point[1].y = start.y + X.j;
     X.point[1].index = -1;
     X.length = length_v(X);
-    shape = find_shape(segments_i, points, start, size, 'r', 'l', X, Y);
+    shape = find_shape(segments_i, points, start, size, 'r', 'r', X, Y);
     /* skip NULL shapes */
     if(shape) {
         polygon.shape = *shape;
@@ -1064,7 +1074,7 @@ vector<struct polygon_t> tessellate_cross(vector<int *> segments, int i, int j, 
     X.point[1].y = start.y + X.j;
     X.point[1].index = -1;
     X.length = length_v(X);
-    shape = find_shape(segments_j, points, start, size, 'r', 'l', X, Y);
+    shape = find_shape(segments_j, points, start, size, 'r', 'r', X, Y);
     /* skip NULL shapes */
     if(shape) {
         polygon.shape = *shape;
@@ -1092,7 +1102,7 @@ vector<struct polygon_t> tessellate_cross(vector<int *> segments, int i, int j, 
     X.point[1].y = start.y + X.j;
     X.point[1].index = -1;
     X.length = length_v(X);
-    shape = find_shape(segments_j, points, start, size, 'r', 'l', X, Y);
+    shape = find_shape(segments_j, points, start, size, 'r', 'r', X, Y);
     /* skip NULL shapes */
     if(shape) {
         polygon.shape = *shape;
@@ -1197,16 +1207,16 @@ vector<int> init_path(vector<int> path, vector<int *> edges, struct point_t *poi
         //print_v(Y);
         //printf("DOTX: %0.2lf, ", X_flags[i]);
         //printf("DOTY: %0.2lf, ", Y_flags[i]);
-        if(dot_product(E, X) > 0) {
-            if(dot_product(E, Y) > 0) {
+        if(dot_product(E, X) > 0.000001) {
+            if(dot_product(E, Y) > 0.000001) {
                 quads[i] = 1;
             }
             else {
                 quads[i] = 4;
             }
         }
-        else if(dot_product(E, X) < 0) {
-            if(dot_product(E, Y) > 0) {
+        else if(dot_product(E, X) < -0.000001) {
+            if(dot_product(E, Y) > 0.000001) {
                 quads[i] = 2;
             }
             else {
@@ -1214,7 +1224,7 @@ vector<int> init_path(vector<int> path, vector<int *> edges, struct point_t *poi
             }
         }
         else {
-            if(dot_product(E, Y) > 0) {
+            if(dot_product(E, Y) > 0.000001) {
                 quads[i] = 5;
             }
             else {
@@ -1338,7 +1348,7 @@ vector<int> init_path(vector<int> path, vector<int *> edges, struct point_t *poi
         }
         break;
     default:
-        //printf("\nDIRECTION NOT SET!\n\n");
+        printf("\nDIRECTION NOT SET! Exiting program...\n\n");
         exit(EXIT_FAILURE);
     }
     /* use curr to create the link in the path */
@@ -2153,6 +2163,7 @@ vector<struct polygon_t> optimize_polygons(vector<struct polygon_t> polygons, ve
 /* returns the polygons with all crosses removed */
 void remove_crosses(vector<int *> *segments, struct point_t *points, int size)
 {
+    struct polygon_t tmp_polygon;
     struct point_t p1;
     struct point_t p2;
     struct point_t p3;
@@ -2173,6 +2184,7 @@ void remove_crosses(vector<int *> *segments, struct point_t *points, int size)
     double min = DBL_MAX;
     vector<struct polygon_t> cross;
     vector<int *> edges;
+    vector<int> tmp_shape;
     int erase = 0;
     int i = 0;
     int j = 0;
@@ -2314,21 +2326,43 @@ void remove_crosses(vector<int *> *segments, struct point_t *points, int size)
                 printf("CHOSEN SHAPES: %d, %d\n", n, m);
                 printf("Comparing shape perimeters...");
                 /* erase the segment with the least shape perimeter */
-                if((cross[n].perimeter - cross[m].perimeter) < neg_epsilon) { //erase the j-segment
-                    printf("erasing %d!\n", m);
-                    if(i > j) {
-                        i--;
-                    }
-                    segments->erase(segments->begin() + j);
-                    j--;
-                }
-                else if((cross[n].perimeter - cross[m].perimeter) > pos_epsilon) { //erase the i-segment
-                    printf("erasing %d!\n", n);
-                    if(i < j) {
+                if((cross[n].perimeter - cross[m].perimeter) > pos_epsilon) { //erase polygon m
+                    printf("erasing %d, ", m);
+                    if(edge_match(cross[m], (*segments)[j]) > -1) {
+                        printf("(%d, %d)!\n", points[(*segments)[j][0]].index, points[(*segments)[j][1]].index);
+                        if(i > j) {
+                            i--;
+                        }
+                        segments->erase(segments->begin() + j);
                         j--;
                     }
-                    segments->erase(segments->begin() + i);
-                    i--;
+                    else {
+                        printf("(%d, %d)!\n", points[(*segments)[i][0]].index, points[(*segments)[i][1]].index);
+                        if(i < j) {
+                            j--;
+                        }
+                        segments->erase(segments->begin() + i);
+                        i--;
+                    }
+                }
+                else if((cross[n].perimeter - cross[m].perimeter) < neg_epsilon) { //erase polygon n
+                    printf("erasing %d, ", n);
+                    if(edge_match(cross[n], (*segments)[j]) > -1) {
+                        printf("(%d, %d)!\n", points[(*segments)[j][0]].index, points[(*segments)[j][1]].index);
+                        if(i > j) {
+                            i--;
+                        }
+                        segments->erase(segments->begin() + j);
+                        j--;
+                    }
+                    else {
+                        printf("(%d, %d)!\n", points[(*segments)[i][0]].index, points[(*segments)[i][1]].index);
+                        if(i < j) {
+                            j--;
+                        }
+                        segments->erase(segments->begin() + i);
+                        i--;
+                    }
                 }
                 else { //continue to next phase
                     printf("equal!\n");
@@ -2413,28 +2447,65 @@ void remove_crosses(vector<int *> *segments, struct point_t *points, int size)
 
 void finalize_segments(vector<int *> *segments, struct point_t *points, int size)
 {
-    struct point_t p1;
-    struct point_t p2;
-    struct point_t p3;
-    struct point_t p4;
-    struct point_t tmp;
-    double y = 0.0;
-    double x = 0.0;
-    double m1 = 0.0;
-    double m2 = 0.0;
-    double b1 = 0.0;
-    double b2 = 0.0;
-    double r = DBL_MAX;
-    double l = DBL_MIN;
-    vector<int *> tmp_segments = *segments;
+    vector<int *> tmp_segments;
+    vector<int *> added_segments;
     int *pushed_segment = NULL;
+    vector<int> remove;
     int push = 1;
+    int keep = 1;
     int i = 0;
     int j = 0;
     int k = 0;
-    int m = 0;
+    int n = 0;
     printf("\nFINALIZING SEGMENTS!!!\n\n");
-    /* adding optimal edges to each point */
+    /* adding border segments */
+    for(i = 0; i < size; i++) {
+        /* goes through all prospective points */
+        for(j = 0; j < size; j++) {
+            push = 1;
+            if(i == j) {
+                continue;
+            }
+            /* skip segments that are already recorded */
+            if((segment_match(*segments, i, j) > -1) || (segment_match(tmp_segments, i, j) > -1)) {
+                continue;
+            }
+            /* goes through all current segments */
+            for(k = 0; k < segments->size(); k++) {
+                if(intersection(points[i], points[j], points[(*segments)[k][0]], points[(*segments)[k][1]])) {
+                    push = 0;
+                    break;
+                }
+            }
+            /* goes through all temporary segments */
+            for(k = 0; k < tmp_segments.size(); k++) {
+                if(intersection(points[i], points[j], points[tmp_segments[k][0]], points[tmp_segments[k][1]])) {
+                    if(find(remove.begin(), remove.end(), k) == remove.end()) {
+                        remove.push_back(k);
+                        push = 0;
+                    }
+                }
+            }
+            /* pushes segment to temporary segments */
+            if(push) {
+                pushed_segment = new int [2];
+                pushed_segment[0] = i;
+                pushed_segment[1] = j;
+                tmp_segments.push_back(pushed_segment);
+            }
+        }
+    }
+    /* removes all intersecting temporary segments */
+    sort(remove.begin(), remove.end());
+    for(k = remove.size() - 1; k > -1; k--) {
+        tmp_segments.erase(tmp_segments.begin() + remove[k]);
+    }
+    /* pushing border segments */
+    for(k = 0; k < tmp_segments.size(); k++) {
+        segments->push_back(tmp_segments[k]);
+    }
+    tmp_segments = *segments;
+    /* adding edges via removing crosses */
     for(i = 0; i < size; i++) {
         /* goes through all prospective points */
         for(j = 0; j < size; j++) {
@@ -2448,128 +2519,172 @@ void finalize_segments(vector<int *> *segments, struct point_t *points, int size
             }
             /* goes through all current segments */
             for(k = 0; k < segments->size(); k++) {
-                p1 = points[i];
-                p2 = points[j]; //prospective segment
-                p3 = points[(*segments)[k][0]];
-                p4 = points[(*segments)[k][1]];
-                /* find intersection area */
-                if (p2.x < p1.x) {
-                    tmp = p1;
-                    p1 = p2;
-                    p2 = tmp;
-                }
-                if (p4.x < p3.x) {
-                    tmp = p3;
-                    p3 = p4;
-                    p4 = tmp;
-                }
-                /* make sure none of the nodes are the same */
-                if((p1.index == p3.index) || (p1.index == p4.index) || (p2.index == p3.index) || (p2.index == p4.index)) {
-                    continue;
-                }
-                /* find the left and right boundaries of intersection on the x-axis */
-                if(p1.x >= p3.x) {
-                    /*           p1       */
-                    /*            .       */
-                    /*            .       */
-                    /*      p3---------p4 */
-                    /*            .       */
-                    /*            .       */
-                    /*            p2      */
-                    if(p2.x == p1.x) {
-                        p1.x -= 0.000001;
-                        p2.x += 0.000001;
-                        p3.x -= 0.000001;
-                        p4.x += 0.000001;
-                    }
-                    l = p1.x;
-                    /* p3--------------------p4 */
-                    /*      p1---------p2 */
-                    if(p2.x <= p4.x) {
-                        r = p2.x;
-                    }
-                    /* p3-----------p4 */
-                    /*        p1-----------p2 */
-                    else {
-                        r = p4.x;
-                    }
-                }
-                else if(p2.x >= p3.x) {
-                    /*           p3       */
-                    /*            .       */
-                    /*            .       */
-                    /*      p1---------p2 */
-                    /*            .       */
-                    /*            .       */
-                    /*            p4      */
-                    if(p3.x == p4.x) {
-                        p1.x -= 0.000001;
-                        p2.x += 0.000001;
-                        p3.x -= 0.000001;
-                        p4.x += 0.000001;
-                    }
-                    l = p3.x;
-                    /* p1--------------------p2 */
-                    /*      p3---------p4 */
-                    if(p2.x >= p4.x) {
-                        r = p4.x;
-                    }
-                    /* p1-----------p2 */
-                    /*        p3-----------p4 */
-                    else {
-                        r = p2.x;
-                    }
-                }
-                /* p1---------p2  p3---------p4 */
-                else {
-                    continue;
-                }
-                /* p3---------p4  p1---------p2 */
-                if(l >= r) {
-                    continue;
-                }
-                /* create first equation */
-                y = p1.y;
-                m1 = (p2.y - p1.y) / (p2.x - p1.x);
-                x = p1.x;
-                b1 = y - m1 * x;
-                /* create second equation */
-                y = p3.y;
-                m2 = (p4.y - p3.y) / (p4.x - p3.x);
-                x = p3.x;
-                b2 = y - m2 * x;
-                /* solve linear system */
-                x = (b2 - b1) / (m1 - m2);
-                y = m1 * x + b1;
-                //printf("r = %0.2lf, l = %0.2lf\n", r, l);
-                /* don't push the segment if it is an overlap */
-                if((b2 == b1) && (m1 == m2)) {
-                    if(p3.x < p2.x) {
-                        push = 0;
-                        break;
-                    }
-                    else if(p1.x < p4.x) {
-                        push = 0;
-                        break;
-                    }
-                }
-                /* don't push the segment if there is an intersection */
-                else if(x <= r && x >= l) {
+                if(intersection(points[i], points[j], points[(*segments)[k][0]], points[(*segments)[k][1]])) {
                     push = 0;
                     break;
                 }
             }
-            /* pushes segment to temporary segments */
+            /* adds segment if it does not intersect current segments */
             if(push) {
                 pushed_segment = new int [2];
                 pushed_segment[0] = i;
                 pushed_segment[1] = j;
-                tmp_segments.push_back(pushed_segment);
-                remove_crosses(&tmp_segments, points, size);
+                added_segments.push_back(pushed_segment);
             }
         }
     }
-    *segments = tmp_segments;
+    /* return if there are no segments to add */
+    if(added_segments.size() == 0) {
+        return;
+    }
+    /* adds one segment at a time and optimizes with remove_crosses */
+    tmp_segments = *segments;
+    /* push the segment if there is only one */
+    if(added_segments.size() == 1) {
+        segments->push_back(added_segments[0]);
+    }
+    else {
+        for(i = 0; i < added_segments.size(); i++) {
+            keep = 1;
+            for(j = 0; j < added_segments.size(); j++) {
+                if((i == j) || (segment_match(tmp_segments, added_segments[j][0], added_segments[j][1]) > -1)) {
+                    continue;
+                }
+                tmp_segments.push_back(added_segments[j]);
+                remove_crosses(&tmp_segments, points, size);
+                /* don't keep the i-segment if it was removed */
+                if(segment_match(tmp_segments, added_segments[i][0], added_segments[i][1]) == -1) {
+                    keep = 0;
+                    break;
+                }
+                /* remove the j-segment if it wasn't removed */
+                if((n = segment_match(tmp_segments, added_segments[j][0], added_segments[j][1])) > -1) {
+                    tmp_segments.erase(tmp_segments.begin() + n);
+                }
+            }
+            if(keep) {
+                printf("Adding...(%d,%d)\n", points[added_segments[i][0]].index, points[added_segments[i][1]].index);
+                segments->push_back(added_segments[i]);
+            }
+        }
+    }
+}
+
+/* returns 1 if the points intersect, 0 if they don't */
+int intersection(struct point_t p1, struct point_t p2, struct point_t p3, struct point_t p4)
+{
+    struct point_t tmp;
+    double y = 0.0;
+    double x = 0.0;
+    double m1 = 0.0;
+    double m2 = 0.0;
+    double b1 = 0.0;
+    double b2 = 0.0;
+    double r = DBL_MAX;
+    double l = DBL_MIN;
+    /* find intersection area */
+    if (p2.x < p1.x) {
+        tmp = p1;
+        p1 = p2;
+        p2 = tmp;
+    }
+    if (p4.x < p3.x) {
+        tmp = p3;
+        p3 = p4;
+        p4 = tmp;
+    }
+    /* make sure none of the nodes are the same */
+    if((p1.index == p3.index) || (p1.index == p4.index) || (p2.index == p3.index) || (p2.index == p4.index)) {
+        return 0;
+    }
+    /* find the left and right boundaries of intersection on the x-axis */
+    if(p1.x >= p3.x) {
+        /*           p1       */
+        /*            .       */
+        /*            .       */
+        /*      p3---------p4 */
+        /*            .       */
+        /*            .       */
+        /*            p2      */
+        if(p2.x == p1.x) {
+            p1.x -= 0.000001;
+            p2.x += 0.000001;
+            p3.x -= 0.000001;
+            p4.x += 0.000001;
+        }
+        l = p1.x;
+        /* p3--------------------p4 */
+        /*      p1---------p2 */
+        if(p2.x <= p4.x) {
+            r = p2.x;
+        }
+        /* p3-----------p4 */
+        /*        p1-----------p2 */
+        else {
+            r = p4.x;
+        }
+    }
+    else if(p2.x >= p3.x) {
+        /*           p3       */
+        /*            .       */
+        /*            .       */
+        /*      p1---------p2 */
+        /*            .       */
+        /*            .       */
+        /*            p4      */
+        if(p3.x == p4.x) {
+            p1.x -= 0.000001;
+            p2.x += 0.000001;
+            p3.x -= 0.000001;
+            p4.x += 0.000001;
+        }
+        l = p3.x;
+        /* p1--------------------p2 */
+        /*      p3---------p4 */
+        if(p2.x >= p4.x) {
+            r = p4.x;
+        }
+        /* p1-----------p2 */
+        /*        p3-----------p4 */
+        else {
+            r = p2.x;
+        }
+    }
+    /* p1---------p2  p3---------p4 */
+    else {
+        return 0;
+    }
+    /* p3---------p4  p1---------p2 */
+    if(l >= r) {
+        return 0;
+    }
+    /* create first equation */
+    y = p1.y;
+    m1 = (p2.y - p1.y) / (p2.x - p1.x);
+    x = p1.x;
+    b1 = y - m1 * x;
+    /* create second equation */
+    y = p3.y;
+    m2 = (p4.y - p3.y) / (p4.x - p3.x);
+    x = p3.x;
+    b2 = y - m2 * x;
+    /* solve linear system */
+    x = (b2 - b1) / (m1 - m2);
+    y = m1 * x + b1;
+    /* don't push the segment if it is an overlap */
+    if((b2 == b1) && (m1 == m2)) {
+        if(p3.x < p2.x) {
+            return 1;
+        }
+        else if(p1.x < p4.x) {
+            return 1;
+        }
+    }
+    /* don't push the segment if there is an intersection */
+    else if(x <= r && x >= l) {
+        return 1;
+    }
+    return 0;
 }
 
 struct polygon_t find_shortest_path(vector<struct polygon_t> polygons, struct point_t *points, int size)
@@ -3092,6 +3207,20 @@ int shape_search(vector<int> shape, int vertex)
         }
     }
     return -1;
+}
+
+/* searches through a shape for a matching edge */
+int edge_match(struct polygon_t polygon, int *edge)
+{
+    vector<int *> segments;
+    int *tmp;
+    for(int i = 0; i < polygon.shape.size() - 1; i++) {
+        tmp = new int [2];
+        tmp[0] = polygon.shape[i];
+        tmp[1] = polygon.shape[i + 1];
+        segments.push_back(tmp);
+    }
+    return segment_match(segments, edge[0], edge[1]);
 }
 
 /* returns the index of the requested vertex */
