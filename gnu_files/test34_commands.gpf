@@ -1,9 +1,0 @@
-set xrange [-9.685376:9.685376]
-set yrange [-9.685376:9.685376]
-set size ratio 1
-set grid
-set title "./datapoints/tests/test34.dat"
-set style line 1 lc rgb "black" lw 1
-set style line 2 lc rgb "red" lw 3
-set style line 3 lc rgb "blue" lw 2
-plot './gnu_files/test34_lines.gpf' using 1:2 with lines ls 1 title "Tessellations",'./gnu_files/test34_datapoints.gpf' using 1:2 with points pt 7 notitle,'' using 1:2:3 with labels point pt 7 offset char -1,-1 notitle,'./gnu_files/test34_extrapoints.gpf' using 1:2:3 with labels point pt 3 offset char -1,-1 notitle, './gnu_files/test34_centerpoint.gpf' using 1:2:3 with labels point pt 2 offset char -1,-1 notitle, './gnu_files/test34_calculated_path.gpf' using 1:2 with lines ls 2 title "Calculated Path", './gnu_files/test34_shortest_path.gpf' using 1:2 with lines ls 3 title "Shortest Path"
