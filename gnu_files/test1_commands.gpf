@@ -1,8 +1,8 @@
-set xrange [-10.793732:10.793732]
-set yrange [-10.793732:10.793732]
+set xrange [-10.997858:10.997858]
+set yrange [-10.997858:10.997858]
 set size ratio 1
 set grid
-set title "./datapoints/tests/test1.dat"
+set title "datapoints/tests/test1.dat"
 set style line 1 lc rgb "black" lw 1
 set style line 2 lc rgb "red" lw 3
 set style line 3 lc rgb "blue" lw 2

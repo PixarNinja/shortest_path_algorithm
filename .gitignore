@@ -1,13 +1,13 @@
 tao
 tao2
-shortest
+shortest_path
 brute_force
 compare
-multiple_contours
+multiple
 tessellate
-pop_reverse
+pop
 plot
-*.txt
+output
 gnu_files/*
 CMakeCache.txt
 CMakeFiles/

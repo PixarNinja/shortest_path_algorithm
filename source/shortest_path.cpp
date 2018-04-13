@@ -88,8 +88,12 @@ void memory_error(void);
 
 int main(int argc, char *argv[])
 {
+    ////////////////////////
+    // TODO: SETUP GETOPT //
+    ////////////////////////
+
     if(argc != 3) {
-        printf("\nUsage: ./tessellate [datapoint path] [output path]\n\n");
+        printf("\nUsage: ./shortest_path [datapoint path] [output path]\n\n");
         exit(EXIT_FAILURE);
     }
     FILE *data;
@@ -125,6 +129,11 @@ int main(int argc, char *argv[])
             name[i] = tmp[i];
         tmp = strtok (NULL, "/");
     }
+
+    /////////////////////
+    // OPEN PLOT FILES //
+    /////////////////////
+
     /* setup pathnames for plot output */
     name = strtok(name, ".");
     const char *gnu_path = "./gnu_files/";
@@ -158,6 +167,11 @@ int main(int argc, char *argv[])
         size++;
     }
     fclose(data);
+
+    ///////////////////////
+    // IMPORT DATAPOINTS //
+    ///////////////////////
+
     points = new struct point_t [size];
     mapped = new int [size];
     recorded = new int * [size];
@@ -180,7 +194,11 @@ int main(int argc, char *argv[])
         }
         i++;
     }
-    /* plot datapoints */
+
+    /////////////////////
+    // PLOT DATAPOINTS //
+    /////////////////////
+
     for(i = 0; i < size; i++) {
         fprintf(gnu_files[1], "%lf %lf %d\n", points[i].x, points[i].y, points[i].index);
     }
@@ -193,6 +211,11 @@ int main(int argc, char *argv[])
     fprintf(gnu_files[0], "set style line 1 lc rgb \"black\" lw 1\n");
     fprintf(gnu_files[0], "set style line 2 lc rgb \"red\" lw 3\n");
     fprintf(gnu_files[0], "set style line 3 lc rgb \"blue\" lw 2\n");
+
+    ////////////////////////
+    // CALCULATE POLYGONS //
+    ////////////////////////
+
     /* runs tao-distance algorithm on data */
     for(i = 0; i < size; i++) {
         for(j = 0; j < size; j++) {
@@ -246,7 +269,12 @@ int main(int argc, char *argv[])
         printf("%d->", points[shortest_path.shape[i]].index);
         fprintf(gnu_files[5], "%lf %lf\n", points[shortest_path.shape[i]].x, points[shortest_path.shape[i]].y);
     }
-    printf("%d\n\n", points[shortest_path.shape[0]].index);
+    printf("%d\n\n", points[shortest_path.shape[0]].index);*/
+
+    ///////////////////////
+    // PLOT POLYGON DATA //
+    ///////////////////////
+
     /* plot segment information */
     for(i = 0; i < segments->size(); i++) {
         fprintf(gnu_files[2], "%lf %lf %d\n", points[(*segments)[i][0]].x, points[(*segments)[i][0]].y, points[(*segments)[i][0]].index);
@@ -276,7 +304,11 @@ int main(int argc, char *argv[])
         }
         printf("= %0.2lf\n", polygons[i].perimeter);
     }
-    /* plot */
+
+    /////////////////////////
+    // FINAL PLOT COMMANDS //
+    /////////////////////////
+
     fprintf(gnu_files[0], "plot '%s' using 1:2 with lines ls 1 title \"Tessellations\",", lines);
     fprintf(gnu_files[0], "'%s' using 1:2 with points pt 7 notitle,", datapoints);
     fprintf(gnu_files[0], "'' using 1:2:3 with labels point pt 7 offset char -1,-1 notitle,");
