@@ -6,63 +6,75 @@
  * 2018
  */
 
+#ifndef VECTOR_H
+#define VECTOR_H
+
 #pragma once
 #include <math.h>
+#include <string.h>
 #include "point.h"
 
 class Vector {
 
+    private:
+        /* finds the distance between the endpoints of two vectors
+         * @param V1, the first vector
+         * @param V2, the second vector
+         * @return the distance between the endpoints of the vectors
+         */
+        double distance_v(Vector V1, Vector V2) {
+            return sqrt(pow(V2.i - V1.i, 2) + pow(V2.j - V1.j, 2));
+        }
+
+        /* finds the distance between two points
+         * @param P1, the first point
+         * @param P2, the second point
+         * @return the distance between the points
+         */
+        double distance_p(Point P1, Point P2) {
+            return sqrt(pow(P2.x - P1.x, 2) + pow(P2.y - P1.y, 2));
+        }
+
     public:
-        char *name;
-        Point point[2];
+        std::string name;
+        Point start;
+        Point end;
         double length;
         double i;
         double j;
 
         Vector();
 
-        /* constructor */
-        Vector(char *name, Point point[2]) {
-            this->name = name;
-            this->point[0] = point[0];
-            this->point[1] = point[1];
-            i = 0;
-            j = 0;
-            find_length();
-        }
+        //////////////////
+        // CONSTRUCTORS //
+        //////////////////
 
-        /* stores the length of the vector */
-        void find_length() {
-            length = sqrt(pow(i, 2) + pow(j, 2));
-        }
-        
-        /* finds the angle between another vector
-         * @param V, the vector to find the angle with
-         * @return the angle in radians
-         */
-        double find_angle(Vector V) {
-            return (acos(dot_product(V) / (length * V.length)));
-        }
+        Vector(std::string name, Point start, Point end);
 
-        /* finds the distance to another vector
-         * @param V, the vector to find the distance to
-         * @return the distance
+        /* creates a normalized vector centered at start
+         * and facing end
          */
-        double find_distance(Vector V) {
-            return sqrt(pow(V.i - i, 2) + pow(V.j - j, 2));
-        }
+        Vector(std::string name, Point start, Point end, int index);
 
-        /* finds the dot product to another vector
-         * @param V, the vector to perform the dot product with
-         * @return the dot product
+        /////////////
+        // METHODS //
+        /////////////
+
+        /* refreshes i and j, and stores the length of the vector */
+        void refresh();
+
+        /* scoots the vector to start at its endpoint */
+        void scoot();
+
+        /* offsets a vector
+         * @param x_offset, the x offset
+         * @param y_offset, the y offset
          */
-        double dot_product(Vector V) {
-            return ((V.i * i) + (V.j * j));
-        }
+        void offset(double x_offset, double y_offset);
 
         /* prints information about this vector */
-        void print() {
-            printf("%s: datapoints = %d (%0.3lf,%0.3lf), %d (%0.3lf,%0.3lf)\n   components = <%0.3lf,%0.3lf>\n   length     = %0.3lf\n\n", name, point[0].index, point[0].x, point[0].y, point[1].index, point[1].x, point[1].y, i, j, length);
-        }
-        
+        void print();
+ 
 };
+
+#endif

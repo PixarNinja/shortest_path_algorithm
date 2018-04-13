@@ -390,6 +390,33 @@ source/tessellate.cpp.s:
 	$(MAKE) -f CMakeFiles/tessellate.dir/build.make CMakeFiles/tessellate.dir/source/tessellate.cpp.s
 .PHONY : source/tessellate.cpp.s
 
+source/vector.o: source/vector.cpp.o
+
+.PHONY : source/vector.o
+
+# target to build an object file
+source/vector.cpp.o:
+	$(MAKE) -f CMakeFiles/shortest_path.dir/build.make CMakeFiles/shortest_path.dir/source/vector.cpp.o
+.PHONY : source/vector.cpp.o
+
+source/vector.i: source/vector.cpp.i
+
+.PHONY : source/vector.i
+
+# target to preprocess a source file
+source/vector.cpp.i:
+	$(MAKE) -f CMakeFiles/shortest_path.dir/build.make CMakeFiles/shortest_path.dir/source/vector.cpp.i
+.PHONY : source/vector.cpp.i
+
+source/vector.s: source/vector.cpp.s
+
+.PHONY : source/vector.s
+
+# target to generate assembly for a file
+source/vector.cpp.s:
+	$(MAKE) -f CMakeFiles/shortest_path.dir/build.make CMakeFiles/shortest_path.dir/source/vector.cpp.s
+.PHONY : source/vector.cpp.s
+
 # Help Target
 help:
 	@echo "The following are some of the valid targets for this Makefile:"
@@ -426,6 +453,9 @@ help:
 	@echo "... source/tessellate.o"
 	@echo "... source/tessellate.i"
 	@echo "... source/tessellate.s"
+	@echo "... source/vector.o"
+	@echo "... source/vector.i"
+	@echo "... source/vector.s"
 .PHONY : help
 
 
