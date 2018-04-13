@@ -1,3 +1,11 @@
+/*
+ * Main program for the shortest path algorithm project
+ *
+ * Shortest Path Algorithm
+ * Mark Wesley Harris
+ * 2018
+ */
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -14,6 +22,9 @@
 #include <algorithm>
 #include <iterator>
 #include <array>
+
+#include "point.h"
+#include "vector.h"
 
 #define NUM_FILES 8
 
