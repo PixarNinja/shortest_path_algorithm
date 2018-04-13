@@ -1,9 +1,15 @@
 tao
 tao2
 shortest
+brute_force
 compare
 multiple_contours
 tessellate
 pop_reverse
 plot
 *.txt
+gnu_files/*
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+compile_commands.json
