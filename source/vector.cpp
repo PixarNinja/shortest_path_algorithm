@@ -7,10 +7,13 @@
  */
 
 #include "vector.h"
+#include "point.h"
+#include <string>
+#include <iostream>
 
-Vector::Vector();
+Vector::Vector() {}
 
-Vector::Vector(string name, Point start, Point end) {
+Vector::Vector(std::string name, Point start, Point end) {
     this->name = name;
     this->start = start;
     this->end = end;
@@ -20,13 +23,13 @@ Vector::Vector(string name, Point start, Point end) {
 /* creates a normalized vector centered at start
  * and facing end
  */
-Vector::Vector(string name, Point start, Point end, int index) {
+Vector::Vector(std::string name, Point start, Point end, int index) {
     double x_offset = end.x - start.x;
     double y_offset = end.y - start.y;
     this->name = name;
-    this->start = end;
+    this->start = Point(end);
     /* create a normalized point centered at start in the direction of end */
-    this->end = Point(this->start.x + ((x_offset) / distance_p(start, end)), this->start.y + ((y_offset) / distance_p(start, end)), index);
+    this->end = Point(this->start.x + (x_offset / distance_p(start, end)), this->start.y + (y_offset / distance_p(start, end)), index);
     refresh();
 }
 

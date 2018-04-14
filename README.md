@@ -3,8 +3,9 @@
 ##Usage:
 
 ```
+cmake .
 make
-./tesselate [datapoint file]
+./shortest_path [datapoint file] [output file]
 ```
 Enter one of the following files containing datapoint information
 to run the algorithm on it:

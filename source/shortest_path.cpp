@@ -1,10 +1,14 @@
 /*
- * Main program for the shortest path algorithm project
+ * Shortest path algorithm function definitions
  *
  * Shortest Path Algorithm
  * Mark Wesley Harris
  * 2018
  */
+
+#include "shortest_path.h"
+
+#ifndef SHORTESTPATH_H
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -27,305 +31,15 @@
 #include "point.h"
 #include "vector.h"
 
-#define NUM_FILES 8
-
-using namespace std;
-
-struct polygon_t {
-    vector<int> shape;
-    double perimeter;
-};
-
-void construct_segments(vector<int *> *segments, Point *points, Point begin, int n, int size, FILE *gnu_files[NUM_FILES], int *mapped, int **recorded);
-void join_vertex(vector<int *> *segments, Point *points, Point begin, int n, int size);
-void join_segment(vector<int *> *segments, Point *points, Point begin, Point end, int n, int m, int size);
-vector<struct polygon_t> construct_polygons(vector<int *> segments, Point *points, int size);
-vector<vector<int> > tessellate(vector<vector<int> > tessellations, vector<int *> segments, Point *points, int size, char init, char add, int branch);
-vector<struct polygon_t> tessellate_cross(vector<int *> segments, int i, int j, Point *points, int size);
-vector<int> *find_shape(vector<int *> segments, Point *points, Point start, int size, char init, char add, Vector X, Vector Y);
-vector<int> init_path(vector<int> path, vector<int *> edges, Point *points, Vector X, Vector Y, char type, int branch);
-vector<int> add_path(vector<int> path, vector<int *> edges, Point *points, Vector X, Vector Y, char type);
-vector<int *> edge_search(vector<int *> segments, int vertex, Point *points, int size);
-int index_match(vector<int *> segments, int vertex);
-int shape_search(vector<int> shape, int vertex);
-int edge_match(struct polygon_t polygon, int *edge);
-int polygons_search(vector<vector<int> > polygons, int vertex);
-double find_perimeter(vector<int> shape, Point *points);
-int segment_match(vector<int *> segments, int beginning, int end);
-int duplicate_search(vector<int> shape);
-vector<struct polygon_t> delete_duplicates(vector<struct polygon_t> polygons);
-vector<struct polygon_t> optimize_polygons(vector<struct polygon_t> polygons, vector<int *> *segments, Point *points, int size);
-void remove_crosses(vector<int *> *segments, Point *points, int size);
-void finalize_segments(vector<int *> *segments, Point *points, int size);
-int intersection(Point p1, Point p2, Point p3, Point p4);
-struct polygon_t find_shortest_path(vector<struct polygon_t> polygons, Point *points, int size);
-int accept_polygon(struct polygon_t polygon, vector<int *> segments, Point *points);
-int smallest_neighbour(vector<struct polygon_t> polygons, struct polygon_t source, int n);
-vector<int *> disjoint_edges(struct polygon_t A, struct polygon_t B);
-vector<int *> shared_edges(struct polygon_t A, struct polygon_t B);
-vector<int> shared_points(struct polygon_t A, struct polygon_t B);
-void visit_polygon(int *visited, struct polygon_t polygon, Point *points);
-struct polygon_t add_polygons(struct polygon_t A, struct polygon_t B, Point *points);
-struct polygon_t sub_polygons(struct polygon_t A, struct polygon_t B, Point *points);
-int point_match(Point *points, int size, int vertex);
-double calculate_curvature(Vector T1, Vector T2, double tao);
-double angle(Vector V1, Vector V2);
-double angle_t(double tao);
-double tao_distance(Vector V, double curvature, double theta);
-double distance_p(Point P1, Point P2);
-double distance_v(Vector V1, Vector V2);
-double dot_product(Vector V1, Vector V2);
-void print(Vector V, Vector T1, Vector T2, double curvature, double theta, double tao, double tao_distance);
-void memory_error(void);
-
-int main(int argc, char *argv[])
-{
-    ////////////////////////
-    // TODO: SETUP GETOPT //
-    ////////////////////////
-
-    if(argc != 3) {
-        printf("\nUsage: ./shortest_path [datapoint path] [output path]\n\n");
-        exit(EXIT_FAILURE);
-    }
-    FILE *data;
-    FILE *output;
-    FILE *gnu_files[NUM_FILES];
-    vector<struct polygon_t> polygons;
-    struct polygon_t tmp_polygon;
-    struct polygon_t shortest_path;
-    Point *points;
-    Point center;
-    char buf[1024];
-    double range = 0.0;
-    double sum_x = 0.0;
-    double sum_y = 0.0;
-    vector<int *> *segments = new vector<int *> [1];
-    vector<int *> edges;
-    int **recorded;
-    int *mapped;
-    int keep_going = 0;
-    int size = 0;
-    int i = 0;
-    int j = 0;
-    int k = 0;
-    int count = 0;
-    /* grabs name for output files */
-    char *name = new char [1024];
-    char *tmp = new char [strlen(argv[1]) + 1];
-    for(i = 0; i < strlen(argv[1]) + 1; i++)
-        tmp[i] = argv[1][i];
-    tmp = strtok(tmp, "/");
-    while (tmp != NULL) {
-        for(i = 0; i < strlen(tmp) + 1; i++)
-            name[i] = tmp[i];
-        tmp = strtok (NULL, "/");
-    }
-
-    /////////////////////
-    // OPEN PLOT FILES //
-    /////////////////////
-
-    /* setup pathnames for plot output */
-    name = strtok(name, ".");
-    const char *gnu_path = "./gnu_files/";
-    char *commands = new char [strlen(gnu_path) + strlen(name) + strlen("_commands.gpf") + 1];
-    char *datapoints = new char [strlen(gnu_path) + strlen(name) + strlen("_datapoints.gpf") + 1];
-    char *lines = new char [strlen(gnu_path) + strlen(name) + strlen("_lines.gpf") + 1];
-    char *extrapoints = new char [strlen(gnu_path) + strlen(name) + strlen("_lines.gpf") + 1];
-    char *centerpoint = new char [strlen(gnu_path) + strlen(name) + strlen("_centerpoint.gpf") + 1];
-    char *path = new char [strlen(gnu_path) + strlen(name) + strlen("_calculated_path.gpf") + 1];
-    char *shortest = new char [strlen(gnu_path) + strlen(name) + strlen("_shortest_path.gpf") + 1];
-    char *gnu_tmp = new char [strlen(gnu_path) + strlen("tmp.gpf") + 1];
-    sprintf(commands, "%s%s_commands.gpf", gnu_path, name);
-    sprintf(datapoints, "%s%s_datapoints.gpf", gnu_path, name);
-    sprintf(lines, "%s%s_lines.gpf", gnu_path, name);
-    sprintf(extrapoints, "%s%s_extrapoints.gpf", gnu_path, name);
-    sprintf(centerpoint, "%s%s_centerpoint.gpf", gnu_path, name);
-    sprintf(path, "%s%s_calculated_path.gpf", gnu_path, name);
-    sprintf(shortest, "%s%s_shortest_path.gpf", gnu_path, name);
-    sprintf(gnu_tmp, "%stmp.gpf", gnu_path);
-    gnu_files[0] = fopen(commands, "w+");
-    gnu_files[1] = fopen(datapoints, "w+");
-    gnu_files[2] = fopen(lines, "w+");
-    gnu_files[3] = fopen(extrapoints, "w+");
-    gnu_files[4] = fopen(centerpoint, "w+");
-    gnu_files[5] = fopen(path, "w+");
-    gnu_files[6] = fopen(shortest, "r");
-    gnu_files[7] = fopen(gnu_tmp, "w+");
-    data = fopen(argv[1], "r");
-    output = fopen(argv[2], "w+");
-    while(fgets(buf, 1024, data)) {
-        size++;
-    }
-    fclose(data);
-
-    ///////////////////////
-    // IMPORT DATAPOINTS //
-    ///////////////////////
-
-    points = new Point [size];
-    mapped = new int [size];
-    recorded = new int * [size];
-    /* initializing array */
-    for(i = 0; i < size; i++) {
-        mapped[i] = 0;
-        recorded[i] = new int [size];
-        for(j = 0; j < size; j++) {
-            recorded[i][j] = 0;
-        }
-    }
-    i = 0;
-    data = fopen(argv[1], "r");
-    while(fscanf(data, "%d: (%lf, %lf)", &points[i].index, &points[i].x, &points[i].y) > 0) {
-        if(fabs(points[i].x) > range) {
-            range = fabs(points[i].x);
-        }
-        if(fabs(points[i].y) > range) {
-            range = fabs(points[i].y);
-        }
-        i++;
-    }
-
-    /////////////////////
-    // PLOT DATAPOINTS //
-    /////////////////////
-
-    for(i = 0; i < size; i++) {
-        fprintf(gnu_files[1], "%lf %lf %d\n", points[i].x, points[i].y, points[i].index);
-    }
-    /* plot setup */
-    fprintf(gnu_files[0], "set xrange [%lf:%lf]\n", -(range + 1), range + 1);
-    fprintf(gnu_files[0], "set yrange [%lf:%lf]\n", -(range + 1), range + 1);
-    fprintf(gnu_files[0], "set size ratio 1\n");
-    fprintf(gnu_files[0], "set grid\n");
-    fprintf(gnu_files[0], "set title \"%s\"\n", argv[1]);
-    fprintf(gnu_files[0], "set style line 1 lc rgb \"black\" lw 1\n");
-    fprintf(gnu_files[0], "set style line 2 lc rgb \"red\" lw 3\n");
-    fprintf(gnu_files[0], "set style line 3 lc rgb \"blue\" lw 2\n");
-
-    ////////////////////////
-    // CALCULATE POLYGONS //
-    ////////////////////////
-
-    /* runs tao-distance algorithm on data */
-    for(i = 0; i < size; i++) {
-        for(j = 0; j < size; j++) {
-            if(mapped[j] == 0) {
-                keep_going = 1;
-            }
-        }
-        if(keep_going == 1) {
-            construct_segments(segments, points, points[i], i, size, gnu_files, mapped, recorded);
-            keep_going = 0;
-        }
-        else {
-            i = size;
-        }
-    }
-    /* get rid of crossing lines */
-    remove_crosses(segments, points, size);
-    /* optimize tessellations */
-    do {
-        /* find polygons */
-        polygons = construct_polygons(*segments, points, size);
-        polygons = delete_duplicates(polygons);
-        /* ensure each polygon is optimal */
-        count = segments->size();
-        polygons = optimize_polygons(polygons, segments, points, size);
-        /* get rid of crossing lines */
-        remove_crosses(segments, points, size);
-    } while(count < segments->size());
-    /* finalize segments */
-    finalize_segments(segments, points, size);
-    /* find polygons */
-    polygons = construct_polygons(*segments, points, size);
-    polygons = delete_duplicates(polygons);
-    /* bubble sort polygons by perimeter */
-    for(i = 0; i < polygons.size(); i++) {
-        for(j = polygons.size() - 1; j > i; j--) {
-            if(polygons[j].perimeter < polygons[j - 1].perimeter) {
-                tmp_polygon = polygons[j];
-                polygons[j] = polygons[j - 1];
-                polygons[j - 1] = tmp_polygon;
-            }
-        }
-    }
-    /* pop the incorrect polygon */
-    polygons.pop_back();
-    /* find shortest path
-    shortest_path = find_shortest_path(polygons, points, size);
-    /* plot shortest path
-    printf("\nCALCULATED PATH: ");
-    for(i = 0; i < shortest_path.shape.size(); i++) {
-        printf("%d->", points[shortest_path.shape[i]].index);
-        fprintf(gnu_files[5], "%lf %lf\n", points[shortest_path.shape[i]].x, points[shortest_path.shape[i]].y);
-    }
-    printf("%d\n\n", points[shortest_path.shape[0]].index);*/
-
-    ///////////////////////
-    // PLOT POLYGON DATA //
-    ///////////////////////
-
-    /* plot segment information */
-    for(i = 0; i < segments->size(); i++) {
-        fprintf(gnu_files[2], "%lf %lf %d\n", points[(*segments)[i][0]].x, points[(*segments)[i][0]].y, points[(*segments)[i][0]].index);
-        fprintf(gnu_files[2], "%lf %lf %d\n", points[(*segments)[i][1]].x, points[(*segments)[i][1]].y, points[(*segments)[i][1]].index);
-        fprintf(gnu_files[2], "\n");
-        /* write segments to output file */
-        fprintf(output, "%d %d\n", points[(*segments)[i][0]].index, points[(*segments)[i][1]].index);
-    }
-    /* plot perimeter data */
-    for(i = 0; i < polygons.size(); i++) {
-        sum_x = 0.0;
-        sum_y = 0.0;
-        for(j = 1; j < (polygons[i]).shape.size(); j++) {
-            sum_x += points[(polygons[i]).shape[j]].x;
-            sum_y += points[(polygons[i]).shape[j]].y;
-        }
-        center.x = sum_x / (double)((polygons[i]).shape.size() - 1);
-        center.y = sum_y / (double)((polygons[i]).shape.size() - 1);
-        fprintf(gnu_files[3], "%lf %lf %d\n", center.x, center.y, i);
-    }
-    /* print polygon information */
-    printf("\nPOLYGONS:\n");
-    for(i = 0; i < polygons.size(); i++) {
-        printf("%d: ", i);
-        for(j = 0; j < (polygons[i]).shape.size(); j++) {
-            printf("%d ", points[(polygons[i]).shape[j]].index);
-        }
-        printf("= %0.2lf\n", polygons[i].perimeter);
-    }
-
-    /////////////////////////
-    // FINAL PLOT COMMANDS //
-    /////////////////////////
-
-    fprintf(gnu_files[0], "plot '%s' using 1:2 with lines ls 1 title \"Tessellations\",", lines);
-    fprintf(gnu_files[0], "'%s' using 1:2 with points pt 7 notitle,", datapoints);
-    fprintf(gnu_files[0], "'' using 1:2:3 with labels point pt 7 offset char -1,-1 notitle,");
-    fprintf(gnu_files[0], "'%s' using 1:2:3 with labels point pt 3 offset char -1,-1 notitle, ", extrapoints);
-    fprintf(gnu_files[0], "'%s' using 1:2:3 with labels point pt 2 offset char -1,-1 notitle, ", centerpoint);
-    fprintf(gnu_files[0], "'%s' using 1:2 with lines ls 2 title \"Calculated Path\", ", path);
-    fprintf(gnu_files[0], "'%s' using 1:2 with lines ls 3 title \"Shortest Path\"\n", shortest);
-    fclose(output);
-    fclose(data);
-    fclose(gnu_files[0]);
-    fclose(gnu_files[1]);
-    fclose(gnu_files[2]);
-    fclose(gnu_files[3]);
-    fclose(gnu_files[4]);
-    fclose(gnu_files[5]);
-    char plot[1024];
-    sprintf(plot, "gnuplot -persistent %s", commands);
-    system(plot);
-    fclose(gnu_files[7]);
-    return 0;
-}
+#endif
 
 /* runs tao-distance algorithm on dataset and generates optimal segments */
 void construct_segments(vector<int *> *segments, Point *points, Point begin, int n, int size, FILE *gnu_files[NUM_FILES], int *mapped, int **recorded)
 {
+    /////////////////////////////////
+    // INITIALIZATION OF VARIABLES //
+    /////////////////////////////////
+
     Vector V;
     Vector T1;
     Vector T2;
@@ -347,7 +61,7 @@ void construct_segments(vector<int *> *segments, Point *points, Point begin, int
     int j = 0;
     int k = 0;
     int m = 0;
-    /* initialization of arrays */
+    /* initialization of point traversal and segment arrays */
     for(i = 0; i < size; i++) {
         curr[i].x = DBL_MAX;
         curr[i].y = DBL_MAX;
@@ -364,7 +78,7 @@ void construct_segments(vector<int *> *segments, Point *points, Point begin, int
     best.y = DBL_MIN;
     best.tao_distance = DBL_MIN;
     best.index = -1;
-    /* calculate average point */
+    /* initialize center point */
     for(i = 0; i < size; i++) {
         sum_x += points[i].x;
         sum_y += points[i].y;
@@ -372,41 +86,46 @@ void construct_segments(vector<int *> *segments, Point *points, Point begin, int
     center.x = sum_x / size;
     center.y = sum_y / size;
 
-    // PLOT CENTER POINT
-
-    fprintf(gnu_files[4], "%lf %lf\n", center.x, center.y);
-
-    // START CALCULATIONS
-
-    start.x = begin.x;
-    start.y = begin.y;
-    start.index = begin.index;
-    prev.x = begin.x;
-    prev.y = begin.y;
-    prev.index = begin.index;
-    best.x = begin.x;
-    best.y = begin.y;
-    best.index = begin.index;
+    /* initialize start, prev, and begin */
+    start = Point(begin);
+    prev = Point(begin);
+    best = Point(begin);
     loop[m++] = n;
 
-    /* initializing vector T1 */
+    /* initialize vector T1 */
     T1 = Vector("T1", center, start, INT_MAX);
     T1.offset(start.x - center.x, start.y - center.y);
 
-    /* outer loop, calculates total distance */
+    ///////////////////////
+    // PLOT CENTER POINT //
+    ///////////////////////
+
+    fprintf(gnu_files[4], "%lf %lf\n", center.x, center.y);
+
+    ////////////////////////
+    // START CALCULATIONS //
+    ////////////////////////
+
+    /* outer loop, calculates total distance
+     * condition: loop until all points are visited
+     * T'(n):     O(n)
+     */
     while(visited_count <= total_size) {
         /* store start index in visited-array */
         visited[start.index] = 1;
+        /* refresh loop variables */
         i = 0;
-        /* refreshing best index */
         best.tao_distance = DBL_MAX;
         best.index = start.index;
-        /* initializing vector T2 */
+        /* initialize vector T2 = 0 */
         T2 = Vector("T2", start, start);
-        /* initializing vector V */
+        /* initialize vector V = 0 */
         V = Vector("V", start, start);
         count = 0;
-        /* loops through all possible indices from start */
+        /* loops through all possible indices from start
+         * condition:  loop until all points are visited
+         * T'(n):      O(n - 1)
+         */
         while(count < size) {
             /* skip current index and previous index */
             if((points[i].equals(best)) || (points[i].equals(prev))) {
@@ -415,12 +134,12 @@ void construct_segments(vector<int *> *segments, Point *points, Point begin, int
                 count++;
                 continue;
             }
-            /* initializing vector V */
+            /* initialize vector V */
             V.end = Point(points[i]);
             V.refresh();
-            /* initializing vector T2 */
+            /* initialize vector T2 */
             T2 = Vector("T2", T1.start, V.end, INT_MAX);
-            /* initializing tao, theta, and curvature */
+            /* store tao, theta, and curvature */
             curr[i].tao = (dot_product(T1, T2)); //length of T1 and T2 is always 1
             if(curr[i].tao <= -1.0) {
                 curr[i].tao = -1.0;
@@ -433,8 +152,9 @@ void construct_segments(vector<int *> *segments, Point *points, Point begin, int
             curr[i].index = V.end.index;
             curr[i].theta = angle_t(curr[i].tao);
             curr[i].curvature = calculate_curvature(T1, T2, curr[i].tao);
-            curr[i].tao_distance = tao_distance(V, curr[i].curvature, curr[i].theta) * curr[i].theta; //addition of multiply by theta
-            V.end.tao_distance = curr[i].tao_distance;
+            //curr[i].tao_distance = tao_distance(V, curr[i].curvature, curr[i].theta) * curr[i].theta; //addition of multiply by theta
+            curr[i].tao_distance = tao_distance(V, curr[i].curvature, curr[i].theta); //addition of multiply by theta
+            V.end = Point(curr[i]);
             i++;
             count++;
         }
@@ -2908,4 +2628,197 @@ void print(Vector V, Vector T1, Vector T2, double curvature, double theta, doubl
 void memory_error(void)
 {
     printf("\n\nError assigning memory. Exiting Program. Good Day.\n\n");
+}
+
+/* experimental algorithm... */
+void midpoint_construction(vector<int *> *segments, Point *points, int size, FILE *gnu_files[NUM_FILES]) {
+
+    /////////////////////////////////
+    // INITIALIZATION OF VARIABLES //
+    /////////////////////////////////
+
+    Vector M; // midpoint-facing vector
+    Vector T; // test vector for calculations
+    Point curr;
+    Point next;
+    Point prev;
+    Point mid;
+    double *tao_dist = new double [size + 1]; // extra space for midpoint
+    int **tmp_segments = new int * [size + 1];
+    int *pushed_segment;
+    int *loop = new int [size];
+    int *visited = new int [size];
+    int total_size = size;
+    int visited_count = 0;
+    int count = 0;
+    int i = 0;
+    int j = 0;
+    int k = 0;
+    int m = 0;
+    /* initialization of point traversal and segment arrays */
+    for(i = 0; i < size; i++) {
+        tao_dist[i] = DBL_MAX;
+        tmp_segments[i] = new int [2];
+        tmp_segments[i][0] = INT_MAX;
+        tmp_segments[i][1] = INT_MAX;
+    }
+    tmp_segments[i] = new int [2];
+    tmp_segments[i][0] = INT_MAX;
+    tmp_segments[i][1] = INT_MAX;
+
+    /* initialize curr, next, prev, and mid */
+    curr = Point(points[0]);
+    next = Point(points[1]);
+    prev = Point(points[0]);
+    mid = Point(points[0]);
+    mid.offset(points[1].x - points[0].x, points[1].y - points[0].y);
+
+    ////////////////////////
+    // START CALCULATIONS //
+    ////////////////////////
+
+    /* outer loop, calculates total distance
+     * condition: loop until all points are visited
+     * T'(n):     O(n)
+     */
+    while(visited_count <= total_size) {
+        printf("MIDPOINT CONVERGENCE TEST ... ");
+        /* initialize vector M */
+        M = Vector("M", curr, mid, INT_MAX);
+
+        /* refresh loop variables */
+        i = 0;
+        double tao;
+        double theta;
+        double curvature;
+
+        /* loops through all possible indices from curr
+         * and ensure that the midpoint is the best tao
+         * condition:  loop until all points are visited
+         * T'(n):      O(n - 1)
+         */
+        while(i < size) {
+            /* skip current index and next index */
+            if(points[i].equals(curr) || points[i].equals(next)) {
+                tao_dist[i] = DBL_MAX;
+                i++;
+                continue;
+            }
+
+            /* initialize vector T */
+            T = Vector("T", curr, points[i], INT_MAX);
+            /* store tao, theta, and curvature */
+            tao = (dot_product(M, T)); //length of T1 and T2 is always 1
+            if(tao <= -1.0) {
+                tao = -1.0;
+            }
+            else if(tao >= 1.0) {
+                tao = 1.0;
+            }
+            theta = angle_t(tao);
+            curvature = calculate_curvature(M, T, tao);
+            tao_dist[i] = tao_distance(Vector("V", curr, points[i]), curvature, theta);
+            i++;
+        }
+        /* run test on midpoint */
+        T = Vector("T", curr, mid, INT_MAX);
+        /* store tao, theta, and curvature */
+        tao = (dot_product(M, T)); //length of T1 and T2 is always 1
+        if(tao <= -1.0) {
+            tao = -1.0;
+        }
+        else if(tao >= 1.0) {
+            tao = 1.0;
+        }
+        theta = angle_t(tao);
+        curvature = calculate_curvature(M, T, tao);
+        tao_dist[i] = tao_distance(Vector("V", curr, points[i]), curvature, theta);
+
+        /* find least tao_distance */
+        double tmp_tao_distance = tao_dist[i];
+        for(i = 1; i < size; i++) {
+            if(tmp_tao_distance > tao_dist[i]) {
+                tmp_tao_distance = tao_dist[i];
+                k = i;
+            }
+        }
+
+        /* test first condition, that the midpoints is the best for M */
+        if(!points[k].equals(mid)) {
+            printf("FAILURE.");
+            next = Point(points[(next.index + 1) % size]);
+            mid = Point(curr);
+            mid.offset(next.x - curr.x, next.y - curr.y);
+            continue;
+        }
+
+        /* setup opposing condition... */
+        M = Vector("M", next, mid, INT_MAX);
+        next = Point(curr);
+        curr = Point(M.start);
+
+        /* refresh loop variables */
+        i = 0;
+        /* loops through all possible indices from curr
+         * and ensure that the midpoint is the best tao
+         * condition:  loop until all points are visited
+         * T'(n):      O(n - 1)
+         */
+        while(i < size) {
+            /* skip current index and next index */
+            if(points[i].equals(curr) || points[i].equals(next)) {
+                tao_dist[i] = DBL_MAX;
+                i++;
+                continue;
+            }
+
+            /* initialize vector T */
+            T = Vector("T", curr, points[i], INT_MAX);
+            /* store tao, theta, and curvature */
+            tao = (dot_product(M, T)); //length of T1 and T2 is always 1
+            if(tao <= -1.0) {
+                tao = -1.0;
+            }
+            else if(tao >= 1.0) {
+                tao = 1.0;
+            }
+            theta = angle_t(tao);
+            curvature = calculate_curvature(M, T, tao);
+            tao_dist[i] = tao_distance(Vector("V", curr, points[i]), curvature, theta);
+            i++;
+        }
+        /* run test on midpoint */
+        T = Vector("T", curr, mid, INT_MAX);
+        /* store tao, theta, and curvature */
+        tao = (dot_product(M, T)); //length of T1 and T2 is always 1
+        if(tao <= -1.0) {
+            tao = -1.0;
+        }
+        else if(tao >= 1.0) {
+            tao = 1.0;
+        }
+        theta = angle_t(tao);
+        curvature = calculate_curvature(M, T, tao);
+        tao_dist[i] = tao_distance(Vector("V", curr, points[i]), curvature, theta);
+
+        /* find least tao_distance */
+        tmp_tao_distance = tao_dist[i];
+        for(i = 1; i < size; i++) {
+            if(tmp_tao_distance > tao_dist[i]) {
+                tmp_tao_distance = tao_dist[i];
+                k = i;
+            }
+        }
+
+        /* test second condition, the opposite direction... */
+        if(!points[k].equals(mid)) {
+            printf("FAILURE.");
+            next = Point(points[(next.index + 1) % size]);
+            mid = Point(curr);
+            mid.offset(next.x - curr.x, next.y - curr.y);
+            continue;
+        }
+        
+        printf("SUCCESS!");
+    }
 }

@@ -14,7 +14,7 @@ add_executable(multiple source/multiple_contours.cpp)
 add_executable(plot source/plot.c)
 add_executable(pop source/pop_reverse.cpp)
 add_executable(tessellate source/tessellate.cpp)
-add_executable(shortest_path source/shortest_path.cpp source/vector.cpp)
+add_executable(shortest_path source/main.cpp source/shortest_path.cpp source/vector.cpp source/point.cpp)
 
 target_link_libraries(brute_force m)
 target_link_libraries(multiple m)

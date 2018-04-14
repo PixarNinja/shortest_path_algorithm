@@ -9,7 +9,6 @@
 #ifndef POINT_H
 #define POINT_H
 
-#pragma once
 #include <math.h>
 
 class Point {
@@ -36,46 +35,25 @@ class Point {
         Point();
 
         /* constructor: base */
-        Point(double x, double y, int index) {
-            this->x = x;
-            this->y = y;
-            this->index = index;
-            theta = 0;
-            curvature = 0;
-            tao = 0;
-            tao_distance = 0;
-        }
+        Point(double x, double y, int index);
+
+        /* constructor: verbose */
+        Point(double x, double y, int index, double theta, double curvature, double tao, double tao_distance);
 
         /* constructor: clone a Point */
-        Point(const Point &P) {
-            x = P.x;
-            y = P.y;
-            theta = P.theta;
-            curvature = P.curvature;
-            tao = P.tao;
-            tao_distance = P.tao_distance;
-            index = P.index;
-        }
+        Point(const Point &P);
 
         /* offsets the point
          * @param x, the x offset
          * @param y, the y offset
          */
-        void offset(double x_offset, double y_offset) {
-            x += x_offset;
-            y += y_offset;
-        }
+        void offset(double x_offset, double y_offset);
 
         /* tests if a point is equal
          * @param P, the point to test
          * @return true if equal, false otherwise
          */
-        bool equals(Point P) {
-            if(index == P.index) {
-                return true;
-            }
-            return false;
-        }
+        bool equals(Point P);
 
 };
 

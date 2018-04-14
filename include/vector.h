@@ -9,9 +9,8 @@
 #ifndef VECTOR_H
 #define VECTOR_H
 
-#pragma once
-#include <string.h>
 #include <math.h>
+#include <string>
 #include "point.h"
 
 class Vector {
@@ -46,6 +45,8 @@ class Vector {
         //////////////////
         // CONSTRUCTORS //
         //////////////////
+        
+        Vector();
 
         Vector(std::string name, Point start, Point end);
 
