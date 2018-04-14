@@ -10,8 +10,8 @@
 #define VECTOR_H
 
 #pragma once
-#include <math.h>
 #include <string.h>
+#include <math.h>
 #include "point.h"
 
 class Vector {
@@ -42,8 +42,6 @@ class Vector {
         double length;
         double i;
         double j;
-
-        Vector();
 
         //////////////////
         // CONSTRUCTORS //

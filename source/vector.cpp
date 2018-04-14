@@ -10,7 +10,7 @@
 
 Vector::Vector();
 
-Vector::Vector(std::string name, Point start, Point end) {
+Vector::Vector(string name, Point start, Point end) {
     this->name = name;
     this->start = start;
     this->end = end;
@@ -20,7 +20,7 @@ Vector::Vector(std::string name, Point start, Point end) {
 /* creates a normalized vector centered at start
  * and facing end
  */
-Vector::Vector(std::string name, Point start, Point end, int index) {
+Vector::Vector(string name, Point start, Point end, int index) {
     double x_offset = end.x - start.x;
     double y_offset = end.y - start.y;
     this->name = name;
