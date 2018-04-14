@@ -9,6 +9,7 @@ pop
 plot
 output
 gnu_files/*
+Makefile
 CMakeCache.txt
 CMakeFiles/
 cmake_install.cmake
