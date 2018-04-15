@@ -6,6 +6,9 @@
  * 2018
  */
 
+#include <unistd.h>
+#include <getopt.h>
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -32,14 +35,7 @@ using namespace std;
 
 int main(int argc, char *argv[])
 {
-    ////////////////////////
-    // TODO: SETUP GETOPT //
-    ////////////////////////
 
-    if(argc != 3) {
-        printf("\nUsage: ./shortest_path [datapoint path] [output path]\n\n");
-        exit(EXIT_FAILURE);
-    }
     FILE *data;
     FILE *output;
     FILE *gnu_files[NUM_FILES];
@@ -62,16 +58,69 @@ int main(int argc, char *argv[])
     int j = 0;
     int k = 0;
     int count = 0;
+
+    /* output file naming */
+    char *name = new char[1024];
+    char option;
+    char *datafile = NULL;
+    char *outfile = NULL;
+
+    ////////////
+    // GETOPT //
+    ////////////
+
+    if(argc == 1) {
+        printf("\nUsage: ./shortest_path -f datapoint_path [-o output_path]\n\n");
+        exit(EXIT_FAILURE);
+    }
+
+    while ((option = getopt(argc, argv,"hHf:o:")) != -1) {
+        switch (option) {
+            case 'f':
+            {
+                datafile = optarg;
+                break;
+            }
+            case 'o':
+            {
+                outfile = optarg;
+                break;
+            }
+            case 'h':
+            case 'H':
+            default:
+            {
+                printf("\nUsage: ./shortest_path -f datapoint_path [-o output_path]\n\n");
+                exit(EXIT_FAILURE);
+            }
+        }
+    }
+
+    /* opens file for reading */
+    data = fopen(datafile, "r");
+    if(!data) {
+        printf("\nERROR: unable to open data file. Exiting Program. Good day.\n\n");
+        exit(EXIT_FAILURE);
+    }
     /* grabs name for output files */
-    char *name = new char [1024];
-    char *tmp = new char [strlen(argv[1]) + 1];
-    for(i = 0; i < strlen(argv[1]) + 1; i++)
-        tmp[i] = argv[1][i];
+    char *tmp = new char [strlen(datafile) + 1];
+    for(i = 0; i < strlen(datafile) + 1; i++)
+        tmp[i] = datafile[i];
     tmp = strtok(tmp, "/");
     while (tmp != NULL) {
         for(i = 0; i < strlen(tmp) + 1; i++)
             name[i] = tmp[i];
         tmp = strtok (NULL, "/");
+    }
+    name = strtok(name, ".");
+
+    /* opens the file for writing */
+    if(outfile != NULL) {
+        output = fopen(outfile, "w+");
+        if(!output) {
+            printf("\nERROR: unable to open output file. Exiting Program. Good day.\n\n");
+            exit(EXIT_FAILURE);
+        }
     }
 
     /////////////////////
@@ -79,7 +128,6 @@ int main(int argc, char *argv[])
     /////////////////////
 
     /* setup pathnames for plot output */
-    name = strtok(name, ".");
     const char *gnu_path = "./gnu_files/";
     char *commands = new char [strlen(gnu_path) + strlen(name) + strlen("_commands.gpf") + 1];
     char *datapoints = new char [strlen(gnu_path) + strlen(name) + strlen("_datapoints.gpf") + 1];
@@ -87,7 +135,7 @@ int main(int argc, char *argv[])
     char *extrapoints = new char [strlen(gnu_path) + strlen(name) + strlen("_lines.gpf") + 1];
     char *centerpoint = new char [strlen(gnu_path) + strlen(name) + strlen("_centerpoint.gpf") + 1];
     char *path = new char [strlen(gnu_path) + strlen(name) + strlen("_calculated_path.gpf") + 1];
-    char *shortest = new char [3 + strlen(gnu_path) + strlen(name) + strlen("_shortest_path.gpf") + 1];
+    char *shortest = new char [strlen(gnu_path) + strlen(name) + strlen("_shortest_path.gpf") + 1];
     char *gnu_tmp = new char [strlen(gnu_path) + strlen("tmp.gpf") + 1];
     sprintf(commands, "%s%s_commands.gpf", gnu_path, name);
     sprintf(datapoints, "%s%s_datapoints.gpf", gnu_path, name);
@@ -105,16 +153,6 @@ int main(int argc, char *argv[])
     gnu_files[5] = fopen(path, "w+");
     gnu_files[6] = fopen(shortest, "r");
     gnu_files[7] = fopen(gnu_tmp, "w+");
-    data = fopen(argv[1], "r");
-    if(!data) {
-        printf("\nERROR: unable to open data file. Exiting Program. Good day.\n\n");
-        exit(1);
-    }
-    output = fopen(argv[2], "w+");
-    if(!output) {
-        printf("\nERROR: unable to open ouput file. Exiting Program. Good day.\n\n");
-        exit(1);
-    }
     while(fgets(buf, 1024, data)) {
         size++;
     }
@@ -136,7 +174,7 @@ int main(int argc, char *argv[])
         }
     }
     i = 0;
-    data = fopen(argv[1], "r");
+    data = fopen(datafile, "r");
     while(fscanf(data, "%d: (%lf, %lf)", &points[i].index, &points[i].x, &points[i].y) > 0) {
         if(fabs(points[i].x) > range) {
             range = fabs(points[i].x);
@@ -168,7 +206,7 @@ int main(int argc, char *argv[])
     // CALCULATE POLYGONS //
     ////////////////////////
 
-    /* runs tao-distance algorithm on data
+    /* runs tao-distance algorithm on data */
     for(i = 0; i < size; i++) {
         for(j = 0; j < size; j++) {
             if(mapped[j] == 0) {
@@ -182,9 +220,9 @@ int main(int argc, char *argv[])
         else {
             i = size;
         }
-    }*/
+    }
 
-    /* runs experimental algorithm... */
+    /* runs experimental algorithm...
     midpoint_construction(segments, points, size, gnu_files);
 
     /* get rid of crossing lines */
@@ -237,7 +275,9 @@ int main(int argc, char *argv[])
         fprintf(gnu_files[2], "%lf %lf %d\n", points[(*segments)[i][1]].x, points[(*segments)[i][1]].y, points[(*segments)[i][1]].index);
         fprintf(gnu_files[2], "\n");
         /* write segments to output file */
-        fprintf(output, "%d %d\n", points[(*segments)[i][0]].index, points[(*segments)[i][1]].index);
+        if(outfile != NULL) {
+            fprintf(output, "%d %d\n", points[(*segments)[i][0]].index, points[(*segments)[i][1]].index);
+        }
     }
     printf("\nSEGMENT NUMBER: %d\n", segments->size());
     /* plot perimeter data */
@@ -273,7 +313,9 @@ int main(int argc, char *argv[])
     fprintf(gnu_files[0], "'%s' using 1:2:3 with labels point pt 2 offset char -1,-1 notitle, ", centerpoint);
     fprintf(gnu_files[0], "'%s' using 1:2 with lines ls 2 title \"Calculated Path\", ", path);
     fprintf(gnu_files[0], "'%s' using 1:2 with lines ls 3 title \"Shortest Path\"\n", shortest);
-    fclose(output);
+    if(outfile != NULL) {
+        fclose(output);
+    }
     fclose(data);
     fclose(gnu_files[0]);
     fclose(gnu_files[1]);

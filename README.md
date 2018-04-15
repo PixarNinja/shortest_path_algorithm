@@ -5,7 +5,7 @@
 ```
 cmake .
 make
-./shortest_path [datapoint file] [output file]
+./shortest_path -f datapoint_file [-o output_file]
 ```
 Enter one of the following files containing datapoint information
 to run the algorithm on it:
