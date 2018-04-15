@@ -81,5 +81,8 @@ double dot_product(Vector V1, Vector V2);
 void print(Vector V, Vector T1, Vector T2, double curvature, double theta, double tao, double tao_distance);
 void memory_error(void);
 void midpoint_construction(vector<int *> *segments, Point *points, int size, FILE *gnu_files[NUM_FILES]);
+bool test_w_segment(Vector L, double interval, Point *points, int n);
+vector<Point> generate_w_points(vector<Point> w_points, Vector L, double interval);
+Point minimum_tao_distance(Vector V, Point *points, int size);
 
 #endif

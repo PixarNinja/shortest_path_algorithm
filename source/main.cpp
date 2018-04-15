@@ -206,7 +206,7 @@ int main(int argc, char *argv[])
     // CALCULATE POLYGONS //
     ////////////////////////
 
-    /* runs tao-distance algorithm on data */
+    /* runs tao-distance algorithm on data
     for(i = 0; i < size; i++) {
         for(j = 0; j < size; j++) {
             if(mapped[j] == 0) {
@@ -222,7 +222,7 @@ int main(int argc, char *argv[])
         }
     }
 
-    /* runs experimental algorithm...
+    /* runs experimental algorithm...*/
     midpoint_construction(segments, points, size, gnu_files);
 
     /* get rid of crossing lines */

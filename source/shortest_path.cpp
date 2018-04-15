@@ -2643,7 +2643,6 @@ void midpoint_construction(vector<int *> *segments, Point *points, int size, FIL
     Point next;
     Point prev;
     Point mid;
-    double *tao_dist = new double [size + 1]; // extra space for midpoint
     int **tmp_segments = new int * [size + 1];
     int *pushed_segment;
     int *loop = new int [size];
@@ -2653,11 +2652,8 @@ void midpoint_construction(vector<int *> *segments, Point *points, int size, FIL
     int count = 0;
     int i = 0;
     int j = 0;
-    int k = 0;
-    int m = 0;
     /* initialization of point traversal and segment arrays */
     for(i = 0; i < size; i++) {
-        tao_dist[i] = DBL_MAX;
         tmp_segments[i] = new int [2];
         tmp_segments[i][0] = INT_MAX;
         tmp_segments[i][1] = INT_MAX;
@@ -2677,148 +2673,137 @@ void midpoint_construction(vector<int *> *segments, Point *points, int size, FIL
     // START CALCULATIONS //
     ////////////////////////
 
-    /* outer loop, calculates total distance
-     * condition: loop until all points are visited
-     * T'(n):     O(n)
-     */
-    while(visited_count <= total_size) {
-        printf("MIDPOINT CONVERGENCE TEST ... ");
-        /* initialize vector M */
-        M = Vector("M", curr, mid, INT_MAX);
-
-        /* refresh loop variables */
-        i = 0;
-        double tao;
-        double theta;
-        double curvature;
-
-        /* loops through all possible indices from curr
-         * and ensure that the midpoint is the best tao
-         * condition:  loop until all points are visited
-         * T'(n):      O(n - 1)
-         */
-        while(i < size) {
-            /* skip current index and next index */
-            if(points[i].equals(curr) || points[i].equals(next)) {
-                tao_dist[i] = DBL_MAX;
-                i++;
+    /* find smallest line segment */
+    double interval = DBL_MAX;
+    for(i = 0; i < size; i++) {
+        for(j = 0; j < size; j++) {
+            if(i == j) {
                 continue;
             }
-
-            /* initialize vector T */
-            T = Vector("T", curr, points[i], INT_MAX);
-            /* store tao, theta, and curvature */
-            tao = (dot_product(M, T)); //length of T1 and T2 is always 1
-            if(tao <= -1.0) {
-                tao = -1.0;
-            }
-            else if(tao >= 1.0) {
-                tao = 1.0;
-            }
-            theta = angle_t(tao);
-            curvature = calculate_curvature(M, T, tao);
-            tao_dist[i] = tao_distance(Vector("V", curr, points[i]), curvature, theta);
-            i++;
-        }
-        /* run test on midpoint */
-        T = Vector("T", curr, mid, INT_MAX);
-        /* store tao, theta, and curvature */
-        tao = (dot_product(M, T)); //length of T1 and T2 is always 1
-        if(tao <= -1.0) {
-            tao = -1.0;
-        }
-        else if(tao >= 1.0) {
-            tao = 1.0;
-        }
-        theta = angle_t(tao);
-        curvature = calculate_curvature(M, T, tao);
-        tao_dist[i] = tao_distance(Vector("V", curr, points[i]), curvature, theta);
-
-        /* find least tao_distance */
-        double tmp_tao_distance = tao_dist[i];
-        for(i = 1; i < size; i++) {
-            if(tmp_tao_distance > tao_dist[i]) {
-                tmp_tao_distance = tao_dist[i];
-                k = i;
+            if(distance_p(points[i], points[j]) < interval) {
+                interval = distance_p(points[i], points[j]);
             }
         }
-
-        /* test first condition, that the midpoints is the best for M */
-        if(!points[k].equals(mid)) {
-            printf("FAILURE.");
-            next = Point(points[(next.index + 1) % size]);
-            mid = Point(curr);
-            mid.offset(next.x - curr.x, next.y - curr.y);
-            continue;
-        }
-
-        /* setup opposing condition... */
-        M = Vector("M", next, mid, INT_MAX);
-        next = Point(curr);
-        curr = Point(M.start);
-
-        /* refresh loop variables */
-        i = 0;
-        /* loops through all possible indices from curr
-         * and ensure that the midpoint is the best tao
-         * condition:  loop until all points are visited
-         * T'(n):      O(n - 1)
-         */
-        while(i < size) {
-            /* skip current index and next index */
-            if(points[i].equals(curr) || points[i].equals(next)) {
-                tao_dist[i] = DBL_MAX;
-                i++;
-                continue;
-            }
-
-            /* initialize vector T */
-            T = Vector("T", curr, points[i], INT_MAX);
-            /* store tao, theta, and curvature */
-            tao = (dot_product(M, T)); //length of T1 and T2 is always 1
-            if(tao <= -1.0) {
-                tao = -1.0;
-            }
-            else if(tao >= 1.0) {
-                tao = 1.0;
-            }
-            theta = angle_t(tao);
-            curvature = calculate_curvature(M, T, tao);
-            tao_dist[i] = tao_distance(Vector("V", curr, points[i]), curvature, theta);
-            i++;
-        }
-        /* run test on midpoint */
-        T = Vector("T", curr, mid, INT_MAX);
-        /* store tao, theta, and curvature */
-        tao = (dot_product(M, T)); //length of T1 and T2 is always 1
-        if(tao <= -1.0) {
-            tao = -1.0;
-        }
-        else if(tao >= 1.0) {
-            tao = 1.0;
-        }
-        theta = angle_t(tao);
-        curvature = calculate_curvature(M, T, tao);
-        tao_dist[i] = tao_distance(Vector("V", curr, points[i]), curvature, theta);
-
-        /* find least tao_distance */
-        tmp_tao_distance = tao_dist[i];
-        for(i = 1; i < size; i++) {
-            if(tmp_tao_distance > tao_dist[i]) {
-                tmp_tao_distance = tao_dist[i];
-                k = i;
-            }
-        }
-
-        /* test second condition, the opposite direction... */
-        if(!points[k].equals(mid)) {
-            printf("FAILURE.");
-            next = Point(points[(next.index + 1) % size]);
-            mid = Point(curr);
-            mid.offset(next.x - curr.x, next.y - curr.y);
-            continue;
-        }
-        
-        printf("SUCCESS!");
     }
+
+    /* test all line segments */
+    for(i = 0; i < size; i++) {
+        for(j = 0; j < size; j++) {
+            if(i == j) {
+                continue;
+            }
+            Vector L = Vector("L", points[i], points[j]);
+            test_w_segment(L, interval, points, size);
+        }
+    }
+}
+
+/* tests if a weslean segment is valid
+ * @param L, the weslean line being tested
+ * @param interval, the weslean point generation interval
+ * @param points, the array of datapoints
+ * @param n, the size of the array
+ * @return ..., the line segement to add, either a line or NULL*/
+bool test_w_segment(Vector L, double interval, Point *points, int n) {
+    int i = 0;
+    int j = 0;
+
+    /* create test points */
+    vector<Point> *w_points = new vector<Point>;
+    *w_points = generate_w_points(*w_points, L, interval);
+    int k = w_points->size();
+    std::cout << L.start.index << ", " << L.end.index << ": ";
+    std::cout << k << std::endl;
+
+    /* test all w_points, q */
+    for(j = 0; j < k; j++) {
+        Point q = Point((*w_points)[j]);
+        printf("q: (%0.3lf, %0.3lf)\n", q.x, q.y);
+
+        /* test all points p */
+        for(i = 0; i < n; i++) {
+            Point p = Point(points[i]);
+
+            /* find the minimum tao_distance between all
+             * vectors <p, *> and Q = <p, q>
+             */
+            Vector Q = Vector("Q", p, q, INT_MAX);
+            Point *t_points = new Point [n - 1]; // n --> (n - 2) + 1
+            int l = 0;
+            int m = 0;
+            for(; l < n; l++) {
+                if(points[l].equals(L.start) || points[l].equals(L.end)) {
+                    continue;
+                }
+                t_points[m++] = points[l];
+            }
+            t_points[m] = q;
+            Point t = minimum_tao_distance(Q, t_points, n - 1);
+            printf("%d: %d\n", p.index, t.index);
+        }
+    }
+}
+
+/* returns the point with the smallest calculated tao-distance
+ * @param L, the weslean line being tested
+ * @param k, the point generation interval
+ * @param points, the array of datapoints
+ * @param n, the size of the array
+ * @return ..., the line segement to add, either a line or NULL*/
+vector<Point> generate_w_points(vector<Point> w_points, Vector L, double interval) {
+    /* base case */
+    if(L.length < interval) {
+        return w_points;
+    }
+    /* recursive step */
+    Point M = Point(L.end.x, L.end.y, -1);
+    M.offset(-L.i/2, -L.j/2);
+    w_points.push_back(M);
+    Vector H1 = Vector("H1", L.start, M);
+    w_points = generate_w_points(w_points, H1, interval);
+    Vector H2  = Vector("H2", M, L.end);
+    w_points = generate_w_points(w_points, H2, interval);
+    /* return result */
+    return w_points;
+}
+
+Point minimum_tao_distance(Vector V, Point *points, int size) {
+    double tao;
+    double theta;
+    double curvature;
+    double *tao_dist = new double [size];
+    Vector T;
+    int i = 0;
+    for(; i < size; i++) {
+        Point p = Point(points[i]);
+        /* skip start */
+        if(p.equals(V.start)) {
+            continue;
+        }
+
+        /* initialize vector T */
+        T = Vector("T", V.start, p, INT_MAX);
+
+        /* store tao, theta, and curvature */
+        tao = (dot_product(V, T)); //length of V and T is always 1
+        if(tao <= -1.0) {
+            tao = -1.0;
+        }
+        else if(tao >= 1.0) {
+            tao = 1.0;
+        }
+        theta = angle_t(tao);
+        curvature = calculate_curvature(V, T, tao);
+        tao_dist[i] = tao_distance(Vector("*", V.start, p), curvature, theta);
+    }
+    /* find the least tao_distance */
+    double curr = tao_dist[0];
+    int k = 0;
+    for(i = 1; i < size; i++) {
+        if(curr > tao_dist[i]) {
+            curr = tao_dist[i];
+            k = i;
+        }
+    }
+    return points[k];
 }
