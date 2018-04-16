@@ -58,6 +58,9 @@ class Vector {
         /////////////
         // METHODS //
         /////////////
+        
+        /* normalizes the vector */
+        void normalize();
 
         /* refreshes i and j, and stores the length of the vector */
         void refresh();

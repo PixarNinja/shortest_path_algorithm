@@ -33,6 +33,12 @@ Vector::Vector(std::string name, Point start, Point end, int index) {
     refresh();
 }
 
+/* normalizes the vector */
+void Vector::normalize() {
+    end = Point(start.x + (i / length), start.y + (j / length), -1);
+    refresh();
+}
+
 /* refreshes i and j, and stores the length of the vector */
 void Vector::refresh() {
     i = end.x - start.x;

@@ -2723,7 +2723,8 @@ bool test_w_segment(Vector L, double interval, Point *points, int n) {
             /* find the minimum tao_distance between all
              * vectors <p, *> and Q = <p, q>
              */
-            Vector Q = Vector("Q", p, q, INT_MAX);
+            Vector Q = Vector("Q", p, q);
+            Q.normalize();
             Point t = minimum_tao_distance(Q, t_points, n - 1);
             printf("%d: %d\n", p.index, t.index);
         }
@@ -2770,7 +2771,8 @@ Point minimum_tao_distance(Vector V, Point *points, int size) {
         }
 
         /* initialize vector T */
-        T = Vector("T", V.start, p, INT_MAX);
+        T = Vector("T", V.start, p);
+        T.normalize();
 
         /* store tao, theta, and curvature */
         tao = (dot_product(V, T)); //length of V and T is always 1
@@ -2783,13 +2785,12 @@ Point minimum_tao_distance(Vector V, Point *points, int size) {
         theta = angle_t(tao);
         curvature = calculate_curvature(V, T, tao);
         tao_dist[i] = tao_distance(Vector("T'", V.start, p), curvature, theta);
+        printf("%d -> %d: %0.3lf + %0.3lf + %0.3lf = %0.3lf\n", V.start.index, p.index, distance_p(V.start, p), curvature, theta, tao_dist[i]);
     }
     /* find the least tao_distance */
     double curr = tao_dist[0];
-    printf("td: %d(%0.3lf)\n", points[0].index, tao_dist[0]);
     int k = 0;
     for(i = 1; i < size; i++) {
-        printf("td: %d(%0.3lf)\n", points[i].index, tao_dist[i]);
         if(curr > tao_dist[i]) {
             curr = tao_dist[i];
             k = i;
