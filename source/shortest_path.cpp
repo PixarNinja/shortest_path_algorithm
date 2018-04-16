@@ -2637,19 +2637,8 @@ void midpoint_construction(vector<int *> *segments, Point *points, int size, FIL
     // INITIALIZATION OF VARIABLES //
     /////////////////////////////////
 
-    Vector M; // midpoint-facing vector
-    Vector T; // test vector for calculations
-    Point curr;
-    Point next;
-    Point prev;
-    Point mid;
     int **tmp_segments = new int * [size + 1];
     int *pushed_segment;
-    int *loop = new int [size];
-    int *visited = new int [size];
-    int total_size = size;
-    int visited_count = 0;
-    int count = 0;
     int i = 0;
     int j = 0;
     /* initialization of point traversal and segment arrays */
@@ -2661,13 +2650,6 @@ void midpoint_construction(vector<int *> *segments, Point *points, int size, FIL
     tmp_segments[i] = new int [2];
     tmp_segments[i][0] = INT_MAX;
     tmp_segments[i][1] = INT_MAX;
-
-    /* initialize curr, next, prev, and mid */
-    curr = Point(points[0]);
-    next = Point(points[1]);
-    prev = Point(points[0]);
-    mid = Point(points[0]);
-    mid.offset(points[1].x - points[0].x, points[1].y - points[0].y);
 
     ////////////////////////
     // START CALCULATIONS //
@@ -2712,28 +2694,30 @@ bool test_w_segment(Vector L, double interval, Point *points, int n) {
     int l = 0;
     int m = 0;
     Point *t_points = new Point [n - 1]; // n --> (n - 2) + 1
-    printf("Adding... ");
     for(; l < n; l++) {
         if(points[l].equals(L.start) || points[l].equals(L.end)) {
             continue;
         }
         t_points[m++] = points[l];
-        printf("%d, ", points[l].index);
     }
 
     /* create w_points */
     vector<Point> *w_points = new vector<Point>;
     *w_points = generate_w_points(*w_points, L, interval);
 
-    /* test all w_points, q = {q_1, q_2, ..., q_(n - 1)} */
-    for(j = 0; j < n - 1; j++) {
+    /* test all w_points, q = {q_1, q_2, ..., q*} */
+    for(j = 0; j < w_points->size(); j++) {
         Point q = Point((*w_points)[j]);
         /* add q to the point set */
         t_points[m] = q;
-        printf("q: (%0.3lf, %0.3lf)\n", q.x, q.y);
+        printf("\nq: (%0.3lf, %0.3lf)\n\n", q.x, q.y);
 
         /* test point set */
-        for(i = 0; i < m; i++) {
+        for(i = 0; i < n - 1; i++) {
+            /* skip starting at q */
+            if(t_points[i].equals(q)) {
+                continue;
+            }
             Point p = Point(t_points[i]);
 
             /* find the minimum tao_distance between all
@@ -2778,6 +2762,7 @@ Point minimum_tao_distance(Vector V, Point *points, int size) {
     int i = 0;
     for(i = 0; i < size; i++) {
         Point p = Point(points[i]);
+        //printf("p: %d(%0.3lf, %0.3lf)\n", p.index, p.x, p.y);
         /* skip start */
         if(p.equals(V.start)) {
             tao_dist[i] = DBL_MAX;
@@ -2797,12 +2782,14 @@ Point minimum_tao_distance(Vector V, Point *points, int size) {
         }
         theta = angle_t(tao);
         curvature = calculate_curvature(V, T, tao);
-        tao_dist[i] = tao_distance(Vector("V'", V.start, p), curvature, theta);
+        tao_dist[i] = tao_distance(Vector("T'", V.start, p), curvature, theta);
     }
     /* find the least tao_distance */
     double curr = tao_dist[0];
+    printf("td: %d(%0.3lf)\n", points[0].index, tao_dist[0]);
     int k = 0;
     for(i = 1; i < size; i++) {
+        printf("td: %d(%0.3lf)\n", points[i].index, tao_dist[i]);
         if(curr > tao_dist[i]) {
             curr = tao_dist[i];
             k = i;

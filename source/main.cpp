@@ -197,7 +197,7 @@ int main(int argc, char *argv[])
     fprintf(gnu_files[0], "set yrange [%lf:%lf]\n", -(range + 1), range + 1);
     fprintf(gnu_files[0], "set size ratio 1\n");
     fprintf(gnu_files[0], "set grid\n");
-    fprintf(gnu_files[0], "set title \"%s\"\n", argv[1]);
+    fprintf(gnu_files[0], "set title \"%s\"\n", datafile);
     fprintf(gnu_files[0], "set style line 1 lc rgb \"black\" lw 1\n");
     fprintf(gnu_files[0], "set style line 2 lc rgb \"red\" lw 3\n");
     fprintf(gnu_files[0], "set style line 3 lc rgb \"#BB0000FF\" lw 6\n");
