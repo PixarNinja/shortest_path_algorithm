@@ -223,7 +223,7 @@ int main(int argc, char *argv[])
     }
 
     /* runs experimental algorithm...*/
-    midpoint_construction(segments, points, size, gnu_files);
+    *segments = midpoint_construction(points, size, gnu_files);
 
     /* get rid of crossing lines */
 //    remove_crosses(segments, points, size);

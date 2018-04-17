@@ -2,7 +2,7 @@ set xrange [-5.000000:5.000000]
 set yrange [-5.000000:5.000000]
 set size ratio 1
 set grid
-set title "-f"
+set title "datapoints/circle.dat"
 set style line 1 lc rgb "black" lw 1
 set style line 2 lc rgb "red" lw 3
 set style line 3 lc rgb "#BB0000FF" lw 6

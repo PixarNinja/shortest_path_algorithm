@@ -2631,25 +2631,16 @@ void memory_error(void)
 }
 
 /* experimental algorithm... */
-void midpoint_construction(vector<int *> *segments, Point *points, int size, FILE *gnu_files[NUM_FILES]) {
+vector<int *> midpoint_construction(Point *points, int size, FILE *gnu_files[NUM_FILES]) {
 
     /////////////////////////////////
     // INITIALIZATION OF VARIABLES //
     /////////////////////////////////
 
-    int **tmp_segments = new int * [size + 1];
-    int *pushed_segment;
+    vector<int *> segments;
+    int *tmp_segment = new int [2];
     int i = 0;
     int j = 0;
-    /* initialization of point traversal and segment arrays */
-    for(i = 0; i < size; i++) {
-        tmp_segments[i] = new int [2];
-        tmp_segments[i][0] = INT_MAX;
-        tmp_segments[i][1] = INT_MAX;
-    }
-    tmp_segments[i] = new int [2];
-    tmp_segments[i][0] = INT_MAX;
-    tmp_segments[i][1] = INT_MAX;
 
     ////////////////////////
     // START CALCULATIONS //
@@ -2675,9 +2666,18 @@ void midpoint_construction(vector<int *> *segments, Point *points, int size, FIL
                 continue;
             }
             Vector L = Vector("L", points[i], points[j]);
-            test_w_segment(L, interval, points, size);
+            /* if the line is valid, add it as a segment */
+            if(test_w_segment(L, interval, points, size)) {
+                /* record segment */
+                printf("\nPUSHING SEGMENT <%d, %d>\n", L.start.index, L.end.index);
+                tmp_segment = new int [2];
+                tmp_segment[0] = L.start.index;
+                tmp_segment[1] = L.end.index;
+                segments.push_back(tmp_segment);
+            }
         }
     }
+    return segments;
 }
 
 /* tests if a weslean segment is valid
@@ -2689,15 +2689,16 @@ void midpoint_construction(vector<int *> *segments, Point *points, int size, FIL
 bool test_w_segment(Vector L, double interval, Point *points, int n) {
     int i = 0;
     int j = 0;
+    int k = 0;
 
     /* create initial point set */
     int l = 0;
     int m = 0;
-    Point *t_points = new Point [n - 1]; // n --> (n - 2) + 1
+    Point *t_points = new Point [n + 1]; // n --> (n - 2) + 1
     for(; l < n; l++) {
-        if(points[l].equals(L.start) || points[l].equals(L.end)) {
-            continue;
-        }
+        //if(points[l].equals(L.start) || points[l].equals(L.end)) {
+        //    continue;
+        //}
         t_points[m++] = points[l];
     }
 
@@ -2710,25 +2711,70 @@ bool test_w_segment(Vector L, double interval, Point *points, int n) {
         Point q = Point((*w_points)[j]);
         /* add q to the point set */
         t_points[m] = q;
-        printf("\nq: (%0.3lf, %0.3lf)\n\n", q.x, q.y);
+        printf("\nTESTING: (%d, %d)\nq: (%0.3lf, %0.3lf)\n\n", L.start.index, L.end.index, q.x, q.y);
 
         /* test point set */
-        for(i = 0; i < n - 1; i++) {
-            /* skip starting at q */
-            if(t_points[i].equals(q)) {
+        for(i = 0; i < n + 1; i++) {
+            /* skip starting at q, L.start, and L.end */
+            if(t_points[i].equals(q) || t_points[i].equals(L.start) || t_points[i].equals(L.end)) {
                 continue;
             }
             Point p = Point(t_points[i]);
 
-            /* find the minimum tao_distance between all
+            /* find the forward connection, i.e.
+             * find the minimum tao_distance between all
              * vectors <p, *> and Q = <p, q>
              */
             Vector Q = Vector("Q", p, q);
             Q.normalize();
-            Point t = minimum_tao_distance(Q, t_points, n - 1);
+            Point t = minimum_tao_distance(Q, t_points, n + 1);
             printf("%d: %d\n", p.index, t.index);
+
+            /* check if the line needs further testing */
+            if(!t.equals(q)) {
+                continue;
+            }
+
+            /* find the follow connection, i.e.
+             * find the minimum tao_distance between all
+             * vectors <q, p> and Q = <q, q'>
+             */
+            l = 0;
+            Vector Y = Vector("Y", q, L.start);
+            Y.normalize();
+            Vector X = Vector("X", q, q);
+            X.end.offset(Y.j, -Y.i);
+            X.refresh();
+            X.normalize();
+            printf("X: <(%0.3lf, %0.3lf), (%0.3lf, %0.3lf)>\n", X.start.x, X.start.y, X.end.x, X.end.y);
+            printf("Y: <(%0.3lf, %0.3lf), (%0.3lf, %0.3lf)>\n", Y.start.x, Y.start.y, Y.end.x, Y.end.y);
+            for(k = 0; k < n; k++) {
+                Point r = Point(points[k]);
+                Vector R = Vector("R", q, r);
+                R.normalize();
+                double theta_X = angle(R, X) * 180 / M_PI;
+                /* check if point r should remain in the test set */
+                if(theta_X < 90) {
+                    printf("... %d is GOOD!\n", r.index);
+                    t_points[l++] = r;
+                }
+            }
+            t_points[l++] = L.start;
+            t_points[l++] = L.end;
+            Q = Vector("Q", p, q);
+            Q.scoot();
+            Q.normalize();
+            printf("q':<(%0.3lf, %0.3lf), (%0.3lf, %0.3lf)>\n", Q.start.x, Q.start.y, Q.end.x, Q.end.y);
+            t = minimum_tao_distance(Q, t_points, l);
+            printf("%d: %d\n", p.index, t.index);
+
+            /* check if the line was found to be invalid */
+            if(!t.equals(L.start) && !t.equals(L.end)) {
+                return false;
+            }
         }
     }
+    return true;
 }
 
 /* returns the point with the smallest calculated tao-distance
