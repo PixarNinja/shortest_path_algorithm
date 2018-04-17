@@ -62,5 +62,9 @@ bool Point::equals(Point P) {
     if(index == P.index) {
         return true;
     }
+    double epsilon = 0.000001;
+    if((((x - P.x) <= epsilon) && ((x - P.x) >= -epsilon)) && (((y - P.y) <= epsilon) && ((y - P.y) >= -epsilon))) {
+        return true;
+    }
     return false;
 }
