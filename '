@@ -2664,7 +2664,7 @@ vector<int *> midpoint_construction(Point *points, int size, FILE *gnu_files[NUM
     }
 
     interval /= 16;
-    //printf("\nINTERVAL: %lf\n\n", interval);
+    printf("\nINTERVAL: %lf\n\n", interval);
 
     /* test all line segments */
     for(i = 0; i < size; i++) {
@@ -2677,20 +2677,20 @@ vector<int *> midpoint_construction(Point *points, int size, FILE *gnu_files[NUM
                 /* if the line is valid, add it as a segment */
                 if(test_w_segment(L, interval, points, size)) {
                     /* record segment */
-                    //printf("\nPUSHING SEGMENT <%d, %d>\n", L.start.index, L.end.index);
+                    printf("\nPUSHING SEGMENT <%d, %d>\n", L.start.index, L.end.index);
                     tmp_segment = new int [2];
                     tmp_segment[0] = point_match(points, size, L.start.index);
                     tmp_segment[1] = point_match(points, size, L.end.index);
                     segments.push_back(tmp_segment);
-                    //printf("<%d, %d>\n", segments.back()[0], segments.back()[1]);
-                    segments = remove_crossing_segments(segments, points, size);
+                    printf("<%d, %d>\n", segments.back()[0], segments.back()[1]);
+                    segments = remove_crossing_segments(L, segments, points, size);
                 }
             }
         }
     }
-    //printf("FINAL...!\n");
+    printf("FINAL...!\n");
     for(int * segment : segments) {
-        //printf("<%d, %d>\n", points[segment[0]].index, points[segment[1]].index);
+        printf("<%d, %d>\n", points[segment[0]].index, points[segment[1]].index);
     }
     return segments;
 }
@@ -2737,7 +2737,7 @@ bool test_w_segment(Vector L, double interval, Point *points, int n) {
         }
         /* add q to the point set */
         t_points[m] = q;
-        //printf("\nTESTING: (%d, %d)\nq: (%0.3lf, %0.3lf)\n\n", L.start.index, L.end.index, q.x, q.y);
+        printf("\nTESTING: (%d, %d)\nq: (%0.3lf, %0.3lf)\n\n", L.start.index, L.end.index, q.x, q.y);
 
         /* test point set */
         for(i = 0; i < n + 1; i++) {
@@ -2755,7 +2755,7 @@ bool test_w_segment(Vector L, double interval, Point *points, int n) {
             Vector Q = Vector("Q", p, q);
             Q.normalize();
             Point t = minimum_tao_distance(Q, t_points, n + 1);
-            //printf("%d: %d\n", p.index, t.index);
+            printf("%d: %d\n", p.index, t.index);
 
             /* check if the line needs further testing */
             if(!t.equals(q)) {
@@ -2792,16 +2792,16 @@ bool test_w_segment(Vector L, double interval, Point *points, int n) {
                 /* check if point s should remain in the test set */
                 if(!(determinant(S, R) <= 0.000001 && determinant(S, R) >= -0.000001) && ((determinant(Q, R) < 0 && determinant(S, R) < 0) || (determinant(Q, R) > 0 && determinant(S, R) > 0))) {
                     S.print();
-                    //printf("  determinant = %lf\n", determinant(R, S));
-                    //printf("... %d is GOOD!\n", s.index);
+                    printf("  determinant = %lf\n", determinant(R, S));
+                    printf("... %d is GOOD!\n", s.index);
                     t_points[l++] = s;
                 }
             }
             t_points[l++] = L.start;
             t_points[l++] = L.end;
-            //printf("q':<(%0.3lf, %0.3lf), (%0.3lf, %0.3lf)>\n", Q.start.x, Q.start.y, Q.end.x, Q.end.y);
+            printf("q':<(%0.3lf, %0.3lf), (%0.3lf, %0.3lf)>\n", Q.start.x, Q.start.y, Q.end.x, Q.end.y);
             t = minimum_tao_distance(Q, t_points, l);
-            //printf("%d: %d\n", p.index, t.index);
+            printf("%d: %d\n", p.index, t.index);
 
             /* check if the line was found to be invalid */
             if(!t.equals(L.start) && !t.equals(L.end)) {
@@ -2853,7 +2853,7 @@ Point minimum_tao_distance(Vector V, Point *points, int size) {
     int i = 0;
     for(i = 0; i < size; i++) {
         Point p = Point(points[i]);
-        ////printf("p: %d(%0.3lf, %0.3lf)\n", p.index, p.x, p.y);
+        //printf("p: %d(%0.3lf, %0.3lf)\n", p.index, p.x, p.y);
         /* skip start */
         if(p.equals(V.start)) {
             tao_dist[i] = DBL_MAX;
@@ -2876,7 +2876,7 @@ Point minimum_tao_distance(Vector V, Point *points, int size) {
         curvature = calculate_curvature(V, T, tao);
         //tao_dist[i] = tao_distance(Vector("T'", V.start, p), curvature, theta);
         tao_dist[i] = Vector("T'", V.start, p).length;
-        //printf("%d -> %d: %0.3lf + %0.3lf + %0.3lf = %0.3lf\n", V.start.index, p.index, distance_p(V.start, p), curvature, theta, tao_dist[i]);
+        printf("%d -> %d: %0.3lf + %0.3lf + %0.3lf = %0.3lf\n", V.start.index, p.index, distance_p(V.start, p), curvature, theta, tao_dist[i]);
     }
     /* find the least tao_distance */
     double curr = tao_dist[0];
@@ -2890,53 +2890,48 @@ Point minimum_tao_distance(Vector V, Point *points, int size) {
     return points[k];
 }
 
-vector<int *> remove_crossing_segments(vector<int *> segments, Point *points, int size) {
+vector<int *> remove_crossing_segments(Vector L, vector<int *> segments, Point *points, int size) {
     vector<int *> crosses;
+    int skip = segment_match(segments, point_match(points, size, L.start.index), point_match(points, size, L.end.index));
     int i;
-    int j;
 
     /* repeat until there are no crossing segments */
     while(true) {
 
-        /* check all segments against all others for crossing lines */
+        /* check all segments against L for crossing lines */
         for(i = 0; i < segments.size(); i++) {
-            Vector L = Vector("L", points[segments[i][0]], points[segments[i][1]]);
-            for(j = 0; j < segments.size(); j++) {
-                if(i == j) {
-                    continue;
-                }
-                Vector V = Vector("V", points[segments[j][0]], points[segments[j][1]]);
-                if(intersection(L, V)) {
-                    //printf("INTERSECTION!!!");
-                    crosses.push_back(segments[i]);
-                    continue;
-                }
+            if(i == skip) {
+                continue;
+            }
+            Vector V = Vector("V", points[segment[0]], points[segment[1]]);
+            if(intersection(L, V)) {
+                printf("INTERSECTION!!!");
+                crosses.push_back(segment);
             }
         }
 
         /* test end condition */
-        if(crosses.size() == 0) {
+        if(crosses.empty()) {
             break;
         }
 
-        /* delete the largest segments out of the crossing segments */
-        double min = distance_p(points[crosses[0][0]], points[crosses[0][1]]);
+        int *tmp = new int [2];
+        tmp[0] = point_match(points, size, L.start.index);
+        tmp[1] = point_match(points, size, L.end.index);
+        crosses.push_back(tmp);
+
+        /* delete the largest segment */
+        double max = distance_p(points[crosses[0][0]], points[crosses[0][1]]);
         int k = 0;
         for(i = 1; i < crosses.size(); i++) {
-            if(min > distance_p(points[crosses[i][0]], points[crosses[i][1]])) {
-                min = distance_p(points[crosses[i][0]], points[crosses[i][1]]);
+            if(max < distance_p(points[crosses[i][0]], points[crosses[i][1]])) {
+                max = distance_p(points[crosses[i][0]], points[crosses[i][1]]);
                 k = i;
             }
         }
 
-        /* delete all segments that aren't k */
-        while(crosses.size() > 1) {
-            i = segment_match(segments, crosses.front()[0], crosses.front()[1]);
-            if(i < 0) {
-                return segments;
-            }
-            segments.erase(segments.begin() + i);
-        }
+        /* delete segment */
+        i = segment_match(segments, crosses[k][0], crosses[k][1]);
+        segments.erase(segments.begin() + i, segments.begin() + i + 1);
     }
-    return segments;
 }

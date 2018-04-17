@@ -60,7 +60,7 @@ vector<struct polygon_t> delete_duplicates(vector<struct polygon_t> polygons);
 vector<struct polygon_t> optimize_polygons(vector<struct polygon_t> polygons, vector<int *> *segments, Point *points, int size);
 void remove_crosses(vector<int *> *segments, Point *points, int size);
 void finalize_segments(vector<int *> *segments, Point *points, int size);
-int intersection(Point p1, Point p2, Point p3, Point p4);
+bool intersection(Vector V1, Vector V2);
 struct polygon_t find_shortest_path(vector<struct polygon_t> polygons, Point *points, int size);
 int accept_polygon(struct polygon_t polygon, vector<int *> segments, Point *points);
 int smallest_neighbour(vector<struct polygon_t> polygons, struct polygon_t source, int n);
@@ -85,5 +85,6 @@ bool test_w_segment(Vector L, double interval, Point *points, int n);
 double determinant(Vector V1, Vector V2);
 vector<Point> generate_w_points(vector<Point> w_points, Vector L, double interval);
 Point minimum_tao_distance(Vector V, Point *points, int size);
+vector<int *> remove_crossing_segments(vector<int *> segments, Point *points, int size);
 
 #endif
