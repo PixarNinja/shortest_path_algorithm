@@ -2645,7 +2645,6 @@ vector<int *> midpoint_construction(Point *points, int size, FILE *gnu_files[NUM
     int *tmp_segment = new int [2];
     int i = 0;
     int j = 0;
-    int k = 0;
 
     ////////////////////////
     // START CALCULATIONS //
@@ -2675,10 +2674,10 @@ vector<int *> midpoint_construction(Point *points, int size, FILE *gnu_files[NUM
             }
             Vector L = Vector("L", points[i], points[j]);
             if(segment_match(segments, i, j) == -1) {
-                /* check if there is an overlap */
+                /* make sure the segment doesn't overlap any other segments */
                 bool found_overlap = false;
-                for(k = 0; k < segments.size(); k++) {
-                    Vector V = Vector("V", points[segments[k][0]], points[segments[k][1]]);
+                for(i = 0; i < segments.size(); i++) {
+                    Vector V = Vector("V", points[segments[i][0]], points[segments[i][1]]);
                     if(overlap(L, V)) {
                         found_overlap = true;
                         break;
@@ -2695,23 +2694,11 @@ vector<int *> midpoint_construction(Point *points, int size, FILE *gnu_files[NUM
                     tmp_segment[1] = j;
                     segments.push_back(tmp_segment);
                     //printf("ADDING: (%d, %d)\n", points[i].index, points[j].index);
+                    //segments = remove_crossing_segments(segments, segments.size() - 1, points);
                 }
             }
         }
     }
-
-    /*int prev_size = segments.size();
-    i = 0;
-    while(i < segments.size()) {
-        segments = remove_crossing_segments(segments, i, points);
-        if(prev_size - segments.size() == 0) {
-            i++;
-        }
-        else {
-            i = 0;
-            prev_size = segments.size();
-        }
-    }*/
 
     return segments;
 }
@@ -2733,7 +2720,7 @@ bool test_w_segment(Vector L, double interval, Point *points, int n) {
     int l = 0;
     int m = 0;
     Point *t_points = new Point [n + 1];
-    for(; l < n; l++) {
+    for(l = 0; l < n; l++) {
         t_points[m++] = points[l];
     }
 
@@ -2945,26 +2932,25 @@ vector<int *> remove_crossing_segments(vector<int *> segments, int s, Point *poi
         }
     }
 
-    /* delete all segments with length less than min */
     int equal_count = 0;
-    double epsilon = 0.000001;
     for(i = 0; i < crosses.size(); i++) {
         double distance = distance_p(points[segments[crosses[i]][0]], points[segments[crosses[i]][1]]);
-        if((min - distance) < epsilon && (min - distance) > -epsilon) {
+        if(min == distance) {
             equal_count++;
         }
     }
 
-    /* if more than one remaining segment has length min, delete them all */
+    /* delete all segments with length less than min */
     for(i = 0; i < crosses.size(); i++) {
         double distance = distance_p(points[segments[crosses[i]][0]], points[segments[crosses[i]][1]]);
-        if((min - distance) < epsilon && (min - distance) > -epsilon) {
+        if(min == distance) {
+            /* if more than one remaining segment has length min, delete them all */
             if(equal_count > 1) {
                 printf("REMOVING: (%d, %d)\n", points[segments[crosses[i]][0]].index, points[segments[crosses[i]][1]].index);
                 segments.erase(segments.begin() + crosses[i]);
             }
         }
-        else if(min < distance) {
+        if(min < distance) {
             printf("REMOVING: (%d, %d)\n", points[segments[crosses[i]][0]].index, points[segments[crosses[i]][1]].index);
             segments.erase(segments.begin() + crosses[i]);
         }
@@ -2974,100 +2960,53 @@ vector<int *> remove_crossing_segments(vector<int *> segments, int s, Point *poi
 }
 
 /* returns true if the points overlap, false otherwise */
-bool overlap(Vector V1, Vector V2)
-{
-    Point p = Point(V1.start);
-    Point q = Point(V1.start);
-    q.offset(V2.i, V2.j);
-    Vector U = Vector("U", p, q);
-    /* parallel test */
-    if(determinant(V1, U) == 0) {
-        Point p1 = Point(V1.start);
-        Point p2 = Point(V1.end);
-        Point p3 = Point(V2.start);
-        Point p4 = Point(V2.end);
-        Point tmp;
-        double y = 0.0;
-        double x = 0.0;
-        double m1 = 0.0;
-        double m2 = 0.0;
-        double b1 = 0.0;
-        double b2 = 0.0;
-        /* make sure none of the nodes are the same */
-        if(p1.equals(p3) || p1.equals(p4) || p2.equals(p3) || p2.equals(p4)) {
-            return false;
+bool overlap(Vector V1, Vector V2) {
+    Point p1 = V1.start;
+    Point p2 = V1.end;
+    Point p3 = V2.start;
+    Point p4 = V2.end;
+    Point tmp;
+    double y = 0.0;
+    double x = 0.0;
+    double m1 = 0.0;
+    double m2 = 0.0;
+    double b1 = 0.0;
+    double b2 = 0.0;
+    /* find overlap area */
+    if (p2.x < p1.x) {
+        tmp = p1;
+        p1 = p2;
+        p2 = tmp;
+    }
+    if (p4.x < p3.x) {
+        tmp = p3;
+        p3 = p4;
+        p4 = tmp;
+    }
+    /* make sure none of the nodes are the same */
+    if((p1.index == p3.index) || (p1.index == p4.index) || (p2.index == p3.index) || (p2.index == p4.index)) {
+        return false;
+    }
+    /* create first equation */
+    y = p1.y;
+    m1 = (p2.y - p1.y) / (p2.x - p1.x);
+    x = p1.x;
+    b1 = y - m1 * x;
+    /* create second equation */
+    y = p3.y;
+    m2 = (p4.y - p3.y) / (p4.x - p3.x);
+    x = p3.x;
+    b2 = y - m2 * x;
+    /* solve linear system */
+    x = (b2 - b1) / (m1 - m2);
+    y = m1 * x + b1;
+    /* don't push the segment if it is an overlap */
+    if((b2 == b1) && (m1 == m2)) {
+        if(p3.x < p2.x) {
+            return true;
         }
-        /* create first equation */
-        y = p1.y;
-        m1 = (p2.y - p1.y) / (p2.x - p1.x);
-        x = p1.x;
-        b1 = y - m1 * x;
-        /* create second equation */
-        y = p3.y;
-        m2 = (p4.y - p3.y) / (p4.x - p3.x);
-        x = p3.x;
-        b2 = y - m2 * x;
-        /* solve linear system */
-        x = (b2 - b1) / (m1 - m2);
-        y = m1 * x + b1;
-        if(b1 == b2) {
-            /* final overlap tests */
-            if(V1.i == 0) { // use y values to compare
-                /* find overlap area */
-                if (p2.y < p1.y) {
-                    tmp = Point(p1);
-                    p1 = Point(p2);
-                    p2 = Point(tmp);
-                }
-                if (p4.y < p3.y) {
-                    tmp = Point(p3);
-                    p3 = Point(p4);
-                    p4 = Point(tmp);
-                }
-                if(p3.y < p1.y) {
-                    tmp = Point(p1);
-                    p1 = Point(p3);
-                    p3 = Point(tmp);
-                    tmp = Point(p2);
-                    p2 = Point(p4);
-                    p4 = Point(tmp);
-                }
-                /* do test */
-                if(p3.y < p2.y) {
-                    return true;
-                }
-                else {
-                    return false;
-                }
-            }
-            else { // use x values to compare
-                /* find overlap area */
-                if (p2.x < p1.x) {
-                    tmp = Point(p1);
-                    p1 = Point(p2);
-                    p2 = Point(tmp);
-                }
-                if (p4.x < p3.x) {
-                    tmp = Point(p3);
-                    p3 = Point(p4);
-                    p4 = Point(tmp);
-                }
-                if(p3.x < p1.x) {
-                    tmp = Point(p1);
-                    p1 = Point(p3);
-                    p3 = Point(tmp);
-                    tmp = Point(p2);
-                    p2 = Point(p4);
-                    p4 = Point(tmp);
-                }
-                /* do test */
-                if(p3.x < p2.x) {
-                    return true;
-                }
-                else {
-                    return false;
-                }
-            }
+        else if(p1.x < p4.x) {
+            return true;
         }
     }
     return false;
