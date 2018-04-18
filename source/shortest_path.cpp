@@ -2675,18 +2675,6 @@ vector<int *> midpoint_construction(Point *points, int size, FILE *gnu_files[NUM
             }
             Vector L = Vector("L", points[i], points[j]);
             if(segment_match(segments, i, j) == -1) {
-                /* check if there is an overlap */
-                bool found_overlap = false;
-                for(k = 0; k < segments.size(); k++) {
-                    Vector V = Vector("V", points[segments[k][0]], points[segments[k][1]]);
-                    if(overlap(L, V)) {
-                        found_overlap = true;
-                        break;
-                    }
-                }
-                if(found_overlap) {
-                    continue;
-                }
                 /* if the line is valid, add it as a segment */
                 if(test_w_segment(L, interval, points, size)) {
                     /* record segment */
@@ -2694,6 +2682,7 @@ vector<int *> midpoint_construction(Point *points, int size, FILE *gnu_files[NUM
                     tmp_segment[0] = i;
                     tmp_segment[1] = j;
                     segments.push_back(tmp_segment);
+                    segments = fix_overlap(segments, segments.size() - 1, points);
                     //printf("ADDING: (%d, %d)\n", points[i].index, points[j].index);
                 }
             }
@@ -2973,102 +2962,178 @@ vector<int *> remove_crossing_segments(vector<int *> segments, int s, Point *poi
     return segments;
 }
 
-/* returns true if the points overlap, false otherwise */
-bool overlap(Vector V1, Vector V2)
+/* fixes any overlaps with segment[k]
+ * @param segments, the vector of segments to check
+ * @param s, the index of the segment to check against
+ * @param points, the array of datapoins
+ * @return the updated segments vector
+ */
+vector<int *> fix_overlap(vector<int *> segments, int s, Point *points)
 {
-    Point p = Point(V1.start);
-    Point q = Point(V1.start);
-    q.offset(V2.i, V2.j);
-    Vector U = Vector("U", p, q);
-    /* parallel test */
-    if(determinant(V1, U) == 0) {
-        Point p1 = Point(V1.start);
-        Point p2 = Point(V1.end);
-        Point p3 = Point(V2.start);
-        Point p4 = Point(V2.end);
-        Point tmp;
-        double y = 0.0;
-        double x = 0.0;
-        double m1 = 0.0;
-        double m2 = 0.0;
-        double b1 = 0.0;
-        double b2 = 0.0;
-        /* make sure none of the nodes are the same */
-        if(p1.equals(p3) || p1.equals(p4) || p2.equals(p3) || p2.equals(p4)) {
-            return false;
+    int size = segments.size();
+    int i = 0;
+
+    /* construct original segment points and vector */
+    Point v1 = Point(points[segments[s][0]]);
+    Point v2 = Point(points[segments[s][1]]);
+    Vector V = Vector("V", v1, v2);
+    printf("TEST SEGMENT: ");
+    V.print();
+
+    /* test all original segments against segments[s] */
+    for(i = 0; i < size; i++) {
+        if(i == s) {
+            continue;
         }
-        /* create first equation */
-        y = p1.y;
-        m1 = (p2.y - p1.y) / (p2.x - p1.x);
-        x = p1.x;
-        b1 = y - m1 * x;
-        /* create second equation */
-        y = p3.y;
-        m2 = (p4.y - p3.y) / (p4.x - p3.x);
-        x = p3.x;
-        b2 = y - m2 * x;
-        /* solve linear system */
-        x = (b2 - b1) / (m1 - m2);
-        y = m1 * x + b1;
-        if(b1 == b2) {
-            /* final overlap tests */
-            if(V1.i == 0) { // use y values to compare
-                /* find overlap area */
-                if (p2.y < p1.y) {
-                    tmp = Point(p1);
-                    p1 = Point(p2);
-                    p2 = Point(tmp);
+        /* construct test segment points and vector */
+        Point t1 = Point(points[segments[i][0]]);
+        Point t2 = Point(points[segments[i][1]]);
+        Vector T = Vector("T", t1, t2);
+        printf("TESTING: ");
+        T.print();
+
+        Point u = Point(v1);
+        u.offset(T.i, T.j);
+        Vector U = Vector("U", v1, u);
+        /* parallel test */
+        if(determinant(V, U) == 0) {
+            Point p1 = Point(V.start);
+            Point p2 = Point(V.end);
+            Point p3 = Point(T.start);
+            Point p4 = Point(T.end);
+            Point tmp_point;
+            int *tmp_segment;
+            int tmp_index;
+            bool swap_index = false;
+            double y = 0.0;
+            double x = 0.0;
+            double m1 = 0.0;
+            double m2 = 0.0;
+            double b1 = 0.0;
+            double b2 = 0.0;
+            /* create first equation */
+            y = p1.y;
+            m1 = (p2.y - p1.y) / (p2.x - p1.x);
+            x = p1.x;
+            b1 = y - m1 * x;
+            /* create second equation */
+            y = p3.y;
+            m2 = (p4.y - p3.y) / (p4.x - p3.x);
+            x = p3.x;
+            b2 = y - m2 * x;
+            /* solve linear system */
+            x = (b2 - b1) / (m1 - m2);
+            y = m1 * x + b1;
+            if(b1 == b2) {
+                /* final overlap tests */
+                if(V.i == 0) { // use y values to compare
+                    /* find overlap area */
+                    if (p2.y < p1.y) {
+                        tmp_point = Point(p1);
+                        p1 = Point(p2);
+                        p2 = Point(tmp_point);
+                    }
+                    if (p4.y < p3.y) {
+                        tmp_point = Point(p3);
+                        p3 = Point(p4);
+                        p4 = Point(tmp_point);
+                    }
+                    if(p3.y < p1.y) {
+                        swap_index = true; // we need to swap the segments later
+                        tmp_point = Point(p1);
+                        p1 = Point(p3);
+                        p3 = Point(tmp_point);
+                        tmp_point = Point(p2);
+                        p2 = Point(p4);
+                        p4 = Point(tmp_point);
+                    }
+                    /* do test */
+                    if(p3.y < p2.y) {
+                        if(swap_index) {
+                            tmp_index = segments[i][1];
+                            segments[i][1] = segments[s][0]; // p1--> p3
+                            tmp_segment = new int [2];
+                            tmp_segment[0] = segments[s][0];
+                            tmp_segment[1] = tmp_index;
+                            segments.push_back(tmp_segment); // p3 --> p2
+                            if(!p2.equals(p4)) {
+                                tmp_segment[0] = tmp_index;
+                                tmp_segment[1] = segments[s][1];
+                                segments.push_back(tmp_segment); // p2 --> p4
+                                printf("CORRECTED: %d --> %d --> %d --> %d", segments[i][0], segments[i][1], segments.back()[0], segments.back()[1]);
+                            }
+                            else {
+                                printf("CORRECTED: %d --> %d --> %d", segments[i][0], segments[i][1], segments.back()[1]);
+                            }
+                        }
+                        else { // p1 --> p3 --> p2 --> p4
+                            tmp_index = segments[s][1];
+                            segments[s][1] = segments[i][0]; // p1--> p3
+                            tmp_segment = new int [2];
+                            tmp_segment[0] = segments[i][0];
+                            tmp_segment[1] = tmp_index;
+                            segments.push_back(tmp_segment); // p3 --> p2
+                            if(!p2.equals(p4)) {
+                                tmp_segment[0] = tmp_index;
+                                tmp_segment[1] = segments[i][1];
+                                segments.push_back(tmp_segment); // p2 --> p4
+                                printf("CORRECTED: %d --> %d --> %d --> %d", segments[i][0], segments[i][1], segments.back()[0], segments.back()[1]);
+                            }
+                            else {
+                                printf("CORRECTED: %d --> %d --> %d", segments[i][0], segments[i][1], segments.back()[1]);
+                            }
+                        }
+                    }
                 }
-                if (p4.y < p3.y) {
-                    tmp = Point(p3);
-                    p3 = Point(p4);
-                    p4 = Point(tmp);
-                }
-                if(p3.y < p1.y) {
-                    tmp = Point(p1);
-                    p1 = Point(p3);
-                    p3 = Point(tmp);
-                    tmp = Point(p2);
-                    p2 = Point(p4);
-                    p4 = Point(tmp);
-                }
-                /* do test */
-                if(p3.y < p2.y) {
-                    return true;
-                }
-                else {
-                    return false;
-                }
-            }
-            else { // use x values to compare
-                /* find overlap area */
-                if (p2.x < p1.x) {
-                    tmp = Point(p1);
-                    p1 = Point(p2);
-                    p2 = Point(tmp);
-                }
-                if (p4.x < p3.x) {
-                    tmp = Point(p3);
-                    p3 = Point(p4);
-                    p4 = Point(tmp);
-                }
-                if(p3.x < p1.x) {
-                    tmp = Point(p1);
-                    p1 = Point(p3);
-                    p3 = Point(tmp);
-                    tmp = Point(p2);
-                    p2 = Point(p4);
-                    p4 = Point(tmp);
-                }
-                /* do test */
-                if(p3.x < p2.x) {
-                    return true;
-                }
-                else {
-                    return false;
+                else { // use x values to compare
+                    /* find overlap area */
+                    if (p2.x < p1.x) {
+                        tmp_point = Point(p1);
+                        p1 = Point(p2);
+                        p2 = Point(tmp_point);
+                    }
+                    if (p4.x < p3.x) {
+                        tmp_point = Point(p3);
+                        p3 = Point(p4);
+                        p4 = Point(tmp_point);
+                    }
+                    if(p3.x < p1.x) {
+                        swap_index = true; // we need to swap the segments later
+                        tmp_point = Point(p1);
+                        p1 = Point(p3);
+                        p3 = Point(tmp_point);
+                        tmp_point = Point(p2);
+                        p2 = Point(p4);
+                        p4 = Point(tmp_point);
+                    }
+                    /* do test */
+                    if(p3.x < p2.x) {
+                        if(swap_index) {
+                            tmp_index = segments[i][1];
+                            segments[i][1] = segments[s][0]; // p1--> p3
+                            tmp_segment = new int [2];
+                            tmp_segment[0] = segments[s][0];
+                            tmp_segment[1] = tmp_index;
+                            segments.push_back(tmp_segment); // p3 --> p2
+                            tmp_segment[0] = tmp_index;
+                            tmp_segment[1] = segments[s][1];
+                            segments.push_back(tmp_segment); // p2 --> p4
+                        }
+                        else { // p1 --> p3 --> p2 --> p4
+                            tmp_index = segments[s][1];
+                            segments[s][1] = segments[i][0]; // p1--> p3
+                            tmp_segment = new int [2];
+                            tmp_segment[0] = segments[i][0];
+                            tmp_segment[1] = tmp_index;
+                            segments.push_back(tmp_segment); // p3 --> p2
+                            tmp_segment[0] = tmp_index;
+                            tmp_segment[1] = segments[i][1];
+                            segments.push_back(tmp_segment); // p2 --> p4
+                        }
+                    }
                 }
             }
         }
     }
-    return false;
+    return segments;
 }
