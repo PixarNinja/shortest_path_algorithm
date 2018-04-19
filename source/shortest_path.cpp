@@ -2687,11 +2687,6 @@ vector<int *> midpoint_construction(Point *points, int size, FILE *gnu_files[NUM
                     }
                     else {
                         segments = fix_overlap(tmp_segment, segments, points);
-                        printf("CURRENT:");
-                        for(k = 0; k < segments.size(); k++) {
-                            printf(" (%d, %d)", points[segments[k][0]].index, points[segments[k][1]].index);
-                        }
-                        printf("\n");
                     }
                 }
             }
@@ -3025,19 +3020,31 @@ vector<int *> fix_overlap(int *test, vector<int *> segments, Point *points) {
             double m2 = 0.0;
             double b1 = 0.0;
             double b2 = 0.0;
-            /* create first equation */
-            y = p1.y;
-            m1 = (p2.y - p1.y) / (p2.x - p1.x);
-            x = p1.x;
-            b1 = y - m1 * x;
-            /* create second equation */
-            y = p3.y;
-            m2 = (p4.y - p3.y) / (p4.x - p3.x);
-            x = p3.x;
-            b2 = y - m2 * x;
-            /* solve linear system */
-            x = (b2 - b1) / (m1 - m2);
-            y = m1 * x + b1;
+            /* find which intercept to use, x or y */
+            if(V.i == 0) { // use x intercept
+                /* create first equation */
+                y = p1.x;
+                m1 = (p2.x - p1.x) / (p2.y - p1.y);
+                x = p1.y;
+                b1 = y - m1 * x;
+                /* create second equation */
+                y = p3.x;
+                m2 = (p4.x - p3.x) / (p4.y - p3.y);
+                x = p3.y;
+                b2 = y - m2 * x;
+            }
+            else { // use y intercept
+                /* create first equation */
+                y = p1.y;
+                m1 = (p2.y - p1.y) / (p2.x - p1.x);
+                x = p1.x;
+                b1 = y - m1 * x;
+                /* create second equation */
+                y = p3.y;
+                m2 = (p4.y - p3.y) / (p4.x - p3.x);
+                x = p3.x;
+                b2 = y - m2 * x;
+            }
             if(b1 == b2) {
                 popped.push_back(segments[i]);
                 segments.erase(segments.begin() + i);

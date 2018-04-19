@@ -240,21 +240,21 @@ int main(int argc, char *argv[])
 //    } while(count < segments->size());
     /* finalize segments */
 //    finalize_segments(segments, points, size);
-//    /* find polygons */
-//    polygons = construct_polygons(*segments, points, size);
-//    polygons = delete_duplicates(polygons);
-//    /* bubble sort polygons by perimeter */
-//    for(i = 0; i < polygons.size(); i++) {
-//        for(j = polygons.size() - 1; j > i; j--) {
-//            if(polygons[j].perimeter < polygons[j - 1].perimeter) {
-//                tmp_polygon = polygons[j];
-//                polygons[j] = polygons[j - 1];
-//                polygons[j - 1] = tmp_polygon;
-//            }
-//        }
-//    }
-//    /* pop the incorrect polygon */
-//    polygons.pop_back();
+    /* find polygons */
+    polygons = construct_polygons(*segments, points, size);
+    polygons = delete_duplicates(polygons);
+    /* bubble sort polygons by perimeter */
+    for(i = 0; i < polygons.size(); i++) {
+        for(j = polygons.size() - 1; j > i; j--) {
+            if(polygons[j].perimeter < polygons[j - 1].perimeter) {
+                tmp_polygon = polygons[j];
+                polygons[j] = polygons[j - 1];
+                polygons[j - 1] = tmp_polygon;
+            }
+        }
+    }
+    /* pop the incorrect polygon */
+    polygons.pop_back();
     /* find shortest path
     shortest_path = find_shortest_path(polygons, points, size);
     /* plot shortest path
@@ -279,7 +279,6 @@ int main(int argc, char *argv[])
             fprintf(output, "%d %d\n", points[(*segments)[i][0]].index, points[(*segments)[i][1]].index);
         }
     }
-    printf("\nSEGMENT NUMBER: %d\n", segments->size());
     /* plot perimeter data */
     for(i = 0; i < polygons.size(); i++) {
         sum_x = 0.0;
