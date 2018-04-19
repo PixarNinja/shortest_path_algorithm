@@ -2686,21 +2686,7 @@ vector<int *> midpoint_construction(Point *points, int size, FILE *gnu_files[NUM
                         segments.push_back(tmp_segment);
                     }
                     else {
-                        vector<int *> pushed_segments;
-                        vector<int *> new_segments;
-                        for(k = 0; k < segments.size(); k++) {
-                            new_segments = fix_overlap(tmp_segment, segments[k], points);
-                            for(l = 0; l < new_segments.size(); l++) {
-                                if(segment_match(pushed_segments, new_segments[l][0], new_segments[l][1]) == -1) {
-                                    pushed_segments.push_back(new_segments[l]);
-                                }
-                            }
-                        }
-                        for(k = 0; k < pushed_segments.size(); k++) {
-                            if(segment_match(segments, pushed_segments[k][0], pushed_segments[k][1]) == -1) {
-                                segments.push_back(pushed_segments[k]);
-                            }
-                        }
+                        segments = fix_overlap(tmp_segment, segments, points);
                     }
                     //printf("ADDING: (%d, %d)\n", points[i].index, points[j].index);
                 }
@@ -2708,7 +2694,7 @@ vector<int *> midpoint_construction(Point *points, int size, FILE *gnu_files[NUM
         }
     }
 
-    /*int prev_size = segments.size();
+    int prev_size = segments.size();
     i = 0;
     while(i < segments.size()) {
         segments = remove_crossing_segments(segments, i, points);
@@ -2719,7 +2705,7 @@ vector<int *> midpoint_construction(Point *points, int size, FILE *gnu_files[NUM
             i = 0;
             prev_size = segments.size();
         }
-    }*/
+    }
 
     return segments;
 }
@@ -2988,225 +2974,93 @@ vector<int *> remove_crossing_segments(vector<int *> segments, int s, Point *poi
  * @param points, the array of datapoins
  * @return the updated segments vector
  */
-vector<int *> fix_overlap(int *AB, int *CD, Point *points) {
-    vector<int *> segments;
-    int *tmp_segment;
+vector<int *> fix_overlap(int *test, vector<int *> segments, Point *points) {
     int i = 0;
+    int j = 0;
 
     /* construct original segment points and vector */
-    Point p1 = Point(points[AB[0]]);
-    Point p2 = Point(points[AB[1]]);
+    Point p1 = Point(points[test[0]]);
+    Point p2 = Point(points[test[1]]);
     Vector V = Vector("V", p1, p2);
 
-    /* construct test segment points and vector */
-    Point p3 = Point(points[CD[0]]);
-    Point p4 = Point(points[CD[1]]);
-    Vector T = Vector("T", p3, p4);
+    /* store the segments that overlap and remove them from segments */
+    vector<int*> popped;
+    for(i = segments.size() - 1; i >= 0; i--) {
 
-    Point u = Point(p1);
-    u.offset(T.i, T.j);
-    Vector U = Vector("U", p1, u);
-    /* parallel test */
-    if(determinant(V, U) == 0) {
-        double y = 0.0;
-        double x = 0.0;
-        double m1 = 0.0;
-        double m2 = 0.0;
-        double b1 = 0.0;
-        double b2 = 0.0;
-        /* create first equation */
-        y = p1.y;
-        m1 = (p2.y - p1.y) / (p2.x - p1.x);
-        x = p1.x;
-        b1 = y - m1 * x;
-        /* create second equation */
-        y = p3.y;
-        m2 = (p4.y - p3.y) / (p4.x - p3.x);
-        x = p3.x;
-        b2 = y - m2 * x;
-        /* solve linear system */
-        x = (b2 - b1) / (m1 - m2);
-        y = m1 * x + b1;
-        if(b1 == b2) {
-            /* final overlap tests */
-            double a;
-            int a_index = AB[0];
-            double b;
-            int b_index = AB[1];
-            double c;
-            int c_index = CD[0];
-            double d;
-            int d_index = CD[1];
-            double tmp;
-            int tmp_index;
-            if(V.i == 0) { // use y values to compare
-                a = p1.y;
-                b = p2.y;
-                c = p3.y;
-                d = p4.y;
-            }
-            else {
-                a = p1.x;
-                b = p2.x;
-                c = p3.x;
-                d = p4.x;
-            }
-            /* ensure that P1 < P2 and P3 < P4 */
-            if (b < a) {
-                tmp = a;
-                tmp_index = a_index;
-                a = b;
-                a_index = b_index;
-                b = tmp;
-                b_index = tmp_index;
-            }
-            if (d < c) {
-                tmp = c;
-                tmp_index = c_index;
-                c = d;
-                c_index = d_index;
-                d = tmp;
-                d_index = tmp_index;
-            }
-            if(a < c) { // P1 < P3
-                if(b < d) { // P2 < P4
-                    if(c < b) { // P1 --> P3 --> P2 --> P4
-                        tmp_segment = new int [2];
-                        tmp_segment[0] = a_index;
-                        tmp_segment[1] = c_index;
-                        segments.push_back(tmp_segment);
-                        tmp_segment = new int [2];
-                        tmp_segment[0] = c_index;
-                        tmp_segment[1] = b_index;
-                        segments.push_back(tmp_segment);
-                        tmp_segment = new int [2];
-                        tmp_segment[0] = b_index;
-                        tmp_segment[1] = d_index;
-                        segments.push_back(tmp_segment);
-                    }
-                    else if(b == c) { // P1 --> P3 --> P4
-                        tmp_segment = new int [2];
-                        tmp_segment[0] = a_index;
-                        tmp_segment[1] = c_index;
-                        segments.push_back(tmp_segment);
-                        tmp_segment = new int [2];
-                        tmp_segment[0] = c_index;
-                        tmp_segment[1] = d_index;
-                        segments.push_back(tmp_segment);
-                    }
-                }
-                else if(d < b) { // P1 --> P3 --> P4 --> P2
-                    tmp_segment = new int [2];
-                    tmp_segment[0] = a_index;
-                    tmp_segment[1] = c_index;
-                    segments.push_back(tmp_segment);
-                    tmp_segment = new int [2];
-                    tmp_segment[0] = c_index;
-                    tmp_segment[1] = d_index;
-                    segments.push_back(tmp_segment);
-                    tmp_segment = new int [2];
-                    tmp_segment[0] = d_index;
-                    tmp_segment[1] = b_index;
-                    segments.push_back(tmp_segment);
-                }
-                else { // P1 --> P3 --> P4
-                    tmp_segment = new int [2];
-                    tmp_segment[0] = a_index;
-                    tmp_segment[1] = c_index;
-                    segments.push_back(tmp_segment);
-                    tmp_segment = new int [2];
-                    tmp_segment[0] = c_index;
-                    tmp_segment[1] = d_index;
-                    segments.push_back(tmp_segment);
-                }
-            }
-            else if(c < a) { // P3 < P1
-                if(b < d) { // P3 --> P1 --> P2 --> P4
-                    tmp_segment = new int [2];
-                    tmp_segment[0] = c_index;
-                    tmp_segment[1] = a_index;
-                    segments.push_back(tmp_segment);
-                    tmp_segment = new int [2];
-                    tmp_segment[0] = a_index;
-                    tmp_segment[1] = b_index;
-                    segments.push_back(tmp_segment);
-                    tmp_segment = new int [2];
-                    tmp_segment[0] = b_index;
-                    tmp_segment[1] = d_index;
-                    segments.push_back(tmp_segment);
-                }
-                else if(d < b) { // P4 < P2
-                    if(a < d) { // P3 --> P1 --> P4 --> P2
-                        tmp_segment = new int [2];
-                        tmp_segment[0] = c_index;
-                        tmp_segment[1] = a_index;
-                        segments.push_back(tmp_segment);
-                        tmp_segment = new int [2];
-                        tmp_segment[0] = a_index;
-                        tmp_segment[1] = d_index;
-                        segments.push_back(tmp_segment);
-                        tmp_segment = new int [2];
-                        tmp_segment[0] = d_index;
-                        tmp_segment[1] = b_index;
-                        segments.push_back(tmp_segment);
-                    }
-                    else if(a == d) { // P3 --> P1 --> P2
-                        tmp_segment = new int [2];
-                        tmp_segment[0] = c_index;
-                        tmp_segment[1] = a_index;
-                        segments.push_back(tmp_segment);
-                        tmp_segment = new int [2];
-                        tmp_segment[0] = a_index;
-                        tmp_segment[1] = b_index;
-                        segments.push_back(tmp_segment);
-                    }
-                }
-                else { // P3 --> P1 --> P2
-                    tmp_segment = new int [2];
-                    tmp_segment[0] = c_index;
-                    tmp_segment[1] = a_index;
-                    segments.push_back(tmp_segment);
-                    tmp_segment = new int [2];
-                    tmp_segment[0] = a_index;
-                    tmp_segment[1] = b_index;
-                    segments.push_back(tmp_segment);
-                }
-            }
-            else {
-                if(b < d) { // P1 --> P2 --> P4
-                    tmp_segment = new int [2];
-                    tmp_segment[0] = a_index;
-                    tmp_segment[1] = b_index;
-                    segments.push_back(tmp_segment);
-                    tmp_segment = new int [2];
-                    tmp_segment[0] = b_index;
-                    tmp_segment[1] = d_index;
-                    segments.push_back(tmp_segment);
-                }
-                else if(d < b) { // P3 --> P4 --> P2
-                    tmp_segment = new int [2];
-                    tmp_segment[0] = c_index;
-                    tmp_segment[1] = d_index;
-                    segments.push_back(tmp_segment);
-                    tmp_segment = new int [2];
-                    tmp_segment[0] = d_index;
-                    tmp_segment[1] = b_index;
-                    segments.push_back(tmp_segment);
-                }
-                else {
-                    tmp_segment = new int [2];
-                    tmp_segment[0] = a_index;
-                    tmp_segment[1] = b_index;
-                    segments.push_back(tmp_segment);
-                }
+        /* construct test segment points and vector */
+        Point p3 = Point(points[segments[i][0]]);
+        Point p4 = Point(points[segments[i][1]]);
+        Vector T = Vector("T", p3, p4);
+
+        Point u = Point(p1);
+        u.offset(T.i, T.j);
+        Vector U = Vector("U", p1, u);
+        /* parallel test */
+        if(determinant(V, U) == 0) {
+            double y = 0.0;
+            double x = 0.0;
+            double m1 = 0.0;
+            double m2 = 0.0;
+            double b1 = 0.0;
+            double b2 = 0.0;
+            /* create first equation */
+            y = p1.y;
+            m1 = (p2.y - p1.y) / (p2.x - p1.x);
+            x = p1.x;
+            b1 = y - m1 * x;
+            /* create second equation */
+            y = p3.y;
+            m2 = (p4.y - p3.y) / (p4.x - p3.x);
+            x = p3.x;
+            b2 = y - m2 * x;
+            /* solve linear system */
+            x = (b2 - b1) / (m1 - m2);
+            y = m1 * x + b1;
+            if(b1 == b2) {
+                popped.push_back(segments[i]);
+                segments.erase(segments.begin() + i);
             }
         }
     }
-    else {
-        tmp_segment = new int [2];
-        tmp_segment[0] = AB[0];
-        tmp_segment[1] = AB[1];
-        segments.push_back(tmp_segment);
+
+    popped.push_back(test);
+
+    /* create a vector of indices from the popped segments */
+    vector<int> sorted;
+    for(i = 0; i < popped.size(); i++) {
+        sorted.push_back(popped[i][0]);
+        sorted.push_back(popped[i][1]);
+    }
+
+    /* bubble sort points (indices) by length */
+    for(i = 0; i < sorted.size(); i++) {
+        for(j = sorted.size() - 1; j > i; j--) {
+            double curr;
+            double next;
+            if(V.i == 0) { // use y values to compare
+                curr = points[sorted[j]].y;
+                next = points[sorted[j - 1]].y;
+            }
+            else { // use x values to compare
+                curr = points[sorted[j]].x;
+                next = points[sorted[j - 1]].x;
+            }
+            if(curr < next) {
+                int tmp = sorted[j];
+                sorted[j] = sorted[j - 1];
+                sorted[j - 1] = tmp;
+            }
+        }
+    }
+
+    /* create the new segments and add them to the vector */
+    for(i = 0; i < sorted.size() - 1; i++) {
+        if(sorted[i] != sorted[i + 1]) {
+            int *tmp_segment = new int[2];
+            tmp_segment[0] = sorted[i];
+            tmp_segment[1] = sorted[i + 1];
+            segments.push_back(tmp_segment);
+        }
     }
 
     return segments;

@@ -119,10 +119,12 @@ void permute(struct point_t *point, struct point_t *shortest, int index, int n)
         global_count++;
         /* calculating distance of segments from start to end */
         for(i = 0; i < n; i++) {
+            //printf("%d, ", point[i].index);
             segment = distance(point, i, i + 1);
             total += segment;
         }
         /* calculating the final segment (start and end nodes) */
+        //printf("%d\n", point[n].index);
         segment = distance(point, n, 0);
         total += segment;
         /* checking to see if the most recent total is less than

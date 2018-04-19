@@ -86,6 +86,6 @@ double determinant(Vector V1, Vector V2);
 vector<Point> generate_w_points(vector<Point> w_points, Vector L, double interval);
 Point minimum_tao_distance(Vector V, Point *points, int size);
 vector<int *> remove_crossing_segments(vector<int *> segments, int s, Point *points);
-vector<int *> fix_overlap(int *AB, int *CD, Point *points);
+vector<int *> fix_overlap(int *test, vector<int *> segments, Point *points);
 
 #endif
