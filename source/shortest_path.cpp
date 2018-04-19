@@ -2687,13 +2687,35 @@ vector<int *> midpoint_construction(Point *points, int size, FILE *gnu_files[NUM
                     }
                     else {
                         segments = fix_overlap(tmp_segment, segments, points);
+                        printf("CURRENT:");
+                        for(k = 0; k < segments.size(); k++) {
+                            printf(" (%d, %d)", points[segments[k][0]].index, points[segments[k][1]].index);
+                        }
+                        printf("\n");
                     }
-                    //printf("ADDING: (%d, %d)\n", points[i].index, points[j].index);
                 }
             }
         }
     }
 
+    /* bubble sort segments by length, to aid in removing correct crosses */
+    for(i = 0; i < segments.size(); i++) {
+        for(j = segments.size() - 1; j > i; j--) {
+            double curr = distance_p(points[segments[j][0]], points[segments[j][1]]);
+            double next = distance_p(points[segments[j - 1][0]], points[segments[j - 1][1]]);
+            if(curr < next) {
+                int *tmp = new int [2];
+                tmp[0] = segments[j][0];
+                tmp[1] = segments[j][1];
+                segments[j][0] = segments[j - 1][0];
+                segments[j][1] = segments[j - 1][1];
+                segments[j - 1][0] = tmp[0];
+                segments[j - 1][1] = tmp[1];
+            }
+        }
+    }
+
+    /* remove crossing segments */
     int prev_size = segments.size();
     i = 0;
     while(i < segments.size()) {
