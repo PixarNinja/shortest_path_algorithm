@@ -2697,7 +2697,9 @@ vector<int *> midpoint_construction(Point *points, int size, FILE *gnu_files[NUM
                             }
                         }
                         for(k = 0; k < pushed_segments.size(); k++) {
-                            segments.push_back(pushed_segments[k]);
+                            if(segment_match(segments, pushed_segments[k][0], pushed_segments[k][1]) == -1) {
+                                segments.push_back(pushed_segments[k]);
+                            }
                         }
                     }
                     //printf("ADDING: (%d, %d)\n", points[i].index, points[j].index);
@@ -2988,6 +2990,7 @@ vector<int *> remove_crossing_segments(vector<int *> segments, int s, Point *poi
  */
 vector<int *> fix_overlap(int *AB, int *CD, Point *points) {
     vector<int *> segments;
+    int *tmp_segment;
     int i = 0;
 
     /* construct original segment points and vector */
@@ -3005,7 +3008,6 @@ vector<int *> fix_overlap(int *AB, int *CD, Point *points) {
     Vector U = Vector("U", p1, u);
     /* parallel test */
     if(determinant(V, U) == 0) {
-        int *tmp_segment = new int [2];
         double y = 0.0;
         double x = 0.0;
         double m1 = 0.0;
@@ -3069,186 +3071,142 @@ vector<int *> fix_overlap(int *AB, int *CD, Point *points) {
             if(a < c) { // P1 < P3
                 if(b < d) { // P2 < P4
                     if(c < b) { // P1 --> P3 --> P2 --> P4
+                        tmp_segment = new int [2];
                         tmp_segment[0] = a_index;
                         tmp_segment[1] = c_index;
-                        /* push segment if it's not already in segments */
-                        if(segment_match(segments, tmp_segment[0], tmp_segment[1]) == -1) {
-                            segments.push_back(tmp_segment);
-                        }
+                        segments.push_back(tmp_segment);
+                        tmp_segment = new int [2];
                         tmp_segment[0] = c_index;
                         tmp_segment[1] = b_index;
-                        /* push segment if it's not already in segments */
-                        if(segment_match(segments, tmp_segment[0], tmp_segment[1]) == -1) {
-                            segments.push_back(tmp_segment);
-                        }
+                        segments.push_back(tmp_segment);
+                        tmp_segment = new int [2];
                         tmp_segment[0] = b_index;
                         tmp_segment[1] = d_index;
-                        /* push segment if it's not already in segments */
-                        if(segment_match(segments, tmp_segment[0], tmp_segment[1]) == -1) {
-                            segments.push_back(tmp_segment);
-                        }
+                        segments.push_back(tmp_segment);
                     }
                     else if(b == c) { // P1 --> P3 --> P4
+                        tmp_segment = new int [2];
                         tmp_segment[0] = a_index;
                         tmp_segment[1] = c_index;
-                        /* push segment if it's not already in segments */
-                        if(segment_match(segments, tmp_segment[0], tmp_segment[1]) == -1) {
-                            segments.push_back(tmp_segment);
-                        }
+                        segments.push_back(tmp_segment);
+                        tmp_segment = new int [2];
                         tmp_segment[0] = c_index;
                         tmp_segment[1] = d_index;
-                        /* push segment if it's not already in segments */
-                        if(segment_match(segments, tmp_segment[0], tmp_segment[1]) == -1) {
-                            segments.push_back(tmp_segment);
-                        }
+                        segments.push_back(tmp_segment);
                     }
                 }
                 else if(d < b) { // P1 --> P3 --> P4 --> P2
+                    tmp_segment = new int [2];
                     tmp_segment[0] = a_index;
                     tmp_segment[1] = c_index;
-                    /* push segment if it's not already in segments */
-                    if(segment_match(segments, tmp_segment[0], tmp_segment[1]) == -1) {
-                        segments.push_back(tmp_segment);
-                    }
+                    segments.push_back(tmp_segment);
+                    tmp_segment = new int [2];
                     tmp_segment[0] = c_index;
                     tmp_segment[1] = d_index;
-                    /* push segment if it's not already in segments */
-                    if(segment_match(segments, tmp_segment[0], tmp_segment[1]) == -1) {
-                        segments.push_back(tmp_segment);
-                    }
+                    segments.push_back(tmp_segment);
+                    tmp_segment = new int [2];
                     tmp_segment[0] = d_index;
                     tmp_segment[1] = b_index;
-                    /* push segment if it's not already in segments */
-                    if(segment_match(segments, tmp_segment[0], tmp_segment[1]) == -1) {
-                        segments.push_back(tmp_segment);
-                    }
+                    segments.push_back(tmp_segment);
                 }
                 else { // P1 --> P3 --> P4
+                    tmp_segment = new int [2];
                     tmp_segment[0] = a_index;
                     tmp_segment[1] = c_index;
-                    /* push segment if it's not already in segments */
-                    if(segment_match(segments, tmp_segment[0], tmp_segment[1]) == -1) {
-                        segments.push_back(tmp_segment);
-                    }
+                    segments.push_back(tmp_segment);
+                    tmp_segment = new int [2];
                     tmp_segment[0] = c_index;
                     tmp_segment[1] = d_index;
-                    /* push segment if it's not already in segments */
-                    if(segment_match(segments, tmp_segment[0], tmp_segment[1]) == -1) {
-                        segments.push_back(tmp_segment);
-                    }
+                    segments.push_back(tmp_segment);
                 }
             }
             else if(c < a) { // P3 < P1
                 if(b < d) { // P3 --> P1 --> P2 --> P4
+                    tmp_segment = new int [2];
                     tmp_segment[0] = c_index;
                     tmp_segment[1] = a_index;
-                    /* push segment if it's not already in segments */
-                    if(segment_match(segments, tmp_segment[0], tmp_segment[1]) == -1) {
-                        segments.push_back(tmp_segment);
-                    }
+                    segments.push_back(tmp_segment);
+                    tmp_segment = new int [2];
                     tmp_segment[0] = a_index;
                     tmp_segment[1] = b_index;
-                    /* push segment if it's not already in segments */
-                    if(segment_match(segments, tmp_segment[0], tmp_segment[1]) == -1) {
-                        segments.push_back(tmp_segment);
-                    }
+                    segments.push_back(tmp_segment);
+                    tmp_segment = new int [2];
                     tmp_segment[0] = b_index;
                     tmp_segment[1] = d_index;
-                    /* push segment if it's not already in segments */
-                    if(segment_match(segments, tmp_segment[0], tmp_segment[1]) == -1) {
-                        segments.push_back(tmp_segment);
-                    }
+                    segments.push_back(tmp_segment);
                 }
                 else if(d < b) { // P4 < P2
                     if(a < d) { // P3 --> P1 --> P4 --> P2
+                        tmp_segment = new int [2];
                         tmp_segment[0] = c_index;
                         tmp_segment[1] = a_index;
-                        /* push segment if it's not already in segments */
-                        if(segment_match(segments, tmp_segment[0], tmp_segment[1]) == -1) {
-                            segments.push_back(tmp_segment);
-                        }
+                        segments.push_back(tmp_segment);
+                        tmp_segment = new int [2];
                         tmp_segment[0] = a_index;
                         tmp_segment[1] = d_index;
-                        /* push segment if it's not already in segments */
-                        if(segment_match(segments, tmp_segment[0], tmp_segment[1]) == -1) {
-                            segments.push_back(tmp_segment);
-                        }
+                        segments.push_back(tmp_segment);
+                        tmp_segment = new int [2];
                         tmp_segment[0] = d_index;
                         tmp_segment[1] = b_index;
-                        /* push segment if it's not already in segments */
-                        if(segment_match(segments, tmp_segment[0], tmp_segment[1]) == -1) {
-                            segments.push_back(tmp_segment);
-                        }
+                        segments.push_back(tmp_segment);
                     }
                     else if(a == d) { // P3 --> P1 --> P2
+                        tmp_segment = new int [2];
                         tmp_segment[0] = c_index;
                         tmp_segment[1] = a_index;
-                        /* push segment if it's not already in segments */
-                        if(segment_match(segments, tmp_segment[0], tmp_segment[1]) == -1) {
-                            segments.push_back(tmp_segment);
-                        }
+                        segments.push_back(tmp_segment);
+                        tmp_segment = new int [2];
                         tmp_segment[0] = a_index;
                         tmp_segment[1] = b_index;
-                        /* push segment if it's not already in segments */
-                        if(segment_match(segments, tmp_segment[0], tmp_segment[1]) == -1) {
-                            segments.push_back(tmp_segment);
-                        }
+                        segments.push_back(tmp_segment);
                     }
                 }
                 else { // P3 --> P1 --> P2
+                    tmp_segment = new int [2];
                     tmp_segment[0] = c_index;
                     tmp_segment[1] = a_index;
-                    /* push segment if it's not already in segments */
-                    if(segment_match(segments, tmp_segment[0], tmp_segment[1]) == -1) {
-                        segments.push_back(tmp_segment);
-                    }
+                    segments.push_back(tmp_segment);
+                    tmp_segment = new int [2];
                     tmp_segment[0] = a_index;
                     tmp_segment[1] = b_index;
-                    /* push segment if it's not already in segments */
-                    if(segment_match(segments, tmp_segment[0], tmp_segment[1]) == -1) {
-                        segments.push_back(tmp_segment);
-                    }
+                    segments.push_back(tmp_segment);
                 }
             }
             else {
                 if(b < d) { // P1 --> P2 --> P4
+                    tmp_segment = new int [2];
                     tmp_segment[0] = a_index;
                     tmp_segment[1] = b_index;
-                    /* push segment if it's not already in segments */
-                    if(segment_match(segments, tmp_segment[0], tmp_segment[1]) == -1) {
-                        segments.push_back(tmp_segment);
-                    }
+                    segments.push_back(tmp_segment);
+                    tmp_segment = new int [2];
                     tmp_segment[0] = b_index;
                     tmp_segment[1] = d_index;
-                    /* push segment if it's not already in segments */
-                    if(segment_match(segments, tmp_segment[0], tmp_segment[1]) == -1) {
-                        segments.push_back(tmp_segment);
-                    }
+                    segments.push_back(tmp_segment);
                 }
                 else if(d < b) { // P3 --> P4 --> P2
+                    tmp_segment = new int [2];
                     tmp_segment[0] = c_index;
                     tmp_segment[1] = d_index;
-                    /* push segment if it's not already in segments */
-                    if(segment_match(segments, tmp_segment[0], tmp_segment[1]) == -1) {
-                        segments.push_back(tmp_segment);
-                    }
+                    segments.push_back(tmp_segment);
+                    tmp_segment = new int [2];
                     tmp_segment[0] = d_index;
                     tmp_segment[1] = b_index;
-                    /* push segment if it's not already in segments */
-                    if(segment_match(segments, tmp_segment[0], tmp_segment[1]) == -1) {
-                        segments.push_back(tmp_segment);
-                    }
+                    segments.push_back(tmp_segment);
                 }
                 else {
+                    tmp_segment = new int [2];
                     tmp_segment[0] = a_index;
                     tmp_segment[1] = b_index;
-                    /* push segment if it's not already in segments */
-                    if(segment_match(segments, tmp_segment[0], tmp_segment[1]) == -1) {
-                        segments.push_back(tmp_segment);
-                    }
+                    segments.push_back(tmp_segment);
                 }
             }
         }
+    }
+    else {
+        tmp_segment = new int [2];
+        tmp_segment[0] = AB[0];
+        tmp_segment[1] = AB[1];
+        segments.push_back(tmp_segment);
     }
 
     return segments;
