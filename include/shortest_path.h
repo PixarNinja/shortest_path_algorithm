@@ -87,5 +87,6 @@ vector<Point> generate_w_points(vector<Point> w_points, Vector L, double interva
 Point minimum_tao_distance(Vector V, Point *points, int size);
 vector<int *> remove_crossing_segments(vector<int *> segments, int s, Point *points);
 vector<int *> fix_overlap(int *test, vector<int *> segments, Point *points);
+struct polygon_t create_polygon(int *edge, vector<int *> segments, Point *points, int size);
 
 #endif

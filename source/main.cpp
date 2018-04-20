@@ -49,7 +49,7 @@ int main(int argc, char *argv[])
     double sum_x = 0.0;
     double sum_y = 0.0;
     vector<int *> *segments = new vector<int *> [1];
-    vector<int *> edges;
+    vector<int *> edges; //pointer contains the index followed by position
     int **recorded;
     int *mapped;
     int keep_going = 0;
@@ -220,10 +220,41 @@ int main(int argc, char *argv[])
         else {
             i = size;
         }
-    }
+    }*/
 
     /* runs experimental algorithm...*/
     *segments = midpoint_construction(points, size, gnu_files);
+
+    for(i = 0; i < size; i ++) {
+        /* find the polygon starting at each edge */
+        edges = edge_search(*segments, points[i].index, points, size);
+        for(int *edge : edges) {
+            printf("EDGE (%d, %d):", points[edge[0]].index, points[edge[1]].index);
+            tmp_polygon = create_polygon(edge, *segments, points, size);
+            /* push the polygon */
+            if(tmp_polygon.shape.size() > 0) {
+                polygons.push_back(tmp_polygon);
+                for(j = 0; j < tmp_polygon.shape.size(); j++) {
+                    printf(" %d", points[tmp_polygon.shape[j]].index);
+                }
+                printf("\n");
+            }
+        }
+    }
+
+    /* delete duplicate polygons */
+    polygons = delete_duplicates(polygons);
+
+    /* bubble sort polygons by perimeter */
+    for(i = 0; i < polygons.size(); i++) {
+        for(j = polygons.size() - 1; j > i; j--) {
+            if(polygons[j].perimeter < polygons[j - 1].perimeter) {
+                tmp_polygon = polygons[j];
+                polygons[j] = polygons[j - 1];
+                polygons[j - 1] = tmp_polygon;
+            }
+        }
+    }
 
     /* get rid of crossing lines */
 //    remove_crosses(segments, points, size);
@@ -241,20 +272,20 @@ int main(int argc, char *argv[])
     /* finalize segments */
 //    finalize_segments(segments, points, size);
     /* find polygons */
-    polygons = construct_polygons(*segments, points, size);
-    polygons = delete_duplicates(polygons);
-    /* bubble sort polygons by perimeter */
-    for(i = 0; i < polygons.size(); i++) {
-        for(j = polygons.size() - 1; j > i; j--) {
-            if(polygons[j].perimeter < polygons[j - 1].perimeter) {
-                tmp_polygon = polygons[j];
-                polygons[j] = polygons[j - 1];
-                polygons[j - 1] = tmp_polygon;
-            }
-        }
-    }
-    /* pop the incorrect polygon */
-    polygons.pop_back();
+//    polygons = construct_polygons(*segments, points, size);
+//    polygons = delete_duplicates(polygons);
+//    /* bubble sort polygons by perimeter */
+//    for(i = 0; i < polygons.size(); i++) {
+//        for(j = polygons.size() - 1; j > i; j--) {
+//            if(polygons[j].perimeter < polygons[j - 1].perimeter) {
+//                tmp_polygon = polygons[j];
+//                polygons[j] = polygons[j - 1];
+//                polygons[j - 1] = tmp_polygon;
+//            }
+//        }
+//    }
+//    /* pop the incorrect polygon */
+//    polygons.pop_back();
     /* find shortest path
     shortest_path = find_shortest_path(polygons, points, size);
     /* plot shortest path
@@ -289,7 +320,8 @@ int main(int argc, char *argv[])
         }
         center.x = sum_x / (double)((polygons[i]).shape.size() - 1);
         center.y = sum_y / (double)((polygons[i]).shape.size() - 1);
-        fprintf(gnu_files[3], "%lf %lf %d\n", center.x, center.y, i);
+        //fprintf(gnu_files[3], "%lf %lf %d\n", center.x, center.y, i);
+        fprintf(gnu_files[3], "%lf %lf %0.2lf\n", center.x, center.y, polygons[i].perimeter);
     }
     /* print polygon information */
     printf("\nPOLYGONS:\n");
@@ -309,7 +341,7 @@ int main(int argc, char *argv[])
     fprintf(gnu_files[0], "'%s' using 1:2 with points pt 7 notitle,", datapoints);
     fprintf(gnu_files[0], "'' using 1:2:3 with labels point pt 7 offset char -1,-1 notitle,");
     fprintf(gnu_files[0], "'%s' using 1:2:3 with labels point pt 3 offset char -1,-1 notitle, ", extrapoints);
-    fprintf(gnu_files[0], "'%s' using 1:2:3 with labels point pt 2 offset char -1,-1 notitle, ", centerpoint);
+    //fprintf(gnu_files[0], "'%s' using 1:2:3 with labels point pt 2 offset char -1,-1 notitle, ", centerpoint);
     fprintf(gnu_files[0], "'%s' using 1:2 with lines ls 2 title \"Calculated Path\", ", path);
     fprintf(gnu_files[0], "'%s' using 1:2 with lines ls 3 title \"Shortest Path\"\n", shortest);
     if(outfile != NULL) {

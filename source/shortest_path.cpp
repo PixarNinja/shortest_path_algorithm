@@ -643,7 +643,6 @@ vector<int> *find_shape(vector<int *> segments, Point *points, Point start, int 
         start = points[path[j]];
         /* initialize axis vectors */ //POSSIBLY REVERSE PREV AND START???
         Y = Vector("Y", prev, start, INT_MAX);
-        Y.offset(start.x - prev.x, start.y - prev.y);
         X = Vector("X", start, start, INT_MAX);
         X.end.offset(Y.j, -Y.i);
         X.refresh();
@@ -1171,63 +1170,6 @@ int duplicate_search(vector<int> shape)
         }
     }
     return 0;
-}
-
-/* searches through a vector of shapes for a duplicate */
-vector<struct polygon_t> delete_duplicates(vector<struct polygon_t> polygons)
-{
-    vector<struct polygon_t> tmp = polygons;
-    int i = 0;
-    int j = 0;
-    int k = 0;
-    int n = 0;
-
-    /* remove incorrect shapes */
-    for(i = 0; i < tmp.size(); i++) {
-        if((tmp[i]).shape.size() <= 3) {
-            tmp.erase(tmp.begin() + i, tmp.begin() + i + 1);
-            polygons.erase(polygons.begin() + i);
-            i--;
-        }
-    }
-    /* remove the loop for each shape */
-    for(i = 0; i < tmp.size(); i++) {
-        (tmp[i]).shape.erase((tmp[i]).shape.begin());
-    }
-    /* sort each entry */
-    for(i = 0; i < tmp.size(); i++) {
-        sort((tmp[i]).shape.begin(), (tmp[i]).shape.end());
-        //printf("new: ");
-        for(j = 0; j < (tmp[i]).shape.size(); j++) {
-            //printf("%d ", tmp[i].shape[j]);
-        }
-        //printf("\n");
-    }
-    /* check for an equal entry
-    */
-    for(i = 0; i < tmp.size(); i++) {
-        for(j = 0; j < tmp.size(); j++) {
-            if(((tmp[i]).shape.size() == (tmp[j]).shape.size()) && (i != j)) {
-                for(k = 0; k < (tmp[i]).shape.size(); k++) {
-                    if((tmp[i]).shape[k] != (tmp[j]).shape[k]) {
-                        break;
-                    }
-                }
-                if(k == (tmp[i]).shape.size()) {
-                    //printf("%d. deleting: ", j);
-                    for(k = 0; k < (tmp[j]).shape.size(); k++) {
-                        //printf("%d ", tmp[j].shape[k]);
-                    }
-                    //printf("\n");
-                    tmp.erase(tmp.begin() + j);
-                    polygons.erase(polygons.begin() + j);
-                    j--;
-                    i--;
-                }
-            }
-        }
-    }
-    return polygons;
 }
 
 /* returns the optimized polygons */
@@ -3093,4 +3035,140 @@ vector<int *> fix_overlap(int *test, vector<int *> segments, Point *points) {
     }
 
     return segments;
+}
+
+/* creates a polygon
+ * @param edge, the current edge used to create the polygon
+ * @param segments, the vector of segments calculated before
+ * @param points, the array of datapoints
+ * @param size, the size of the point array
+ * @return the generated polygon
+ */
+struct polygon_t create_polygon(int *edge, vector<int *> segments, Point *points, int size) {
+    int i = 0;
+    int e = edge[0];
+    struct polygon_t polygon;
+    polygon.shape.push_back(edge[0]);
+    polygon.perimeter = distance_p(points[edge[0]], points[edge[1]]);
+
+    /* loop to create the polygon
+     * 1. using E and V, find the left-most segment
+     *    (that's not exactly 180 degrees from Y)
+     * 2. set variables and continue with the new segment
+     * 3. continue processing until the first point is reached
+     */
+    vector<int *> edges;
+    while(edge[1] != e) { // use edge as a test value
+        polygon.shape.push_back(edge[1]);
+        /* initialize test variables */
+        double max = 0.0;
+        int index = -1;
+        Vector E = Vector("E", points[edge[0]], points[edge[1]], -1);
+        edges = edge_search(segments, edge[1], points, size);
+
+        /* find the left-most segment */
+        for(i = 0; i < edges.size(); i++) {
+            if(edges[i][1] == edge[0]) { // skip the origin point
+                continue;
+            }
+            Vector V = Vector("V", points[edges[i][0]], points[edges[i][1]]);
+            //V.normalize();
+
+            /* test if the vector is on the left side */
+            if(determinant(E, V) > 0) {
+                /* test if the vector is possibly the greatest */
+                if((angle(E, V) * 180 / M_PI) > max && (angle(E, V) * 180 / M_PI) < 180) {
+                    max = angle(E, V) * 180 / M_PI;
+                    index = edges[i][1];
+                }
+            }
+        }
+
+        /* return null if the left-most segment was not found */
+        if(max <= 0.0) {
+            struct polygon_t empty;
+            return empty;
+        }
+
+        /* set variables */
+        edge[0] = edge[1];
+        edge[1] = index;
+        polygon.perimeter += distance_p(points[edge[0]], points[edge[1]]);
+    }
+    polygon.shape.push_back(edge[1]);
+
+    return polygon;
+}
+
+/* searches through a vector of shapes for a duplicate */
+vector<struct polygon_t> delete_duplicates(vector<struct polygon_t> polygons)
+{
+    vector<struct polygon_t> tmp = polygons;
+    int i = 0;
+    int j = 0;
+    int k = 0;
+    int n = 0;
+
+    /* sort each entry */
+    for(i = 0; i < tmp.size(); i++) {
+        sort((tmp[i]).shape.begin(), (tmp[i]).shape.end());
+    }
+
+    /* remove the duplicate from the sorted list */
+    for(i = 0; i < tmp.size(); i++) {
+        for(j = 0; j < (tmp[i]).shape.size(); j++) {
+            for(k = 0; k < (tmp[i]).shape.size(); k++) {
+                if(j != k && (tmp[i]).shape[j] == (tmp[i]).shape[k]) {
+                    (tmp[i]).shape.erase((tmp[i]).shape.begin() + j);
+                    i = 0;
+                    j = 0;
+                    k = 0;
+                }
+            }
+        }
+    }
+
+    /* print each entry */
+    for(i = 0; i < tmp.size(); i++) {
+        printf("new: ");
+        for(j = 0; j < (tmp[i]).shape.size(); j++) {
+            printf("%d ", tmp[i].shape[j]);
+        }
+        printf("\n");
+    }
+
+    /* check for an equal entry */
+    for(i = 0; i < tmp.size(); i++) {
+        vector<int> remove;
+        for(j = 0; j < tmp.size(); j++) {
+            if(((tmp[i]).shape.size() == (tmp[j]).shape.size()) && (i != j)) {
+                bool complete = true;
+                for(k = 0; k < (tmp[i]).shape.size(); k++) {
+                    if((tmp[i]).shape[k] != (tmp[j]).shape[k]) {
+                        complete = false;
+                        break;
+                    }
+                }
+                if(complete) {
+                    printf("%d. deleting: ", j);
+                    for(k = 0; k < (tmp[j]).shape.size(); k++) {
+                        printf("%d ", tmp[j].shape[k]);
+                    }
+                    printf("\n");
+                    if (find(remove.begin(), remove.end(), j) == remove.end()) {
+                        remove.push_back(j);
+                    }
+                }
+            }
+        }
+        /* delete entries */
+        for(j = 0; j < remove.size(); j++) {
+            printf("j: %d\n", remove[j]);
+            polygons.erase(polygons.begin() + remove[j]);
+            tmp.erase(tmp.begin() + remove[j]);
+            i = 0;
+        }
+    }
+
+    return polygons;
 }
