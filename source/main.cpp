@@ -201,6 +201,7 @@ int main(int argc, char *argv[])
     fprintf(gnu_files[0], "set style line 1 lc rgb \"black\" lw 1\n");
     fprintf(gnu_files[0], "set style line 2 lc rgb \"red\" lw 3\n");
     fprintf(gnu_files[0], "set style line 3 lc rgb \"#BB0000FF\" lw 6\n");
+    fprintf(gnu_files[0], "set style line 4 lc rgb \"#BBFF0000\" lw 6\n");
 
     ////////////////////////
     // CALCULATE POLYGONS //
@@ -229,21 +230,16 @@ int main(int argc, char *argv[])
         /* find the polygon starting at each edge */
         edges = edge_search(*segments, points[i].index, points, size);
         for(int *edge : edges) {
-            printf("EDGE (%d, %d):", points[edge[0]].index, points[edge[1]].index);
             tmp_polygon = create_polygon(edge, *segments, points, size);
             /* push the polygon */
             if(tmp_polygon.shape.size() > 0) {
                 polygons.push_back(tmp_polygon);
-                for(j = 0; j < tmp_polygon.shape.size(); j++) {
-                    printf(" %d", points[tmp_polygon.shape[j]].index);
-                }
-                printf("\n");
             }
         }
     }
 
     /* delete duplicate polygons */
-    polygons = delete_duplicates(polygons);
+    polygons = delete_duplicate_polygons(polygons, points);
 
     /* bubble sort polygons by perimeter */
     for(i = 0; i < polygons.size(); i++) {
@@ -286,15 +282,15 @@ int main(int argc, char *argv[])
 //    }
 //    /* pop the incorrect polygon */
 //    polygons.pop_back();
-    /* find shortest path
+    /* find shortest path */
     shortest_path = find_shortest_path(polygons, points, size);
-    /* plot shortest path
+    /* plot shortest path */
     printf("\nCALCULATED PATH: ");
     for(i = 0; i < shortest_path.shape.size(); i++) {
         printf("%d->", points[shortest_path.shape[i]].index);
         fprintf(gnu_files[5], "%lf %lf\n", points[shortest_path.shape[i]].x, points[shortest_path.shape[i]].y);
     }
-    printf("%d\n\n", points[shortest_path.shape[0]].index);*/
+    printf("%d\n\n", points[shortest_path.shape[0]].index);
 
     ///////////////////////
     // PLOT POLYGON DATA //
@@ -342,7 +338,7 @@ int main(int argc, char *argv[])
     fprintf(gnu_files[0], "'' using 1:2:3 with labels point pt 7 offset char -1,-1 notitle,");
     fprintf(gnu_files[0], "'%s' using 1:2:3 with labels point pt 3 offset char -1,-1 notitle, ", extrapoints);
     //fprintf(gnu_files[0], "'%s' using 1:2:3 with labels point pt 2 offset char -1,-1 notitle, ", centerpoint);
-    fprintf(gnu_files[0], "'%s' using 1:2 with lines ls 2 title \"Calculated Path\", ", path);
+    //fprintf(gnu_files[0], "'%s' using 1:2 with lines ls 4 title \"Calculated Path\", ", path);
     fprintf(gnu_files[0], "'%s' using 1:2 with lines ls 3 title \"Shortest Path\"\n", shortest);
     if(outfile != NULL) {
         fclose(output);

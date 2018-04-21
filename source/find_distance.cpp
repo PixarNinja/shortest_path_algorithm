@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <math.h>
 #include <string>
+#include <vector>
 #include "point.h"
 
 using namespace std;
@@ -13,6 +14,17 @@ using namespace std;
  */
 double distance(Point P1, Point P2) {
     return sqrt(pow(P2.x - P1.x, 2) + pow(P2.y - P1.y, 2));
+}
+
+/* returns the index of the requested vertex */
+int point_match(Point *points, int size, int vertex)
+{
+    for(int i = 0; i < size; i++) {
+       if(points[i].index == vertex) {
+            return i;
+        }
+    }
+    return -1;
 }
 
 int main(int argc, char *argv[])
@@ -38,21 +50,21 @@ int main(int argc, char *argv[])
         i++;
     }
 
-    string s = string(argv[2]);
+    string s = string(argv[2]) + ",";
     string delimiter = ",";
-    int *order = new int [size];
+    vector<int> order;
 
     size_t pos = 0;
     std::string token;
     i = 0;
     while ((pos = s.find(delimiter)) != std::string::npos) {
         token = s.substr(0, pos);
-        order[i++] = stoi(token);
+        order.push_back(point_match(points, size, stoi(token)));
         s.erase(0, pos + delimiter.length());
     }
 
     double sum = 0.0;
-    for(i = 1; i < size; i++) {
+    for(i = 1; i < order.size(); i++) {
         sum += distance(points[order[i - 1]], points[order[i]]);
     }
 

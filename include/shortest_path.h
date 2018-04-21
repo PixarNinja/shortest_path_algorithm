@@ -56,7 +56,6 @@ int polygons_search(vector<vector<int> > polygons, int vertex);
 double find_perimeter(vector<int> shape, Point *points);
 int segment_match(vector<int *> segments, int beginning, int end);
 int duplicate_search(vector<int> shape);
-vector<struct polygon_t> delete_duplicates(vector<struct polygon_t> polygons);
 vector<struct polygon_t> optimize_polygons(vector<struct polygon_t> polygons, vector<int *> *segments, Point *points, int size);
 void remove_crosses(vector<int *> *segments, Point *points, int size);
 void finalize_segments(vector<int *> *segments, Point *points, int size);
@@ -85,8 +84,9 @@ bool test_w_segment(Vector L, double interval, Point *points, int n);
 double determinant(Vector V1, Vector V2);
 vector<Point> generate_w_points(vector<Point> w_points, Vector L, double interval);
 Point minimum_tao_distance(Vector V, Point *points, int size);
-vector<int *> remove_crossing_segments(vector<int *> segments, int s, Point *points);
+vector<int *> remove_crossing_segments(vector<int *> segments, int s, Point *points, int size);
 vector<int *> fix_overlap(int *test, vector<int *> segments, Point *points);
 struct polygon_t create_polygon(int *edge, vector<int *> segments, Point *points, int size);
+vector<struct polygon_t> delete_duplicate_polygons(vector<struct polygon_t> polygons, Point *points);
 
 #endif

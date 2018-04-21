@@ -2088,7 +2088,7 @@ struct polygon_t find_shortest_path(vector<struct polygon_t> polygons, Point *po
             ;
         }
     }
-    shortest_path = base[1];
+    shortest_path = base[0];
     return shortest_path;
 }
 
@@ -2607,8 +2607,7 @@ vector<int *> midpoint_construction(Point *points, int size, FILE *gnu_files[NUM
         }
     }
 
-    interval /= 16;
-    //printf("\nINTERVAL: %lf\n\n", interval);
+    interval /= 2;
 
     /* test all line segments */
     for(i = 0; i < size; i++) {
@@ -2624,11 +2623,20 @@ vector<int *> midpoint_construction(Point *points, int size, FILE *gnu_files[NUM
                     tmp_segment = new int [2];
                     tmp_segment[0] = i;
                     tmp_segment[1] = j;
+                    printf("\n%d... BEFORE:\n", segments.size());
+                    for(k = 0; k < segments.size(); k++) {
+                        printf("%d: (%d, %d)\n", i, points[segments[k][0]].index, points[segments[k][1]].index);
+                    }
+
                     if(segments.size() == 0) {
                         segments.push_back(tmp_segment);
                     }
                     else {
                         segments = fix_overlap(tmp_segment, segments, points);
+                    }
+                    printf("\n%d... AFTER:\n", segments.size());
+                    for(k = 0; k < segments.size(); k++) {
+                        printf("%d: (%d, %d)\n", i, points[segments[k][0]].index, points[segments[k][1]].index);
                     }
                 }
             }
@@ -2656,7 +2664,7 @@ vector<int *> midpoint_construction(Point *points, int size, FILE *gnu_files[NUM
     int prev_size = segments.size();
     i = 0;
     while(i < segments.size()) {
-        segments = remove_crossing_segments(segments, i, points);
+        segments = remove_crossing_segments(segments, i, points, size);
         if(prev_size - segments.size() == 0) {
             i++;
         }
@@ -2664,6 +2672,11 @@ vector<int *> midpoint_construction(Point *points, int size, FILE *gnu_files[NUM
             i = 0;
             prev_size = segments.size();
         }
+    }
+
+    printf("\nFILTERED SEGMENTS:\n");
+    for(i = 0; i < segments.size(); i++) {
+        printf("%d: (%d, %d)\n", i, points[segments[i][0]].index, points[segments[i][1]].index);
     }
 
     return segments;
@@ -2676,6 +2689,7 @@ vector<int *> midpoint_construction(Point *points, int size, FILE *gnu_files[NUM
  * @param n, the size of the array
  * @return ..., the line segement to add, either a line or NULL*/
 bool test_w_segment(Vector L, double interval, Point *points, int n) {
+    bool valid = true;
     int i = 0;
     int j = 0;
     int k = 0;
@@ -2691,12 +2705,12 @@ bool test_w_segment(Vector L, double interval, Point *points, int n) {
     }
 
     /* create w_points */
-    vector<Point> *w_points = new vector<Point>;
-    *w_points = generate_w_points(*w_points, L, interval);
+    vector<Point> w_points;
+    w_points = generate_w_points(w_points, L, interval);
 
     /* test all w_points, q = {q_1, q_2, ..., q*} */
-    for(j = 0; j < w_points->size(); j++) {
-        Point q = Point((*w_points)[j]);
+    for(j = 0; j < w_points.size(); j++) {
+        Point q = Point(w_points[j]);
         bool skip = false;
         /* skip q if it is equal to any of the actual points */
         for(i = 0; i < n; i++) {
@@ -2762,7 +2776,7 @@ bool test_w_segment(Vector L, double interval, Point *points, int n) {
                 Vector S = Vector("S", q, s);
                 S.normalize();
                 /* check if point s should remain in the test set */
-                if(!(determinant(S, R) <= 0.000001 && determinant(S, R) >= -0.000001) && ((determinant(Q, R) < 0 && determinant(S, R) < 0) || (determinant(Q, R) > 0 && determinant(S, R) > 0))) {
+                if((determinant(Q, R) < 0 && determinant(S, R) < 0) || (determinant(Q, R) > 0 && determinant(S, R) > 0)) {
                     //S.print();
                     //printf("  determinant = %lf\n", determinant(R, S));
                     //printf("... %d is GOOD!\n", s.index);
@@ -2777,11 +2791,15 @@ bool test_w_segment(Vector L, double interval, Point *points, int n) {
 
             /* check if the line was found to be invalid */
             if(!t.equals(L.start) && !t.equals(L.end)) {
-                return false;
+                valid = false;
+                break;
             }
         }
+        if(!valid) {
+            break;
+        }
     }
-    return true;
+    return valid;
 }
 
 /* returns the determinant between two vectors
@@ -2865,23 +2883,25 @@ Point minimum_tao_distance(Vector V, Point *points, int size) {
  * @param segments, the vector of segments
  * @param s, the index of the test segment
  * @param points, the array of points the vector corresponds to
+ * @param size, the size of the point array
  * @return the updated segments vector
  */
-vector<int *> remove_crossing_segments(vector<int *> segments, int s, Point *points) {
-    vector<int> crosses;
+vector<int *> remove_crossing_segments(vector<int *> segments, int s, Point *points, int size) {
+    vector<int *> crosses;
     Vector L = Vector("L", points[segments[s][0]], points[segments[s][1]]);
-    printf("L: (%d, %d)\n", L.start.index, L.end.index);
-    int i;
+    int i = 0;
+    int j = 0;
+    int k = 0;
 
     /* initialize intersections vector */
     for(i = segments.size() - 1; i >= 0; i--) {
         if(i == s) {
-            crosses.push_back(i);
+            crosses.push_back(segments[i]);
             continue;
         }
         Vector V = Vector("V", points[segments[i][0]], points[segments[i][1]]);
         if(intersection(V, L)) {
-            crosses.push_back(i);
+            crosses.push_back(segments[i]);
         }
     }
 
@@ -2890,7 +2910,92 @@ vector<int *> remove_crossing_segments(vector<int *> segments, int s, Point *poi
         return segments;
     }
 
-    /* find the minimum distance */
+    vector<int *> **edge_map = new vector<int *> *[crosses.size()]; // edge_map[i][0,1] = vector<int *>
+    vector<int *> edges;
+    vector<int> remove;
+    int max = 0;
+    int index;
+
+    /* store all the edges of crosses[i][0,1], and find the max */
+    for(i = 0; i < crosses.size(); i++) {
+        edge_map[i] = new vector<int *> [2];
+
+        /* find edge count of the start point */
+        edges = edge_search(segments, points[crosses[i][0]].index, points, size);
+        for(j = 0; j < crosses.size(); j++) {
+            if((index = segment_match(edges, crosses[j][0], crosses[j][1])) > -1) {
+                edges.erase(edges.begin() + index);
+            }
+        }
+        edge_map[i][0] = edges;
+        edges.clear();
+        remove.clear();
+
+        /* find edge count of the end point */
+        edges = edge_search(segments, points[crosses[i][1]].index, points, size);
+        for(j = 0; j < crosses.size(); j++) {
+            if((index = segment_match(edges, crosses[j][0], crosses[j][1])) > -1) {
+                edges.erase(edges.begin() + index);
+            }
+        }
+        edge_map[i][1] = edges;
+        edges.clear();
+        remove.clear();
+
+        if(max < edge_map[i][0].size() + edge_map[i][1].size()) {
+            max = edge_map[i][0].size() + edge_map[i][1].size();
+        }
+    }
+
+    /* find all segments with the max number outgoing edges */
+    vector<int *> equal;
+    for(i = 0; i < crosses.size(); i++) {
+        if(max == edge_map[i][0].size() + edge_map[i][1].size()) {
+            equal.push_back(crosses[i]);
+        }
+    }
+
+    /* delete all segments that have less edges, and if more than
+     * one segment has equal edges delete them all */
+    if(equal.size() > 1) {
+        for(i = 0; i < equal.size(); i--) {
+            if((index = segment_match(segments, equal[i][0], equal[i][1])) > -1) {
+                segments.erase(segments.begin() + index);
+            }
+        }
+    }
+    for(i = 0; i < crosses.size(); i++) {
+        if(max > edge_map[i][0].size() + edge_map[i][1].size()) {
+            if((index = segment_match(segments, crosses[i][0], crosses[i][1])) > -1) {
+                segments.erase(segments.begin() + index);
+            }
+        }
+    }
+
+    /*
+        edge_map[i] = new vector<int *> [2];
+        edges = edge_search(segments, segments[crosses[i]][0], points, size);
+        if(segment_match(edges, segments[crosses[i]][0], segments[crosses[i]][1]) > -1) {
+            continue;
+        }
+        for(j = 0; j < crosses.size(); j++) {
+            int index;
+            if((index = segment_match(edges, segments[crosses[j]][0], segments[crosses[j]][1])) > -1) {
+                if(find(remove.begin(), remove.end(), index) == remove.end()) {
+                    remove.push_back(index);
+                }
+            }
+        }
+        sort(remove.begin(), remove.end());
+        for(j = remove.size() - 1; j >= 0; j--) {
+            edges.erase(edges.begin() + remove[j]);
+        }
+        edge_map[i][0] = edges;
+        edges.clear();
+        remove.clear();
+    */
+
+    /* find the minimum distance
     double min = distance_p(points[segments[crosses[0]][0]], points[segments[crosses[0]][1]]);
     for(i = 1; i < crosses.size(); i++) {
         if(min > distance_p(points[segments[crosses[i]][0]], points[segments[crosses[i]][1]])) {
@@ -2898,7 +3003,7 @@ vector<int *> remove_crossing_segments(vector<int *> segments, int s, Point *poi
         }
     }
 
-    /* delete all segments with length less than min */
+    /* delete all segments with length more than min
     int equal_count = 0;
     double epsilon = 0.000001;
     for(i = 0; i < crosses.size(); i++) {
@@ -2908,27 +3013,26 @@ vector<int *> remove_crossing_segments(vector<int *> segments, int s, Point *poi
         }
     }
 
-    /* if more than one remaining segment has length min, delete them all */
+    /* if more than one remaining segment has length min, delete them all
     for(i = 0; i < crosses.size(); i++) {
         double distance = distance_p(points[segments[crosses[i]][0]], points[segments[crosses[i]][1]]);
         if((min - distance) < epsilon && (min - distance) > -epsilon) {
             if(equal_count > 1) {
-                printf("REMOVING: (%d, %d)\n", points[segments[crosses[i]][0]].index, points[segments[crosses[i]][1]].index);
+                //printf("REMOVING: (%d, %d)\n", points[segments[crosses[i]][0]].index, points[segments[crosses[i]][1]].index);
                 segments.erase(segments.begin() + crosses[i]);
             }
         }
         else if(min < distance) {
-            printf("REMOVING: (%d, %d)\n", points[segments[crosses[i]][0]].index, points[segments[crosses[i]][1]].index);
+            //printf("REMOVING: (%d, %d)\n", points[segments[crosses[i]][0]].index, points[segments[crosses[i]][1]].index);
             segments.erase(segments.begin() + crosses[i]);
         }
-    }
+    }*/
 
     return segments;
 }
 
-/* fixes any overlaps with segment[k]
- * @param AB, the first segment to check
- * @param CD, the second segment to check
+/* fixes any overlaps with segments
+ * @param test, the test segment to check
  * @param segments, the vector of segments to check
  * @param points, the array of datapoins
  * @return the updated segments vector
@@ -2936,6 +3040,8 @@ vector<int *> remove_crossing_segments(vector<int *> segments, int s, Point *poi
 vector<int *> fix_overlap(int *test, vector<int *> segments, Point *points) {
     int i = 0;
     int j = 0;
+
+    printf("\n...CHECKING: (%d, %d)\n", points[test[0]].index, points[test[1]].index);
 
     /* construct original segment points and vector */
     Point p1 = Point(points[test[0]]);
@@ -2988,13 +3094,62 @@ vector<int *> fix_overlap(int *test, vector<int *> segments, Point *points) {
                 b2 = y - m2 * x;
             }
             if(b1 == b2) {
-                popped.push_back(segments[i]);
-                segments.erase(segments.begin() + i);
+                if(V.i == 0) { // use y values
+                    if(p3.y < p1.y) {
+                        Point tmp = p3;
+                        p3 = p1;
+                        p1 = tmp;
+                    }
+                    if(p4.y < p2.y) {
+                        Point tmp = p4;
+                        p4 = p2;
+                        p2 = tmp;
+                    }
+                    if(p1.y <= p3.y) {
+                        if(p2.y > p3.y) {
+                            popped.push_back(segments[i]);
+                        }
+                    }
+                    else if(p3.y <= p2.y) {
+                        if(p4.y > p1.y) {
+                            popped.push_back(segments[i]);
+                        }
+                    }
+                }
+                else { // use x values
+                    if(p2.x < p1.x) {
+                        Point tmp = p2;
+                        p2 = p1;
+                        p1 = tmp;
+                    }
+                    if(p4.x < p3.x) {
+                        Point tmp = p4;
+                        p4 = p3;
+                        p3 = tmp;
+                    }
+                    if(p1.x <= p3.x) {
+                        if(p2.x > p3.x) {
+                            popped.push_back(segments[i]);
+                        }
+                    }
+                    else if(p3.x <= p2.x) {
+                        if(p4.x > p1.x) {
+                            popped.push_back(segments[i]);
+                        }
+                    }
+                }
             }
         }
     }
 
     popped.push_back(test);
+
+    for(i = 0; i < popped.size(); i++) {
+        int index;
+        if((index = segment_match(segments, popped[i][0], popped[i][1])) > -1) {
+            segments.erase(segments.begin() + index);
+        }
+    }
 
     /* create a vector of indices from the popped segments */
     vector<int> sorted;
@@ -3024,6 +3179,12 @@ vector<int *> fix_overlap(int *test, vector<int *> segments, Point *points) {
         }
     }
 
+    int k;
+    printf("\n%d... AFTER POPPING:\n", segments.size());
+    for(k = 0; k < segments.size(); k++) {
+        printf("%d: (%d, %d)\n", i, points[segments[k][0]].index, points[segments[k][1]].index);
+    }
+
     /* create the new segments and add them to the vector */
     for(i = 0; i < sorted.size() - 1; i++) {
         if(sorted[i] != sorted[i + 1]) {
@@ -3032,6 +3193,11 @@ vector<int *> fix_overlap(int *test, vector<int *> segments, Point *points) {
             tmp_segment[1] = sorted[i + 1];
             segments.push_back(tmp_segment);
         }
+    }
+
+    printf("\n%d... AFTER PUTTING BACK:\n", segments.size());
+    for(k = 0; k < segments.size(); k++) {
+        printf("%d: (%d, %d)\n", i, points[segments[k][0]].index, points[segments[k][1]].index);
     }
 
     return segments;
@@ -3100,14 +3266,16 @@ struct polygon_t create_polygon(int *edge, vector<int *> segments, Point *points
     return polygon;
 }
 
-/* searches through a vector of shapes for a duplicate */
-vector<struct polygon_t> delete_duplicates(vector<struct polygon_t> polygons)
-{
+/* searches through a vector of shapes for a duplicate
+ * @param polygons, the current vector of polygons
+ * @param points, the array of datapoints for printing
+ * @return the updated polygon vector
+ */
+vector<struct polygon_t> delete_duplicate_polygons(vector<struct polygon_t> polygons, Point *points) {
     vector<struct polygon_t> tmp = polygons;
     int i = 0;
     int j = 0;
     int k = 0;
-    int n = 0;
 
     /* sort each entry */
     for(i = 0; i < tmp.size(); i++) {
@@ -3128,19 +3296,10 @@ vector<struct polygon_t> delete_duplicates(vector<struct polygon_t> polygons)
         }
     }
 
-    /* print each entry */
-    for(i = 0; i < tmp.size(); i++) {
-        printf("new: ");
-        for(j = 0; j < (tmp[i]).shape.size(); j++) {
-            printf("%d ", tmp[i].shape[j]);
-        }
-        printf("\n");
-    }
-
     /* check for an equal entry */
     for(i = 0; i < tmp.size(); i++) {
         vector<int> remove;
-        for(j = 0; j < tmp.size(); j++) {
+        for(j = tmp.size(); j >= 0; j--) {
             if(((tmp[i]).shape.size() == (tmp[j]).shape.size()) && (i != j)) {
                 bool complete = true;
                 for(k = 0; k < (tmp[i]).shape.size(); k++) {
@@ -3150,11 +3309,6 @@ vector<struct polygon_t> delete_duplicates(vector<struct polygon_t> polygons)
                     }
                 }
                 if(complete) {
-                    printf("%d. deleting: ", j);
-                    for(k = 0; k < (tmp[j]).shape.size(); k++) {
-                        printf("%d ", tmp[j].shape[k]);
-                    }
-                    printf("\n");
                     if (find(remove.begin(), remove.end(), j) == remove.end()) {
                         remove.push_back(j);
                     }
@@ -3163,7 +3317,6 @@ vector<struct polygon_t> delete_duplicates(vector<struct polygon_t> polygons)
         }
         /* delete entries */
         for(j = 0; j < remove.size(); j++) {
-            printf("j: %d\n", remove[j]);
             polygons.erase(polygons.begin() + remove[j]);
             tmp.erase(tmp.begin() + remove[j]);
             i = 0;
