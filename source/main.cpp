@@ -207,90 +207,45 @@ int main(int argc, char *argv[])
     // CALCULATE POLYGONS //
     ////////////////////////
 
-    /* runs tao-distance algorithm on data
-    for(i = 0; i < size; i++) {
-        for(j = 0; j < size; j++) {
-            if(mapped[j] == 0) {
-                keep_going = 1;
-            }
-        }
-        if(keep_going == 1) {
-            construct_segments(segments, points, points[i], i, size, gnu_files, mapped, recorded);
-            keep_going = 0;
-        }
-        else {
-            i = size;
-        }
-    }*/
-
     /* runs experimental algorithm...*/
     *segments = midpoint_construction(points, size, gnu_files);
 
-//    for(i = 0; i < size; i ++) {
-//        /* find the polygon starting at each edge */
-//        edges = edge_search(*segments, points[i].index, points, size);
-//        for(int *edge : edges) {
-//            tmp_polygon = create_polygon(edge, *segments, points, size);
-//            /* push the polygon */
-//            if(tmp_polygon.shape.size() > 0) {
-//                polygons.push_back(tmp_polygon);
-//            }
-//        }
-//    }
-//
-//    /* delete duplicate polygons */
-//    polygons = delete_duplicate_polygons(polygons, points);
-//
-//    /* bubble sort polygons by perimeter */
-//    for(i = 0; i < polygons.size(); i++) {
-//        for(j = polygons.size() - 1; j > i; j--) {
-//            if(polygons[j].perimeter < polygons[j - 1].perimeter) {
-//                tmp_polygon = polygons[j];
-//                polygons[j] = polygons[j - 1];
-//                polygons[j - 1] = tmp_polygon;
-//            }
-//        }
-//    }
-//
-//    /* get rid of crossing lines */
-//    remove_crosses(segments, points, size);
-    /* optimize tessellations */
-//    do {
-//        /* find polygons */
-//        polygons = construct_polygons(*segments, points, size);
-//        polygons = delete_duplicates(polygons);
-//        /* ensure each polygon is optimal */
-//        count = segments->size();
-//        polygons = optimize_polygons(polygons, segments, points, size);
-//        /* get rid of crossing lines */
-//        remove_crosses(segments, points, size);
-//    } while(count < segments->size());
-    /* finalize segments */
-//    finalize_segments(segments, points, size);
-    /* find polygons */
-//    polygons = construct_polygons(*segments, points, size);
-//    polygons = delete_duplicates(polygons);
-//    /* bubble sort polygons by perimeter */
-//    for(i = 0; i < polygons.size(); i++) {
-//        for(j = polygons.size() - 1; j > i; j--) {
-//            if(polygons[j].perimeter < polygons[j - 1].perimeter) {
-//                tmp_polygon = polygons[j];
-//                polygons[j] = polygons[j - 1];
-//                polygons[j - 1] = tmp_polygon;
-//            }
-//        }
-//    }
-//    /* pop the incorrect polygon */
-//    polygons.pop_back();
-//    /* find shortest path */
-//    shortest_path = find_shortest_path(polygons, points, size);
-//    /* plot shortest path */
-//    printf("\nCALCULATED PATH: ");
-//    for(i = 0; i < shortest_path.shape.size(); i++) {
-//        printf("%d->", points[shortest_path.shape[i]].index);
-//        fprintf(gnu_files[5], "%lf %lf\n", points[shortest_path.shape[i]].x, points[shortest_path.shape[i]].y);
-//    }
-//    printf("%d\n\n", points[shortest_path.shape[0]].index);
+    for(i = 0; i < size; i ++) {
+        /* find the polygon starting at each edge */
+        edges = edge_search(*segments, points[i].index, points, size);
+        for(int *edge : edges) {
+            tmp_polygon = create_polygon(edge, *segments, points, size);
+            /* push the polygon */
+            if(tmp_polygon.shape.size() > 0) {
+                polygons.push_back(tmp_polygon);
+            }
+        }
+    }
+
+    /* delete duplicate polygons */
+    polygons = delete_duplicate_polygons(polygons, points);
+
+    /* bubble sort polygons by perimeter */
+    for(i = 0; i < polygons.size(); i++) {
+        for(j = polygons.size() - 1; j > i; j--) {
+            if(polygons[j].perimeter < polygons[j - 1].perimeter) {
+                tmp_polygon = polygons[j];
+                polygons[j] = polygons[j - 1];
+                polygons[j - 1] = tmp_polygon;
+            }
+        }
+    }
+
+  /* find shortest path */
+    shortest_path = find_shortest_path(polygons, points, size);
+
+    /* plot shortest path */
+    printf("\nCALCULATED PATH: ");
+    for(i = 0; i < shortest_path.shape.size(); i++) {
+        printf("%d->", points[shortest_path.shape[i]].index);
+        fprintf(gnu_files[5], "%lf %lf\n", points[shortest_path.shape[i]].x, points[shortest_path.shape[i]].y);
+    }
+    printf("%d\n\n", points[shortest_path.shape[0]].index);
 
     ///////////////////////
     // PLOT POLYGON DATA //

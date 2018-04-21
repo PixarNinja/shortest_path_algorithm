@@ -2623,20 +2623,12 @@ vector<int *> midpoint_construction(Point *points, int size, FILE *gnu_files[NUM
                     tmp_segment = new int [2];
                     tmp_segment[0] = i;
                     tmp_segment[1] = j;
-                    printf("\n%d... BEFORE:\n", segments.size());
-                    for(k = 0; k < segments.size(); k++) {
-                        printf("%d: (%d, %d)\n", i, points[segments[k][0]].index, points[segments[k][1]].index);
-                    }
 
                     if(segments.size() == 0) {
                         segments.push_back(tmp_segment);
                     }
                     else {
                         segments = fix_overlap(tmp_segment, segments, points);
-                    }
-                    printf("\n%d... AFTER:\n", segments.size());
-                    for(k = 0; k < segments.size(); k++) {
-                        printf("%d: (%d, %d)\n", i, points[segments[k][0]].index, points[segments[k][1]].index);
                     }
                 }
             }
@@ -2950,7 +2942,7 @@ vector<int *> remove_crossing_segments(vector<int *> segments, int s, Point *poi
     /* find all segments with the max number outgoing edges */
     vector<int *> equal;
     for(i = 0; i < crosses.size(); i++) {
-        if(max == edge_map[i][0].size() + edge_map[i][1].size()) {
+        if(max == (edge_map[i][0].size() + edge_map[i][1].size())) {
             equal.push_back(crosses[i]);
         }
     }
@@ -2965,7 +2957,7 @@ vector<int *> remove_crossing_segments(vector<int *> segments, int s, Point *poi
         }
     }
     for(i = 0; i < crosses.size(); i++) {
-        if(max > edge_map[i][0].size() + edge_map[i][1].size()) {
+        if(max > (edge_map[i][0].size() + edge_map[i][1].size())) {
             if((index = segment_match(segments, crosses[i][0], crosses[i][1])) > -1) {
                 segments.erase(segments.begin() + index);
             }
@@ -3183,10 +3175,6 @@ vector<int *> fix_overlap(int *test, vector<int *> segments, Point *points) {
     }
 
     int k;
-    printf("\n%d... AFTER POPPING:\n", segments.size());
-    for(k = 0; k < segments.size(); k++) {
-        printf("%d: (%d, %d)\n", i, points[segments[k][0]].index, points[segments[k][1]].index);
-    }
 
     /* create the new segments and add them to the vector */
     for(i = 0; i < sorted.size() - 1; i++) {
@@ -3196,11 +3184,6 @@ vector<int *> fix_overlap(int *test, vector<int *> segments, Point *points) {
             tmp_segment[1] = sorted[i + 1];
             segments.push_back(tmp_segment);
         }
-    }
-
-    printf("\n%d... AFTER PUTTING BACK:\n", segments.size());
-    for(k = 0; k < segments.size(); k++) {
-        printf("%d: (%d, %d)\n", i, points[segments[k][0]].index, points[segments[k][1]].index);
     }
 
     return segments;
@@ -3227,13 +3210,13 @@ struct polygon_t create_polygon(int *edge, vector<int *> segments, Point *points
      * 3. continue processing until the first point is reached
      */
     vector<int *> edges;
-    while(edge[1] != e) { // use edge as a test value
+    while(edge[1] != e) { // use e as a test value
         polygon.shape.push_back(edge[1]);
         /* initialize test variables */
         double max = 0.0;
         int index = -1;
         Vector E = Vector("E", points[edge[0]], points[edge[1]], -1);
-        edges = edge_search(segments, edge[1], points, size);
+        edges = edge_search(segments, points[edge[1]].index, points, size);
 
         /* find the left-most segment */
         for(i = 0; i < edges.size(); i++) {
