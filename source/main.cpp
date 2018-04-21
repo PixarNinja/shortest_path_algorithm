@@ -226,33 +226,33 @@ int main(int argc, char *argv[])
     /* runs experimental algorithm...*/
     *segments = midpoint_construction(points, size, gnu_files);
 
-    for(i = 0; i < size; i ++) {
-        /* find the polygon starting at each edge */
-        edges = edge_search(*segments, points[i].index, points, size);
-        for(int *edge : edges) {
-            tmp_polygon = create_polygon(edge, *segments, points, size);
-            /* push the polygon */
-            if(tmp_polygon.shape.size() > 0) {
-                polygons.push_back(tmp_polygon);
-            }
-        }
-    }
-
-    /* delete duplicate polygons */
-    polygons = delete_duplicate_polygons(polygons, points);
-
-    /* bubble sort polygons by perimeter */
-    for(i = 0; i < polygons.size(); i++) {
-        for(j = polygons.size() - 1; j > i; j--) {
-            if(polygons[j].perimeter < polygons[j - 1].perimeter) {
-                tmp_polygon = polygons[j];
-                polygons[j] = polygons[j - 1];
-                polygons[j - 1] = tmp_polygon;
-            }
-        }
-    }
-
-    /* get rid of crossing lines */
+//    for(i = 0; i < size; i ++) {
+//        /* find the polygon starting at each edge */
+//        edges = edge_search(*segments, points[i].index, points, size);
+//        for(int *edge : edges) {
+//            tmp_polygon = create_polygon(edge, *segments, points, size);
+//            /* push the polygon */
+//            if(tmp_polygon.shape.size() > 0) {
+//                polygons.push_back(tmp_polygon);
+//            }
+//        }
+//    }
+//
+//    /* delete duplicate polygons */
+//    polygons = delete_duplicate_polygons(polygons, points);
+//
+//    /* bubble sort polygons by perimeter */
+//    for(i = 0; i < polygons.size(); i++) {
+//        for(j = polygons.size() - 1; j > i; j--) {
+//            if(polygons[j].perimeter < polygons[j - 1].perimeter) {
+//                tmp_polygon = polygons[j];
+//                polygons[j] = polygons[j - 1];
+//                polygons[j - 1] = tmp_polygon;
+//            }
+//        }
+//    }
+//
+//    /* get rid of crossing lines */
 //    remove_crosses(segments, points, size);
     /* optimize tessellations */
 //    do {
@@ -282,15 +282,15 @@ int main(int argc, char *argv[])
 //    }
 //    /* pop the incorrect polygon */
 //    polygons.pop_back();
-    /* find shortest path */
-    shortest_path = find_shortest_path(polygons, points, size);
-    /* plot shortest path */
-    printf("\nCALCULATED PATH: ");
-    for(i = 0; i < shortest_path.shape.size(); i++) {
-        printf("%d->", points[shortest_path.shape[i]].index);
-        fprintf(gnu_files[5], "%lf %lf\n", points[shortest_path.shape[i]].x, points[shortest_path.shape[i]].y);
-    }
-    printf("%d\n\n", points[shortest_path.shape[0]].index);
+//    /* find shortest path */
+//    shortest_path = find_shortest_path(polygons, points, size);
+//    /* plot shortest path */
+//    printf("\nCALCULATED PATH: ");
+//    for(i = 0; i < shortest_path.shape.size(); i++) {
+//        printf("%d->", points[shortest_path.shape[i]].index);
+//        fprintf(gnu_files[5], "%lf %lf\n", points[shortest_path.shape[i]].x, points[shortest_path.shape[i]].y);
+//    }
+//    printf("%d\n\n", points[shortest_path.shape[0]].index);
 
     ///////////////////////
     // PLOT POLYGON DATA //

@@ -3047,6 +3047,22 @@ vector<int *> fix_overlap(int *test, vector<int *> segments, Point *points) {
     Point p1 = Point(points[test[0]]);
     Point p2 = Point(points[test[1]]);
     Vector V = Vector("V", p1, p2);
+    if(V.i == 0) { // use y values
+        if(p2.y < p1.y) {
+            Point tmp = p2;
+            p2 = p1;
+            p1 = tmp;
+            Vector V = Vector("V", p1, p2);
+        }
+    }
+    else { // use x values
+        if(p2.x < p1.x) {
+            Point tmp = p2;
+            p2 = p1;
+            p1 = tmp;
+            Vector V = Vector("V", p1, p2);
+        }
+    }
 
     /* store the segments that overlap and remove them from segments */
     vector<int*> popped;
@@ -3056,6 +3072,22 @@ vector<int *> fix_overlap(int *test, vector<int *> segments, Point *points) {
         Point p3 = Point(points[segments[i][0]]);
         Point p4 = Point(points[segments[i][1]]);
         Vector T = Vector("T", p3, p4);
+        if(T.i == 0) { // use y values
+            if(p4.y < p3.y) {
+                Point tmp = p4;
+                p4 = p3;
+                p3 = tmp;
+                Vector T = Vector("T", p3, p4);
+            }
+        }
+        else { // use x values
+            if(p4.x < p3.x) {
+                Point tmp = p4;
+                p4 = p3;
+                p3 = tmp;
+                Vector T = Vector("T", p3, p4);
+            }
+        }
 
         Point u = Point(p1);
         u.offset(T.i, T.j);
@@ -3094,46 +3126,17 @@ vector<int *> fix_overlap(int *test, vector<int *> segments, Point *points) {
                 b2 = y - m2 * x;
             }
             if(b1 == b2) {
+                //popped.push_back(segments[i]);
                 if(V.i == 0) { // use y values
-                    if(p3.y < p1.y) {
-                        Point tmp = p3;
-                        p3 = p1;
-                        p1 = tmp;
-                    }
-                    if(p4.y < p2.y) {
-                        Point tmp = p4;
-                        p4 = p2;
-                        p2 = tmp;
-                    }
-                    if(p1.y <= p3.y) {
-                        if(p2.y > p3.y) {
-                            popped.push_back(segments[i]);
-                        }
-                    }
-                    else if(p3.y <= p2.y) {
-                        if(p4.y > p1.y) {
+                    if(p1.y <= p3.y) { // P1 < P3
+                        if(p3.y <= p2.y) { // P1 --> P3 --> P2 --> P4
                             popped.push_back(segments[i]);
                         }
                     }
                 }
                 else { // use x values
-                    if(p2.x < p1.x) {
-                        Point tmp = p2;
-                        p2 = p1;
-                        p1 = tmp;
-                    }
-                    if(p4.x < p3.x) {
-                        Point tmp = p4;
-                        p4 = p3;
-                        p3 = tmp;
-                    }
-                    if(p1.x <= p3.x) {
-                        if(p2.x > p3.x) {
-                            popped.push_back(segments[i]);
-                        }
-                    }
-                    else if(p3.x <= p2.x) {
-                        if(p4.x > p1.x) {
+                    if(p1.x <= p3.x) { // P1 < P3
+                        if(p3.x <= p2.x) { // P1 --> P3 --> P2 --> P4
                             popped.push_back(segments[i]);
                         }
                     }
