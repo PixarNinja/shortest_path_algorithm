@@ -236,16 +236,18 @@ int main(int argc, char *argv[])
         }
     }
 
-  /* find shortest path */
+    /* find shortest path */
     shortest_path = find_shortest_path(polygons, points, size);
 
     /* plot shortest path */
-    printf("\nCALCULATED PATH: ");
-    for(i = 0; i < shortest_path.shape.size(); i++) {
-        printf("%d->", points[shortest_path.shape[i]].index);
-        fprintf(gnu_files[5], "%lf %lf\n", points[shortest_path.shape[i]].x, points[shortest_path.shape[i]].y);
+    if(shortest_path.shape.size() > 0) {
+        printf("\nCALCULATED PATH: ");
+        for(i = 0; i < shortest_path.shape.size(); i++) {
+            printf("%d->", points[shortest_path.shape[i]].index);
+            fprintf(gnu_files[5], "%lf %lf\n", points[shortest_path.shape[i]].x, points[shortest_path.shape[i]].y);
+        }
+        printf("%d\n\n", points[shortest_path.shape[0]].index);
     }
-    printf("%d\n\n", points[shortest_path.shape[0]].index);
 
     ///////////////////////
     // PLOT POLYGON DATA //

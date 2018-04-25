@@ -10,6 +10,7 @@ struct point_t {
     double x;
     double y;
     int index;
+    int i;
     double curr;
 } point;
 
@@ -23,12 +24,11 @@ int global_count = 0;
 
 int main(int argc, char *argv[])
 {
-    if(argc != 3) {
-        printf("\nUsage: ./shortest [datapoint path] [output path]\n\n");
+    if(argc != 2) {
+        printf("\nUsage: ./shortest [datapoint path]\n\n");
         exit(EXIT_FAILURE);
     }
     FILE *data = fopen(argv[1], "r");
-    FILE *output = fopen(argv[2], "w+");
     FILE *plot;
     struct point_t *point;
     struct point_t *shortest;
@@ -66,6 +66,7 @@ int main(int argc, char *argv[])
     point = malloc(sizeof(struct point_t) * size);
     while(fscanf(data, "%d: (%lf, %lf)", &point[i].index, &point[i].x, &point[i].y) > 0) {
         point[i].curr = DBL_MAX;
+        point[i].i = i;
         i++;
     }
     shortest = point;
@@ -74,20 +75,16 @@ int main(int argc, char *argv[])
     /* file output */
     printf("\nSHORTEST PATH: %d->", global_shortest[0]);
     fprintf(plot, "%lf %lf\n", point[global_shortest[0]].x, point[global_shortest[0]].y);
-    fprintf(output, "%d %d\n", point[global_shortest[0]].index, point[global_shortest[1]].index);
     for(i = 1; i < n; i++) {
-        printf("%d->", global_shortest[i]);
+        printf("%d->", point[global_shortest[i]].index);
         fprintf(plot, "%lf %lf\n", point[global_shortest[i]].x, point[global_shortest[i]].y);
-        fprintf(output, "%d %d\n", point[global_shortest[i]].index, point[global_shortest[i + 1]].index);
     }
-    printf("%d->%d", global_shortest[i], global_shortest[0]);
+    printf("%d->%d", point[global_shortest[i]].index, point[global_shortest[0]].index);
     fprintf(plot, "%lf %lf\n", point[global_shortest[i]].x, point[global_shortest[i]].y);
     fprintf(plot, "%lf %lf\n", point[global_shortest[0]].x, point[global_shortest[0]].y);
-    fprintf(output, "%d %d\n", point[global_shortest[i]].index, point[global_shortest[0]].index);
     //printf("Total Permutations: %d\n", global_count);
     //printf("Distance: %lf\n", shortest[0].curr);
     //printf("\n");
-    fclose(output);
     fclose(data);
     return 0;
 }
@@ -99,12 +96,18 @@ void swap(struct point_t *x, struct point_t *y)
     tmp.x = x->x;
     tmp.y = x->y;
     tmp.index = x->index;
+    tmp.i = x->i;
+    tmp.curr = x->curr;
     x->x = y->x;
     x->y = y->y;
     x->index = y->index;
+    x->i = y->i;
+    x->curr = y->curr;
     y->x = tmp.x;
     y->y = tmp.y;
     y->index = tmp.index;
+    y->i = tmp.i;
+    y->curr = tmp.curr;
 }
 
 /* calculates all permutations */
@@ -119,21 +122,19 @@ void permute(struct point_t *point, struct point_t *shortest, int index, int n)
         global_count++;
         /* calculating distance of segments from start to end */
         for(i = 0; i < n; i++) {
-            //printf("%d, ", point[i].index);
             segment = distance(point, i, i + 1);
             total += segment;
         }
         /* calculating the final segment (start and end nodes) */
-        //printf("%d\n", point[n].index);
         segment = distance(point, n, 0);
         total += segment;
         /* checking to see if the most recent total is less than
            the current shortest length */
         if(total < curr) {
             point[0].curr = total;
-            global_shortest[0] = shortest[n].index;
+            global_shortest[0] = shortest[n].i;
             for(i = 0; i <= n; i++) {
-                global_shortest[i + 1] = shortest[i].index;
+                global_shortest[i + 1] = shortest[i].i;
             }
             shortest = point;
             curr = total;
