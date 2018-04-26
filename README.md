@@ -44,48 +44,48 @@ for each file is hard-coded at 10 to provide feasible random test cases.
 Alternatively, you can enter one of the following files containing
 pre-defined datapoint information to run the algorithm on and plot the segments:
 
-0. 2000.dat
-0. 1000.dat
-0. 500.dat
-0. 50.dat
-0. arrow.dat
-0. bigstar.dat
-0. bird.dat
-0. box.dat
-0. butterfly.dat
-0. c.dat
-0. center.dat
-0. circle.dat
-0. complex.dat
-0. donut.dat
-0. ellipse.dat
-0. flyingfish.dat
-0. frog.dat
-0. glob.dat
-0. halfbigstar.dat
-0. halffrog.dat
-0. halfkey.dat
-0. halfnested.dat
-0. halfseaweed.dat
-0. key.dat
-0. nested.dat
-0. offcenter.dat
-0. overlap.dat
-0. pill.dat
-0. random.dat
-0. seaweed.dat
-0. simple.dat
-0. square.dat
-0. star.dat
-0. test.dat
-0. threecircles.dat
-0. tree.dat
-0. triangle.dat
-0. two_circles.dat
+1. 2000.dat
+1. 1000.dat
+1. 500.dat
+1. 50.dat
+1. arrow.dat
+1. bigstar.dat
+1. bird.dat
+1. box.dat
+1. butterfly.dat
+1. c.dat
+1. center.dat
+1. circle.dat
+1. complex.dat
+1. donut.dat
+1. ellipse.dat
+1. flyingfish.dat
+1. frog.dat
+1. glob.dat
+1. halfbigstar.dat
+1. halffrog.dat
+1. halfkey.dat
+1. halfnested.dat
+1. halfseaweed.dat
+1. key.dat
+1. nested.dat
+1. offcenter.dat
+1. overlap.dat
+1. pill.dat
+1. random.dat
+1. seaweed.dat
+1. simple.dat
+1. square.dat
+1. star.dat
+1. test.dat
+1. threecircles.dat
+1. tree.dat
+1. triangle.dat
+1. two_circles.dat
 
 Please note: the GNUplot plotting utility must be installed for the path to be plotted.
 
-##TODO:
+## TODO
 
 I need to finish implementing the algorithm; currently, the algorithm calculates
 "optimal shapes" within a set of datapoints. I will complete my work on
