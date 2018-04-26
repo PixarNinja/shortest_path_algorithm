@@ -90,19 +90,6 @@ int polygons_search(vector<vector<int> > polygons, int vertex)
     return -1;
 }
 
-/* returns the perimeter for the input shape */
-double find_perimeter(vector<int> shape, Point *points)
-{
-    int i = 0;
-    double sum = 0.0;
-
-    /* shape contains indices to points array */
-    for(i = 0; i < shape.size() - 1; i++) {
-        sum += distance_p(points[shape[i]], points[shape[i + 1]]);
-    }
-    return sum;
-}
-
 /* searches through a vector of segments for a matching segment */
 int segment_match(vector<int *> segments, int beginning, int end)
 {
@@ -248,17 +235,17 @@ bool intersection(Vector V1, Vector V2)
     return 0;
 }
 
-struct polygon_t find_shortest_path(vector<struct polygon_t> polygons, Point *points, int size)
+Polygon find_shortest_path(vector<Polygon> polygons, Point *points, int size)
 {
     if(polygons.size() == 0) {
-        struct polygon_t p;
+        Polygon p;
         return p;
     }
-    vector<struct polygon_t> original = polygons;
-    vector<struct polygon_t> base;
-    vector<struct polygon_t> bridge;
-    struct polygon_t tmp_polygon;
-    struct polygon_t shortest_path;
+    vector<Polygon> original = polygons;
+    vector<Polygon> base;
+    vector<Polygon> bridge;
+    Polygon tmp_polygon;
+    Polygon shortest_path;
     double epsilon = 0.000001;
     double min = DBL_MAX;
     vector<int *> found_edges;
@@ -388,7 +375,7 @@ struct polygon_t find_shortest_path(vector<struct polygon_t> polygons, Point *po
 }
 
 /* checks which polygon the segments are contained in */
-int accept_polygon(struct polygon_t polygon, vector<int *> segments, Point *points) {
+int accept_polygon(Polygon polygon, vector<int *> segments, Point *points) {
     int i = 0;
     int count = 0;
     printf("Found edges...");
@@ -412,7 +399,7 @@ int accept_polygon(struct polygon_t polygon, vector<int *> segments, Point *poin
 }
 
 /* finds the smallest neighbour of a polygon */
-int smallest_neighbour(vector<struct polygon_t> polygons, struct polygon_t source, int n)
+int smallest_neighbour(vector<Polygon> polygons, Polygon source, int n)
 {
     vector<int *> found_edges;
     int i = 0;
@@ -435,7 +422,7 @@ int smallest_neighbour(vector<struct polygon_t> polygons, struct polygon_t sourc
 }
 
 /* A must be the nested polygon */
-vector<int *> disjoint_edges(struct polygon_t A, struct polygon_t B)
+vector<int *> disjoint_edges(Polygon A, Polygon B)
 {
     vector<int *> disjoint;
     vector<int *> segments;
@@ -460,7 +447,7 @@ vector<int *> disjoint_edges(struct polygon_t A, struct polygon_t B)
     return disjoint;
 }
 
-vector<int *> shared_edges(struct polygon_t A, struct polygon_t B)
+vector<int *> shared_edges(Polygon A, Polygon B)
 {
     vector<int *> shared;
     vector<int *> segments;
@@ -485,7 +472,7 @@ vector<int *> shared_edges(struct polygon_t A, struct polygon_t B)
     return shared;
 }
 
-vector<int> shared_points(struct polygon_t A, struct polygon_t B)
+vector<int> shared_points(Polygon A, Polygon B)
 {
     vector<int> shared;
     for(int i = 0; i < A.shape.size() - 1; i++) {
@@ -496,16 +483,16 @@ vector<int> shared_points(struct polygon_t A, struct polygon_t B)
     return shared;
 }
 
-void visit_polygon(int *visited, struct polygon_t polygon, Point *points)
+void visit_polygon(int *visited, Polygon polygon, Point *points)
 {
     for(int i = 0; i < polygon.shape.size(); i++) {
         visited[points[polygon.shape[i]].index] = 1;
     }
 }
 
-struct polygon_t add_polygons(struct polygon_t A, struct polygon_t B, Point *points)
+Polygon add_polygons(Polygon A, Polygon B, Point *points)
 {
-    struct polygon_t C; //A + B
+    Polygon C; //A + B
     int i = 0;
     int j = 0;
     int a1 = 0;
@@ -626,10 +613,10 @@ struct polygon_t add_polygons(struct polygon_t A, struct polygon_t B, Point *poi
 }
 
 /* removes whichever polygon is smaller */
-struct polygon_t sub_polygons(struct polygon_t A, struct polygon_t B, Point *points)
+Polygon sub_polygons(Polygon A, Polygon B, Point *points)
 {
-    struct polygon_t C;
-    struct polygon_t tmp_polygon;
+    Polygon C;
+    Polygon tmp_polygon;
     vector<int *> found_edges;
     vector<int *> segments;
     int *tmp;
@@ -775,7 +762,7 @@ int shape_search(vector<int> shape, int vertex)
 }
 
 /* searches through a shape for a matching edge */
-int edge_match(struct polygon_t polygon, int *edge)
+int edge_match(Polygon polygon, int *edge)
 {
     vector<int *> segments;
     int *tmp;
@@ -1446,10 +1433,10 @@ vector<int *> fix_overlap(int *test, vector<int *> segments, Point *points) {
  * @param size, the size of the point array
  * @return the generated polygon
  */
-struct polygon_t create_polygon(int *edge, vector<int *> segments, Point *points, int size) {
+Polygon create_polygon(int *edge, vector<int *> segments, Point *points, int size) {
     int i = 0;
     int e = edge[0];
-    struct polygon_t polygon;
+    Polygon polygon;
     polygon.shape.push_back(edge[0]);
     polygon.perimeter = distance_p(points[edge[0]], points[edge[1]]);
 
@@ -1488,7 +1475,7 @@ struct polygon_t create_polygon(int *edge, vector<int *> segments, Point *points
 
         /* return null if the left-most segment was not found */
         if(max <= 0.0) {
-            struct polygon_t empty;
+            Polygon empty;
             return empty;
         }
 
@@ -1507,8 +1494,8 @@ struct polygon_t create_polygon(int *edge, vector<int *> segments, Point *points
  * @param points, the array of datapoints for printing
  * @return the updated polygon vector
  */
-vector<struct polygon_t> delete_duplicate_polygons(vector<struct polygon_t> polygons, Point *points) {
-    vector<struct polygon_t> tmp = polygons;
+vector<Polygon> delete_duplicate_polygons(vector<Polygon> polygons, Point *points) {
+    vector<Polygon> tmp = polygons;
     int i = 0;
     int j = 0;
     int k = 0;

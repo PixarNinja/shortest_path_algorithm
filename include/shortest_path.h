@@ -27,6 +27,7 @@
 #include <array>
 #include <string>
 
+#include "polygon.h"
 #include "point.h"
 #include "vector.h"
 
@@ -34,41 +35,23 @@
 
 using namespace std;
 
-struct polygon_t {
-    vector<int> shape;
-    double perimeter;
-};
-
-void construct_segments(vector<int *> *segments, Point *points, Point begin, int n, int size, FILE *gnu_files[NUM_FILES], int *mapped, int **recorded);
-void join_vertex(vector<int *> *segments, Point *points, Point begin, int n, int size);
-void join_segment(vector<int *> *segments, Point *points, Point begin, Point end, int n, int m, int size);
-vector<struct polygon_t> construct_polygons(vector<int *> segments, Point *points, int size);
-vector<vector<int> > tessellate(vector<vector<int> > tessellations, vector<int *> segments, Point *points, int size, char init, char add, int branch);
-vector<struct polygon_t> tessellate_cross(vector<int *> segments, int i, int j, Point *points, int size);
-vector<int> *find_shape(vector<int *> segments, Point *points, Point start, int size, char init, char add, Vector X, Vector Y);
-vector<int> init_path(vector<int> path, vector<int *> edges, Point *points, Vector X, Vector Y, char type, int branch);
-vector<int> add_path(vector<int> path, vector<int *> edges, Point *points, Vector X, Vector Y, char type);
 vector<int *> edge_search(vector<int *> segments, int vertex, Point *points, int size);
 int index_match(vector<int *> segments, int vertex);
 int shape_search(vector<int> shape, int vertex);
-int edge_match(struct polygon_t polygon, int *edge);
+int edge_match(Polygon polygon, int *edge);
 int polygons_search(vector<vector<int> > polygons, int vertex);
 double find_perimeter(vector<int> shape, Point *points);
 int segment_match(vector<int *> segments, int beginning, int end);
 int duplicate_search(vector<int> shape);
-vector<struct polygon_t> optimize_polygons(vector<struct polygon_t> polygons, vector<int *> *segments, Point *points, int size);
-void remove_crosses(vector<int *> *segments, Point *points, int size);
-void finalize_segments(vector<int *> *segments, Point *points, int size);
 bool intersection(Vector V1, Vector V2);
-struct polygon_t find_shortest_path(vector<struct polygon_t> polygons, Point *points, int size);
-int accept_polygon(struct polygon_t polygon, vector<int *> segments, Point *points);
-int smallest_neighbour(vector<struct polygon_t> polygons, struct polygon_t source, int n);
-vector<int *> disjoint_edges(struct polygon_t A, struct polygon_t B);
-vector<int *> shared_edges(struct polygon_t A, struct polygon_t B);
-vector<int> shared_points(struct polygon_t A, struct polygon_t B);
-void visit_polygon(int *visited, struct polygon_t polygon, Point *points);
-struct polygon_t add_polygons(struct polygon_t A, struct polygon_t B, Point *points);
-struct polygon_t sub_polygons(struct polygon_t A, struct polygon_t B, Point *points);
+Polygon find_shortest_path(vector<Polygon> polygons, Point *points, int size);
+int smallest_neighbour(vector<Polygon> polygons, Polygon source, int n);
+vector<int *> disjoint_edges(Polygon A, Polygon B);
+vector<int *> shared_edges(Polygon A, Polygon B);
+vector<int> shared_points(Polygon A, Polygon B);
+void visit_polygon(int *visited, Polygon polygon, Point *points);
+Polygon add_polygons(Polygon A, Polygon B, Point *points);
+Polygon sub_polygons(Polygon A, Polygon B, Point *points);
 int point_match(Point *points, int size, int vertex);
 double calculate_curvature(Vector T1, Vector T2, double tao);
 double angle(Vector V1, Vector V2);
@@ -86,7 +69,7 @@ vector<Point> generate_w_points(vector<Point> w_points, Vector L, double interva
 Point minimum_tao_distance(Vector V, Point *points, int size);
 vector<int *> remove_crossing_segments(vector<int *> segments, int s, Point *points, int size);
 vector<int *> fix_overlap(int *test, vector<int *> segments, Point *points);
-struct polygon_t create_polygon(int *edge, vector<int *> segments, Point *points, int size);
-vector<struct polygon_t> delete_duplicate_polygons(vector<struct polygon_t> polygons, Point *points);
+Polygon create_polygon(int *edge, vector<int *> segments, Point *points, int size);
+vector<Polygon> delete_duplicate_polygons(vector<Polygon> polygons, Point *points);
 
 #endif

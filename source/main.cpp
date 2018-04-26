@@ -39,9 +39,9 @@ int main(int argc, char *argv[])
     FILE *data;
     FILE *output;
     FILE *gnu_files[NUM_FILES];
-    vector<struct polygon_t> polygons;
-    struct polygon_t tmp_polygon;
-    struct polygon_t shortest_path;
+    vector<Polygon> polygons;
+    Polygon tmp_polygon;
+    Polygon shortest_path;
     Point *points;
     Point center;
     char buf[1024];

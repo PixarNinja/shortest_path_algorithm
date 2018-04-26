@@ -33,7 +33,6 @@ Point::Point(double x, double y, int index, double theta, double curvature, doub
     this->tao_distance = tao_distance;
 }
 
-
 /* constructor: clone a Point */
 Point::Point(const Point &P) {
     x = P.x;

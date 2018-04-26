@@ -32,6 +32,10 @@ class Point {
         double tao_distance;
         int index;
 
+        //////////////////
+        // CONSTRUCTORS //
+        //////////////////
+
         Point();
 
         /* constructor: base */
@@ -42,6 +46,10 @@ class Point {
 
         /* constructor: clone a Point */
         Point(const Point &P);
+
+        /////////////
+        // METHODS //
+        /////////////
 
         /* offsets the point
          * @param x, the x offset

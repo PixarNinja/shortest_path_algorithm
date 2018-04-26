@@ -15,7 +15,7 @@ add_executable(plot source/plot.c)
 #add_executable(pop source/pop_reverse.cpp)
 #add_executable(tessellate source/tessellate.cpp)
 add_executable(find_distance source/find_distance.cpp source/point.cpp)
-add_executable(shortest_path source/main.cpp source/shortest_path.cpp source/vector.cpp source/point.cpp)
+add_executable(shortest_path source/main.cpp source/shortest_path.cpp source/vector.cpp source/point.cpp source/polygon.cpp)
 
 target_link_libraries(brute_force m)
 #target_link_libraries(multiple m)
