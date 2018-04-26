@@ -24,11 +24,12 @@ int global_count = 0;
 
 int main(int argc, char *argv[])
 {
-    if(argc != 2) {
-        printf("\nUsage: ./shortest [datapoint path]\n\n");
+    if(argc != 3) {
+        printf("\nUsage: ./shortest [datapoint path] [output path]\n\n");
         exit(EXIT_FAILURE);
     }
     FILE *data = fopen(argv[1], "r");
+    FILE *output = fopen(argv[2], "w+");
     FILE *plot;
     struct point_t *point;
     struct point_t *shortest;
@@ -75,16 +76,20 @@ int main(int argc, char *argv[])
     /* file output */
     printf("\nSHORTEST PATH: %d->", global_shortest[0]);
     fprintf(plot, "%lf %lf\n", point[global_shortest[0]].x, point[global_shortest[0]].y);
+    fprintf(output, "%d %d\n", point[global_shortest[0]].index, point[global_shortest[1]].index);
     for(i = 1; i < n; i++) {
         printf("%d->", point[global_shortest[i]].index);
         fprintf(plot, "%lf %lf\n", point[global_shortest[i]].x, point[global_shortest[i]].y);
+        fprintf(output, "%d %d\n", point[global_shortest[i]].index, point[global_shortest[i + 1]].index);
     }
     printf("%d->%d", point[global_shortest[i]].index, point[global_shortest[0]].index);
     fprintf(plot, "%lf %lf\n", point[global_shortest[i]].x, point[global_shortest[i]].y);
     fprintf(plot, "%lf %lf\n", point[global_shortest[0]].x, point[global_shortest[0]].y);
+    fprintf(output, "%d %d\n", point[global_shortest[i]].index, point[global_shortest[0]].index);
     //printf("Total Permutations: %d\n", global_count);
     //printf("Distance: %lf\n", shortest[0].curr);
     //printf("\n");
+    fclose(output);
     fclose(data);
     return 0;
 }

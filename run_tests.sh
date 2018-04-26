@@ -1,7 +1,7 @@
 #!/bin/bash
 
-if (($# == 0)); then
-	echo "Usage: ./run.sh [number of random files to generate]"
+if (($# < 1)); then
+	echo "Usage: ./run_tests.sh [number of random files to test]"
 else
 	for ((i=1; i <= $1; i++)); do
 		./shape_datapoint_generator/random "./datapoints/tests/test$i.dat" "10" &&
