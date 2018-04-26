@@ -208,19 +208,7 @@ int main(int argc, char *argv[])
     ////////////////////////
 
     /* runs experimental algorithm...*/
-    *segments = midpoint_construction(points, size, gnu_files);
-
-    for(i = 0; i < size; i ++) {
-        /* find the polygon starting at each edge */
-        edges = edge_search(*segments, points[i].index, points, size);
-        for(int *edge : edges) {
-            tmp_polygon = create_polygon(edge, *segments, points, size);
-            /* push the polygon */
-            if(tmp_polygon.shape.size() > 0) {
-                polygons.push_back(tmp_polygon);
-            }
-        }
-    }
+    polygons = w_polygon_construction(points, size, gnu_files);
 
     /* delete duplicate polygons */
     polygons = delete_duplicate_polygons(polygons, points);
@@ -252,6 +240,14 @@ int main(int argc, char *argv[])
     ///////////////////////
     // PLOT POLYGON DATA //
     ///////////////////////
+
+    for(Polygon polygon : polygons) {
+        for(int *segment : polygon.segments) {
+            if(segment_match(*segments, segment[0], segment[1]) == -1) {
+                segments->push_back(segment);
+            }
+        }
+    }
 
     /* plot segment information */
     for(i = 0; i < segments->size(); i++) {

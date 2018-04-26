@@ -78,12 +78,12 @@ vector<int *> edge_search(vector<int *> segments, int vertex, Point *points, int
 }
 
 /* searches through a vector of polygons for a matching vertex */
-int polygons_search(vector<vector<int> > polygons, int vertex)
+int polygons_search(vector<Polygon> polygons, int vertex)
 {
     int d = 0;
     /* check if the vertex is found */
     for(int i = 0; i < polygons.size(); i++) {
-        if(find(polygons[i].begin(), polygons[i].end(), vertex) != polygons[i].end()) {
+        if(find(polygons[i].shape.begin(), polygons[i].shape.end(), vertex) != polygons[i].shape.end()) {
             return i;
         }
     }
@@ -859,7 +859,7 @@ void memory_error(void)
 }
 
 /* experimental algorithm... */
-vector<int *> midpoint_construction(Point *points, int size, FILE *gnu_files[NUM_FILES]) {
+vector<Polygon> w_polygon_construction(Point *points, int size, FILE *gnu_files[NUM_FILES]) {
 
     /////////////////////////////////
     // INITIALIZATION OF VARIABLES //
@@ -890,6 +890,7 @@ vector<int *> midpoint_construction(Point *points, int size, FILE *gnu_files[NUM
     }
 
     interval /= 2;
+    vector<int *> crosses;
 
     /* test all line segments */
     for(i = 0; i < size; i++) {
@@ -901,11 +902,11 @@ vector<int *> midpoint_construction(Point *points, int size, FILE *gnu_files[NUM
             if(segment_match(segments, i, j) == -1) {
                 /* if the line is valid, add it as a segment */
                 if(test_w_segment(L, interval, points, size)) {
-                    /* record segment */
                     tmp_segment = new int [2];
                     tmp_segment[0] = i;
                     tmp_segment[1] = j;
 
+                    /* record segment */
                     if(segments.size() == 0) {
                         segments.push_back(tmp_segment);
                     }
@@ -953,7 +954,22 @@ vector<int *> midpoint_construction(Point *points, int size, FILE *gnu_files[NUM
         printf("%d: (%d, %d)\n", i, points[segments[i][0]].index, points[segments[i][1]].index);
     }
 
-    return segments;
+    /* create w_polygons */
+    vector<Polygon> polygons;
+    vector<int *> edges;
+    for(i = 0; i < size; i ++) {
+        /* find the polygon starting at each edge */
+        edges = edge_search(segments, points[i].index, points, size);
+        for(int *edge : edges) {
+            Polygon tmp_polygon = create_polygon(edge, segments, points, size);
+            /* push the polygon */
+            if(tmp_polygon.shape.size() > 0) {
+                polygons.push_back(tmp_polygon);
+            }
+        }
+    }
+
+    return polygons;
 }
 
 /* tests if a weslean segment is valid
@@ -1436,7 +1452,8 @@ vector<int *> fix_overlap(int *test, vector<int *> segments, Point *points) {
 Polygon create_polygon(int *edge, vector<int *> segments, Point *points, int size) {
     int i = 0;
     int e = edge[0];
-    Polygon polygon;
+    vector<int> shape;
+    Polygon polygon = Polygon();
     polygon.shape.push_back(edge[0]);
     polygon.perimeter = distance_p(points[edge[0]], points[edge[1]]);
 
@@ -1485,6 +1502,7 @@ Polygon create_polygon(int *edge, vector<int *> segments, Point *points, int siz
         polygon.perimeter += distance_p(points[edge[0]], points[edge[1]]);
     }
     polygon.shape.push_back(edge[1]);
+    polygon = Polygon(polygon.shape, points);
 
     return polygon;
 }

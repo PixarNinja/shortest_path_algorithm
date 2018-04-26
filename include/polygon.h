@@ -68,6 +68,7 @@ class Polygon {
     public:
         std::vector<Point> points;
         std::vector<int> shape;
+        std::vector<int *> segments;
         double perimeter;
         std::string id;
 
