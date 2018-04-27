@@ -192,7 +192,7 @@ bool intersection(Vector V1, Vector V2)
         Vector T = Vector("T", V1.start, t);
         if(same_direction(T, V1) && (T.length < V1.length)) { // vector T is inside of vector V1
             T = Vector("T", V2.start, t);
-            if(same_direction(T, V1) && (T.length < V2.length)) { // vector T is also inside of vector V2
+            if(same_direction(T, V2) && (T.length < V2.length)) { // vector T is also inside of vector V2
                 return true;
             }
         }
