@@ -117,122 +117,103 @@ int duplicate_search(vector<int> shape)
 /* returns true if the points intersect, false otherwise */
 bool intersection(Vector V1, Vector V2)
 {
-    Point p1 = V1.start;
-    Point p2 = V1.end;
-    Point p3 = V2.start;
-    Point p4 = V2.end;
-    Point tmp;
-    double y = 0.0;
-    double x = 0.0;
-    double m1 = 0.0;
-    double m2 = 0.0;
-    double b1 = 0.0;
-    double b2 = 0.0;
-    double r = DBL_MAX;
-    double l = DBL_MIN;
-    /* find intersection area */
-    if (p2.x < p1.x) {
-        tmp = p1;
-        p1 = p2;
-        p2 = tmp;
-    }
-    if (p4.x < p3.x) {
-        tmp = p3;
-        p3 = p4;
-        p4 = tmp;
-    }
-    /* make sure none of the nodes are the same */
-    if((p1.index == p3.index) || (p1.index == p4.index) || (p2.index == p3.index) || (p2.index == p4.index)) {
+    /* return false if any of the points are equal */
+    if(V1.start.equals(V2.start) || V1.start.equals(V2.end) || V1.end.equals(V2.end)) {
         return false;
     }
-    /* find the left and right boundaries of intersection on the x-axis */
-    if(p1.x >= p3.x) {
-        /*           p1       */
-        /*            .       */
-        /*            .       */
-        /*      p3---------p4 */
-        /*            .       */
-        /*            .       */
-        /*            p2      */
-        if(p2.x == p1.x) {
-            p1.x -= 0.000001;
-            p2.x += 0.000001;
-            p3.x -= 0.000001;
-            p4.x += 0.000001;
-        }
-        l = p1.x;
-        /* p3--------------------p4 */
-        /*      p1---------p2 */
-        if(p2.x <= p4.x) {
-            r = p2.x;
-        }
-        /* p3-----------p4 */
-        /*        p1-----------p2 */
-        else {
-            r = p4.x;
+
+    /* sort the points of V1 */
+    if(V1.i == 0) { // use y values
+        if(V1.end.y < V1.start.y) {
+            V1 = Vector(V1.name, V1.end, V1.start);
         }
     }
-    else if(p2.x >= p3.x) {
-        /*           p3       */
-        /*            .       */
-        /*            .       */
-        /*      p1---------p2 */
-        /*            .       */
-        /*            .       */
-        /*            p4      */
-        if(p3.x == p4.x) {
-            p1.x -= 0.000001;
-            p2.x += 0.000001;
-            p3.x -= 0.000001;
-            p4.x += 0.000001;
-        }
-        l = p3.x;
-        /* p1--------------------p2 */
-        /*      p3---------p4 */
-        if(p2.x >= p4.x) {
-            r = p4.x;
-        }
-        /* p1-----------p2 */
-        /*        p3-----------p4 */
-        else {
-            r = p2.x;
+    else { // use x values
+        if(V1.end.x < V1.start.x) {
+            V1 = Vector(V1.name, V1.end, V1.start);
         }
     }
-    /* p1---------p2  p3---------p4 */
-    else {
-        return false;
-    }
-    /* p3---------p4  p1---------p2 */
-    if(l >= r) {
-        return false;
-    }
-    /* create first equation */
-    y = p1.y;
-    m1 = (p2.y - p1.y) / (p2.x - p1.x);
-    x = p1.x;
-    b1 = y - m1 * x;
-    /* create second equation */
-    y = p3.y;
-    m2 = (p4.y - p3.y) / (p4.x - p3.x);
-    x = p3.x;
-    b2 = y - m2 * x;
-    /* solve linear system */
-    x = (b2 - b1) / (m1 - m2);
-    y = m1 * x + b1;
-    /* don't push the segment if it is an overlap */
-    if((b2 == b1) && (m1 == m2)) {
-        if(p3.x < p2.x) {
-            return true;
+
+    /* sort the points of V2 */
+    if(V2.i == 0) { // use y values
+        if(V2.end.y < V2.start.y) {
+            V2 = Vector(V2.name, V2.end, V2.start);
         }
-        else if(p1.x < p4.x) {
+    }
+    else { // use x values
+        if(V2.end.x < V2.start.x) {
+            V2 = Vector(V2.name, V2.end, V2.start);
+        }
+    }
+
+    /* parallel test */
+    if(determinant(V1, V2) != 0) {
+        double y = 0.0;
+        double x = 0.0;
+        double m1 = 0.0;
+        double m2 = 0.0;
+        double b1 = 0.0;
+        double b2 = 0.0;
+        /* find which intercept to use, x or y */
+        if(V1.i == 0) { // use x intercept
+            /* create first equation */
+            y = V1.start.x;
+            m1 = (V1.end.x - V1.start.x) / (V1.end.y - V1.start.y);
+            x = V1.start.y;
+            b1 = y - m1 * x;
+        }
+        else { // use y intercept
+            /* create second equation */
+            y = V1.start.y;
+            m1 = (V1.end.y - V1.start.y) / (V1.end.x - V1.start.x);
+            x = V1.start.x;
+            b1 = y - m1 * x;
+        }
+        if(V2.i == 0) { // use x intercept
+            /* create first equation */
+            y = V2.start.x;
+            m2 = (V2.end.x - V2.start.x) / (V2.end.y - V2.start.y);
+            x = V2.start.y;
+            b2 = y - m2 * x;
+        }
+        else { // use y intercept
+            /* create second equation */
+            y = V2.start.y;
+            m2 = (V2.end.y - V2.start.y) / (V2.end.x - V2.start.x);
+            x = V2.start.x;
+            b2 = y - m2 * x;
+        }
+        /* solve linear system */
+        x = (b2 - b1) / (m1 - m2);
+        y = m1 * x + b1;
+
+        /* make final tests */
+        Point t = Point(x, y, -1);
+        Vector T = Vector("T", V1.start, t);
+        if(same_direction(T, V1) && (T.length < V1.length)) { // vector T is inside of vector V1
+            T = Vector("T", V2.start, t);
+            if(same_direction(T, V1) && (T.length < V2.length)) { // vector T is also inside of vector V2
+                return true;
+            }
+        }
+    }
+
+    return false;
+}
+
+/* tests whether two vectors are going in the same direction or not
+ * @param V1, the first vector
+ * @param V2, the second vector
+ * @return true if they are in the same direction, false otherwise
+ */
+bool same_direction(Vector V1, Vector V2) {
+    if((V1.i == V2.i) || (V1.i < 0 && V2.i < 0) || (V1.i > 0 && V2.i > 0)) {
+        if((V1.j == V2.j) || (V1.j < 0 && V2.j < 0) || (V1.j > 0 && V2.j > 0)) {
             return true;
         }
     }
-    /* don't push the segment if there is an intersection */
-    else if(x <= r && x >= l) {
-        return true;
-    }
-    return 0;
+
+    return false;
 }
 
 Polygon find_shortest_path(vector<Polygon> polygons, Point *points, int size)
@@ -902,16 +883,42 @@ vector<Polygon> w_polygon_construction(Point *points, int size, FILE *gnu_files[
             if(segment_match(segments, i, j) == -1) {
                 /* if the line is valid, add it as a segment */
                 if(test_w_segment(L, interval, points, size)) {
-                    tmp_segment = new int [2];
-                    tmp_segment[0] = i;
-                    tmp_segment[1] = j;
-
-                    /* record segment */
-                    if(segments.size() == 0) {
-                        segments.push_back(tmp_segment);
+                    /* check if the segment intersects any of the previously recorded segments */
+                    bool push = true;
+                    printf("\nTEST SEGMENT: (%d, %d)\n", L.start.index, L.end.index);
+                    printf("\nBEFORE SEGMENTS:\n");
+                    for(k = 0; k < segments.size(); k++) {
+                        printf("%d: (%d, %d)\n", k, points[segments[k][0]].index, points[segments[k][1]].index);
                     }
-                    else {
-                        segments = fix_overlap(tmp_segment, segments, points);
+                    for(k = segments.size() - 1; k >= 0; k--) {
+                        Vector V = Vector("V", points[segments[k][0]], points[segments[k][1]]);
+                        /* always push overlaps, they are handeled later */
+                        if(!overlap(V, L) && intersection(V, L)) {
+                            segments.erase(segments.begin() + k);
+                            push = false;
+                        }
+                    }
+                    printf("\nMIDDLE SEGMENTS:\n");
+                    for(k = 0; k < segments.size(); k++) {
+                        printf("%d: (%d, %d)\n", k, points[segments[k][0]].index, points[segments[k][1]].index);
+                    }
+                    /* push the segment if it didn't intersect any other segments */
+                    if(push) {
+                        /* record segment */
+                        tmp_segment = new int [2];
+                        tmp_segment[0] = i;
+                        tmp_segment[1] = j;
+
+                        if(segments.size() == 0) {
+                            segments.push_back(tmp_segment);
+                        }
+                        else {
+                            segments = fix_overlap(tmp_segment, segments, points);
+                        }
+                    }
+                    printf("\nAFTER SEGMENTS:\n");
+                    for(k = 0; k < segments.size(); k++) {
+                        printf("%d: (%d, %d)\n", k, points[segments[k][0]].index, points[segments[k][1]].index);
                     }
                 }
             }
@@ -935,7 +942,7 @@ vector<Polygon> w_polygon_construction(Point *points, int size, FILE *gnu_files[
         }
     }
 
-    /* remove crossing segments */
+    /* remove crossing segments *
     int prev_size = segments.size();
     i = 0;
     while(i < segments.size()) {
@@ -947,7 +954,7 @@ vector<Polygon> w_polygon_construction(Point *points, int size, FILE *gnu_files[
             i = 0;
             prev_size = segments.size();
         }
-    }
+    }*/
 
     printf("\nFILTERED SEGMENTS:\n");
     for(i = 0; i < segments.size(); i++) {
@@ -1288,105 +1295,15 @@ vector<int *> fix_overlap(int *test, vector<int *> segments, Point *points) {
     int i = 0;
     int j = 0;
 
-    /* construct original segment points and vector */
-    Point p1 = Point(points[test[0]]);
-    Point p2 = Point(points[test[1]]);
-    Vector V = Vector("V", p1, p2);
-    if(V.i == 0) { // use y values
-        if(p2.y < p1.y) {
-            Point tmp = p2;
-            p2 = p1;
-            p1 = tmp;
-            Vector V = Vector("V", p1, p2);
-        }
-    }
-    else { // use x values
-        if(p2.x < p1.x) {
-            Point tmp = p2;
-            p2 = p1;
-            p1 = tmp;
-            Vector V = Vector("V", p1, p2);
-        }
-    }
+    /* construct original segment vector */
+    Vector V = Vector("V", points[test[0]], points[test[1]]);
 
     /* store the segments that overlap and remove them from segments */
     vector<int*> popped;
-    for(i = segments.size() - 1; i >= 0; i--) {
-
-        /* construct test segment points and vector */
-        Point p3 = Point(points[segments[i][0]]);
-        Point p4 = Point(points[segments[i][1]]);
-        Vector T = Vector("T", p3, p4);
-        if(T.i == 0) { // use y values
-            if(p4.y < p3.y) {
-                Point tmp = p4;
-                p4 = p3;
-                p3 = tmp;
-                Vector T = Vector("T", p3, p4);
-            }
-        }
-        else { // use x values
-            if(p4.x < p3.x) {
-                Point tmp = p4;
-                p4 = p3;
-                p3 = tmp;
-                Vector T = Vector("T", p3, p4);
-            }
-        }
-
-        Point u = Point(p1);
-        u.offset(T.i, T.j);
-        Vector U = Vector("U", p1, u);
-        /* parallel test */
-        if(determinant(V, U) == 0) {
-            double y = 0.0;
-            double x = 0.0;
-            double m1 = 0.0;
-            double m2 = 0.0;
-            double b1 = 0.0;
-            double b2 = 0.0;
-            /* find which intercept to use, x or y */
-            if(V.i == 0) { // use x intercept
-                /* create first equation */
-                y = p1.x;
-                m1 = (p2.x - p1.x) / (p2.y - p1.y);
-                x = p1.y;
-                b1 = y - m1 * x;
-                /* create second equation */
-                y = p3.x;
-                m2 = (p4.x - p3.x) / (p4.y - p3.y);
-                x = p3.y;
-                b2 = y - m2 * x;
-            }
-            else { // use y intercept
-                /* create first equation */
-                y = p1.y;
-                m1 = (p2.y - p1.y) / (p2.x - p1.x);
-                x = p1.x;
-                b1 = y - m1 * x;
-                /* create second equation */
-                y = p3.y;
-                m2 = (p4.y - p3.y) / (p4.x - p3.x);
-                x = p3.x;
-                b2 = y - m2 * x;
-            }
-            if(b1 == b2) {
-                //popped.push_back(segments[i]);
-                if(V.i == 0) { // use y values
-                    if(p1.y <= p3.y) { // P1 < P3
-                        if(p3.y <= p2.y) { // P1 --> P3 --> P2 --> P4
-                            popped.push_back(segments[i]);
-                        }
-                    }
-                }
-                else { // use x values
-                    if(p1.x <= p3.x) { // P1 < P3
-                        if(p3.x <= p2.x) { // P1 --> P3 --> P2 --> P4
-                            popped.push_back(segments[i]);
-                        }
-                    }
-                }
-            }
+    for(i = 0; i < segments.size(); i++) {
+        Vector T = Vector("T", points[segments[i][0]], points[segments[i][1]]);
+        if(overlap(V, T)) {
+            popped.push_back(segments[i]);
         }
     }
 
@@ -1440,6 +1357,100 @@ vector<int *> fix_overlap(int *test, vector<int *> segments, Point *points) {
     }
 
     return segments;
+}
+
+/* detects if two segments overlap
+ * @param V1, the first segment to test
+ * @param V2, the second segment to test
+ * @return true if they overlap, false otherwise
+ */
+bool overlap(Vector V1, Vector V2) {
+    /* sort the points of V1 */
+    if(V1.i == 0) { // use y values
+        if(V1.end.y < V1.start.y) {
+            V1 = Vector(V1.name, V1.end, V1.start);
+        }
+    }
+    else { // use x values
+        if(V1.end.x < V1.start.x) {
+            V1 = Vector(V1.name, V1.end, V1.start);
+        }
+    }
+
+    /* sort the points of V2 */
+    if(V2.i == 0) { // use y values
+        if(V2.end.y < V2.start.y) {
+            V2 = Vector(V2.name, V2.end, V2.start);
+        }
+    }
+    else { // use x values
+        if(V2.end.x < V2.start.x) {
+            V2 = Vector(V2.name, V2.end, V2.start);
+        }
+    }
+
+    /* parallel test */
+    if(determinant(V1, V2) == 0) {
+        double y = 0.0;
+        double x = 0.0;
+        double m1 = 0.0;
+        double m2 = 0.0;
+        double b1 = 0.0;
+        double b2 = 0.0;
+        /* find which intercept to use, x or y */
+        if(V1.i == 0) { // use x intercept
+            /* create first equation */
+            y = V1.start.x;
+            m1 = (V1.end.x - V1.start.x) / (V1.end.y - V1.start.y);
+            x = V1.start.y;
+            b1 = y - m1 * x;
+            /* create second equation */
+            y = V2.start.x;
+            m2 = (V2.end.x - V2.start.x) / (V2.end.y - V2.start.y);
+            x = V2.start.y;
+            b2 = y - m2 * x;
+        }
+        else { // use y intercept
+            /* create first equation */
+            y = V1.start.y;
+            m1 = (V1.end.y - V1.start.y) / (V1.end.x - V1.start.x);
+            x = V1.start.x;
+            b1 = y - m1 * x;
+            /* create second equation */
+            y = V2.start.y;
+            m2 = (V2.end.y - V2.start.y) / (V2.end.x - V2.start.x);
+            x = V2.start.x;
+            b2 = y - m2 * x;
+        }
+        if(b1 == b2) {
+            if(V1.i == 0) { // use y values
+                if(V1.start.y <= V2.start.y) { // P1 <= P3
+                    if(V2.start.y < V1.end.y) { // P1 --> P3 --> P2 --> P4
+                        return true;
+                    }
+                }
+                else if(V2.start.y <= V1.start.y) { // P3 <= P1
+                    if(V1.start.y < V2.end.y) { // P3 --> P1 --> P4 --> P2
+                        return true;
+                    }
+                }
+            }
+            else { // use x values
+                if(V1.start.x <= V2.start.x) { // P1 < P3
+                    if(V2.start.x < V1.end.x) { // P1 --> P3 --> P2 --> P4
+                        return true;
+                    }
+                }
+                else if(V2.start.x <= V1.start.x) { // P3 <= P1
+                    if(V1.start.x < V2.end.x) { // P3 --> P1 --> P4 --> P2
+                        return true;
+                    }
+                }
+            }
+        }
+    }
+
+    return false;
 }
 
 /* creates a polygon

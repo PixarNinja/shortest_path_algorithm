@@ -44,6 +44,7 @@ double find_perimeter(vector<int> shape, Point *points);
 int segment_match(vector<int *> segments, int beginning, int end);
 int duplicate_search(vector<int> shape);
 bool intersection(Vector V1, Vector V2);
+bool same_direction(Vector V1, Vector V2);
 Polygon find_shortest_path(vector<Polygon> polygons, Point *points, int size);
 int smallest_neighbour(vector<Polygon> polygons, Polygon source, int n);
 vector<int *> disjoint_edges(Polygon A, Polygon B);
@@ -69,6 +70,7 @@ vector<Point> generate_w_points(vector<Point> w_points, Vector L, double interva
 Point minimum_tao_distance(Vector V, Point *points, int size);
 vector<int *> remove_crossing_segments(vector<int *> segments, int s, Point *points, int size);
 vector<int *> fix_overlap(int *test, vector<int *> segments, Point *points);
+bool overlap(Vector V1, Vector V2);
 Polygon create_polygon(int *edge, vector<int *> segments, Point *points, int size);
 vector<Polygon> delete_duplicate_polygons(vector<Polygon> polygons, Point *points);
 
