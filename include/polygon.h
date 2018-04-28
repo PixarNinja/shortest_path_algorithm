@@ -84,6 +84,22 @@ class Polygon {
         /* constructor: clone a Polygon */
         Polygon(const Polygon &S);
 
+        /////////////
+        // METHODS //
+        /////////////
+
+        /* tests if a point is part of the polygon
+         * @param P, the point to test
+         * @return the index of the point if found, -1 otherwise
+         */
+        int point_match(Point P);
+
+        /* tests if a segment is part of the polygon
+         * @param V, the segment to test given as a vector
+         * @return the index of the segment if found, -1 otherwise
+         */
+        int segment_match(int beginning, int end);
+
 };
 
 #endif

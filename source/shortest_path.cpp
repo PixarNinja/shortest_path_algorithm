@@ -42,6 +42,7 @@ vector<int *> edge_search(vector<int *> segments, int vertex, Point *points, int
     int *tmp;
     int i = 0;
     int j = 0;
+    int index;
 
     /* check if the segment is found */
     for(i = 0; i < segments.size(); i++) {
@@ -51,25 +52,27 @@ vector<int *> edge_search(vector<int *> segments, int vertex, Point *points, int
                 break;
             }
         }
-        if(segments[i][0] == points[vertex].index) {
-            tmp = new int [2];
-            tmp[0] = j;
+        index = j;
+
+        if(points[segments[i][0]].index == vertex) {
             for(j = 0; j < size; j++) {
                 if(points[j].index == points[segments[i][1]].index) {
                     break;
                 }
             }
+            tmp = new int [2];
+            tmp[0] = index;
             tmp[1] = j;
             edges.push_back(tmp);
         }
-        else if(segments[i][1] == points[vertex].index) {
-            tmp = new int [2];
-            tmp[0] = j;
+        else if(points[segments[i][1]].index == vertex) {
             for(j = 0; j < size; j++) {
                 if(points[j].index == points[segments[i][0]].index) {
                     break;
                 }
             }
+            tmp = new int [2];
+            tmp[0] = index;
             tmp[1] = j;
             edges.push_back(tmp);
         }
@@ -118,7 +121,7 @@ int duplicate_search(vector<int> shape)
 bool intersection(Vector V1, Vector V2)
 {
     /* return false if any of the points are equal */
-    if(V1.start.equals(V2.start) || V1.start.equals(V2.end) || V1.end.equals(V2.end)) {
+    if(V1.start.equals(V2.start) || V1.start.equals(V2.end) || V1.end.equals(V2.start) || V1.end.equals(V2.end)) {
         return false;
     }
 
@@ -883,24 +886,35 @@ vector<Polygon> w_polygon_construction(Point *points, int size, FILE *gnu_files[
             if(segment_match(segments, i, j) == -1) {
                 /* if the line is valid, add it as a segment */
                 if(test_w_segment(L, interval, points, size)) {
-                    /* check if the segment intersects any of the previously recorded segments */
                     bool push = true;
-                    printf("\nTEST SEGMENT: (%d, %d)\n", L.start.index, L.end.index);
-                    printf("\nBEFORE SEGMENTS:\n");
-                    for(k = 0; k < segments.size(); k++) {
-                        printf("%d: (%d, %d)\n", k, points[segments[k][0]].index, points[segments[k][1]].index);
-                    }
+                    /* check if the segment intersects any of the previously recorded segments */
                     for(k = segments.size() - 1; k >= 0; k--) {
                         Vector V = Vector("V", points[segments[k][0]], points[segments[k][1]]);
                         /* always push overlaps, they are handeled later */
                         if(!overlap(V, L) && intersection(V, L)) {
+                            if(segment_match(crosses, segments[k][0], segments[k][1]) == -1) {
+                                crosses.push_back(segments[k]);
+                            }
+                            if(segment_match(crosses, i, j) == -1) {
+                                int *tmp_segment = new int [2];
+                                tmp_segment[0] = i;
+                                tmp_segment[1] = j;
+                                crosses.push_back(tmp_segment);
+                            }
                             segments.erase(segments.begin() + k);
                             push = false;
                         }
                     }
-                    printf("\nMIDDLE SEGMENTS:\n");
-                    for(k = 0; k < segments.size(); k++) {
-                        printf("%d: (%d, %d)\n", k, points[segments[k][0]].index, points[segments[k][1]].index);
+                    /* also check if the segment intersects any of the previously deleted segments */
+                    if(push) {
+                        for(k = 0; k < crosses.size(); k++) {
+                            Vector V = Vector("V", points[crosses[k][0]], points[crosses[k][1]]);
+                            /* always push overlaps, they are handeled later */
+                            if(!overlap(V, L) && intersection(V, L)) {
+                                push = false;
+                                break;
+                            }
+                        }
                     }
                     /* push the segment if it didn't intersect any other segments */
                     if(push) {
@@ -916,45 +930,10 @@ vector<Polygon> w_polygon_construction(Point *points, int size, FILE *gnu_files[
                             segments = fix_overlap(tmp_segment, segments, points);
                         }
                     }
-                    printf("\nAFTER SEGMENTS:\n");
-                    for(k = 0; k < segments.size(); k++) {
-                        printf("%d: (%d, %d)\n", k, points[segments[k][0]].index, points[segments[k][1]].index);
-                    }
                 }
             }
         }
     }
-
-    /* bubble sort segments by length, to aid in removing correct crosses */
-    for(i = 0; i < segments.size(); i++) {
-        for(j = segments.size() - 1; j > i; j--) {
-            double curr = distance_p(points[segments[j][0]], points[segments[j][1]]);
-            double next = distance_p(points[segments[j - 1][0]], points[segments[j - 1][1]]);
-            if(curr < next) {
-                int *tmp = new int [2];
-                tmp[0] = segments[j][0];
-                tmp[1] = segments[j][1];
-                segments[j][0] = segments[j - 1][0];
-                segments[j][1] = segments[j - 1][1];
-                segments[j - 1][0] = tmp[0];
-                segments[j - 1][1] = tmp[1];
-            }
-        }
-    }
-
-    /* remove crossing segments *
-    int prev_size = segments.size();
-    i = 0;
-    while(i < segments.size()) {
-        segments = remove_crossing_segments(segments, i, points, size);
-        if(prev_size == segments.size()) {
-            i++;
-        }
-        else {
-            i = 0;
-            prev_size = segments.size();
-        }
-    }*/
 
     printf("\nFILTERED SEGMENTS:\n");
     for(i = 0; i < segments.size(); i++) {
@@ -964,17 +943,81 @@ vector<Polygon> w_polygon_construction(Point *points, int size, FILE *gnu_files[
     /* create w_polygons */
     vector<Polygon> polygons;
     vector<int *> edges;
-    for(i = 0; i < size; i ++) {
+    for(i = 0; i < size; i++) {
         /* find the polygon starting at each edge */
         edges = edge_search(segments, points[i].index, points, size);
         for(int *edge : edges) {
-            Polygon tmp_polygon = create_polygon(edge, segments, points, size);
-            /* push the polygon */
-            if(tmp_polygon.shape.size() > 0) {
-                polygons.push_back(tmp_polygon);
+            vector<Polygon> tmp_polygons = create_polygon(edge, segments, points, size);
+            /* push the polygons */
+            for(Polygon polygon : tmp_polygons) {
+                bool push = true;
+                for(j = 0; j < polygons.size(); j++) {
+                    if(polygon.id == polygons[j].id) {
+                        push = false;
+                        break;
+                    }
+                }
+                if(push) {
+                    polygons.push_back(polygon);
+                }
             }
         }
     }
+
+    /* TODO: remove the convex hull from the set */
+
+    return polygons;
+}
+
+/* 
+ *
+ */
+vector<Polygon> tessellate_w_polygon(Polygon S, double interval, Point *points, int size) {
+    vector<Polygon> polygons; // will either contain 1 or 2 polygons
+    Polygon S1;
+    Polygon S2;
+    int i;
+    int j;
+
+    /* test all line segments */
+    vector<int *> w_segments;
+    for(i = 0; i < size; i++) {
+        for(j = 0; j < size; j++) {
+            /* only check segments that touch part of the polygon */
+            if(i == j && ((S.point_match(points[i]) > -1) || (S.point_match(points[j]) > -1))) {
+                continue;
+            }
+            Vector L = Vector("L", points[i], points[j]);
+            /* record the segment if it is a w_segment */
+            if(test_w_segment(L, interval, points, size)) {
+                if(segment_match(w_segments, i, j) == -1) {
+                    int *tmp_segment = new int [2];
+                    tmp_segment[0] = i;
+                    tmp_segment[1] = j;
+                    w_segments.push_back(tmp_segment);
+                }
+            }
+        }
+    }
+
+    /* bubble sort segments by length, smallest to largest */
+    for(i = 0; i < w_segments.size(); i++) {
+        for(j = w_segments.size() - 1; j > i; j--) {
+            double curr = distance_p(points[w_segments[j - 1][0]], points[w_segments[j - 1][1]]);
+            double next = distance_p(points[w_segments[j][0]], points[w_segments[j][1]]);
+            if(next < curr) {
+                int *tmp = new int [2];
+                tmp[0] = w_segments[j][0];
+                tmp[1] = w_segments[j][1];
+                w_segments[j][0] = w_segments[j - 1][0];
+                w_segments[j][1] = w_segments[j - 1][1];
+                w_segments[j - 1][0] = tmp[0];
+                w_segments[j - 1][1] = tmp[1];
+            }
+        }
+    }
+
+    /* if any w_segment intersects with another w_segment, create and test polygons */
 
     return polygons;
 }
@@ -1453,17 +1496,22 @@ bool overlap(Vector V1, Vector V2) {
     return false;
 }
 
-/* creates a polygon
+/* creates two polygons, forward and backwards
  * @param edge, the current edge used to create the polygon
  * @param segments, the vector of segments calculated before
  * @param points, the array of datapoints
  * @param size, the size of the point array
- * @return the generated polygon
+ * @return the generated polygons
  */
-Polygon create_polygon(int *edge, vector<int *> segments, Point *points, int size) {
+vector<Polygon> create_polygon(int *edge, vector<int *> segments, Point *points, int size) {
     int i = 0;
     int e = edge[0];
-    vector<int> shape;
+    int *tmp_edge = new int [2];
+    tmp_edge[0] = edge[0];
+    tmp_edge[1] = edge[1];
+    vector<Polygon> polygons;
+
+    bool push = true;
     Polygon polygon = Polygon();
     polygon.shape.push_back(edge[0]);
     polygon.perimeter = distance_p(points[edge[0]], points[edge[1]]);
@@ -1478,7 +1526,7 @@ Polygon create_polygon(int *edge, vector<int *> segments, Point *points, int siz
     while(edge[1] != e) { // use e as a test value
         polygon.shape.push_back(edge[1]);
         /* initialize test variables */
-        double max = 0.0;
+        double max = -180.0;
         int index = -1;
         Vector E = Vector("E", points[edge[0]], points[edge[1]], -1);
         edges = edge_search(segments, points[edge[1]].index, points, size);
@@ -1499,12 +1547,20 @@ Polygon create_polygon(int *edge, vector<int *> segments, Point *points, int siz
                     index = edges[i][1];
                 }
             }
+            /* test if the vector is on the right side */
+            else {
+                /* test if the vector is possibly the greatest */
+                if((angle(E, V) * -180 / M_PI) > max && (angle(E, V) * 180 / M_PI) < 180) {
+                    max = angle(E, V) * -180 / M_PI;
+                    index = edges[i][1];
+                }
+            }
         }
 
         /* return null if the left-most segment was not found */
-        if(max <= 0.0) {
-            Polygon empty;
-            return empty;
+        if(max <= -180.0) {
+            push = false;
+            break;
         }
 
         /* set variables */
@@ -1512,10 +1568,79 @@ Polygon create_polygon(int *edge, vector<int *> segments, Point *points, int siz
         edge[1] = index;
         polygon.perimeter += distance_p(points[edge[0]], points[edge[1]]);
     }
-    polygon.shape.push_back(edge[1]);
-    polygon = Polygon(polygon.shape, points);
+    if(push && polygon.shape.size() >= 2) {
+        polygon.shape.push_back(edge[1]);
+        polygon = Polygon(polygon.shape, points);
+        polygons.push_back(polygon);
+    }
 
-    return polygon;
+    edge[0] = tmp_edge[1];
+    edge[1] = tmp_edge[0];
+    e = edge[0];
+    push = true;
+    polygon = Polygon();
+    polygon.shape.push_back(edge[0]);
+    polygon.perimeter = distance_p(points[edge[0]], points[edge[1]]);
+
+    /* loop to create the polygon
+     * 1. using E and V, find the left-most segment
+     *    (that's not exactly 180 degrees from Y)
+     * 2. set variables and continue with the new segment
+     * 3. continue processing until the first point is reached
+     */
+    edges.clear();
+    while(edge[1] != e) { // use e as a test value
+        polygon.shape.push_back(edge[1]);
+        /* initialize test variables */
+        double max = -180.0;
+        int index = -1;
+        Vector E = Vector("E", points[edge[0]], points[edge[1]], -1);
+        edges = edge_search(segments, points[edge[1]].index, points, size);
+
+        /* find the left-most segment */
+        for(i = 0; i < edges.size(); i++) {
+            if(edges[i][1] == edge[0]) { // skip the origin point
+                continue;
+            }
+            Vector V = Vector("V", points[edges[i][0]], points[edges[i][1]]);
+            //V.normalize();
+
+            /* test if the vector is on the left side */
+            if(determinant(E, V) >= 0) {
+                /* test if the vector is possibly the greatest */
+                if((angle(E, V) * 180 / M_PI) > max && (angle(E, V) * 180 / M_PI) < 180) {
+                    max = angle(E, V) * 180 / M_PI;
+                    index = edges[i][1];
+                }
+            }
+            /* test if the vector is on the right side */
+            else {
+                /* test if the vector is possibly the greatest */
+                if((angle(E, V) * -180 / M_PI) > max && (angle(E, V) * 180 / M_PI) < 180) {
+                    max = angle(E, V) * -180 / M_PI;
+                    index = edges[i][1];
+                }
+            }
+        }
+
+        /* return null if the left-most segment was not found */
+        if(max <= -180.0) {
+            push = false;
+            break;
+        }
+
+        /* set variables */
+        edge[0] = edge[1];
+        edge[1] = index;
+        polygon.perimeter += distance_p(points[edge[0]], points[edge[1]]);
+    }
+    if(push && polygon.shape.size() >= 2) {
+        polygon.shape.push_back(edge[1]);
+        polygon = Polygon(polygon.shape, points);
+        polygons.push_back(polygon);
+    }
+
+    return polygons;
 }
 
 /* searches through a vector of shapes for a duplicate

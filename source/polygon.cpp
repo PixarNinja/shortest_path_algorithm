@@ -39,3 +39,32 @@ Polygon::Polygon(const Polygon &S) {
     perimeter = S.perimeter;
     id = S.id;
 }
+
+/* tests if a point is part of the polygon
+ * @param P, the point to test
+ * @return the index of the point if found, -1 otherwise
+ */
+int Polygon::point_match(Point P) {
+    for(int i = 0; i < points.size(); i++) {
+        if(P.equals(points[i])) {
+            return i;
+        }
+    }
+
+    return -1;
+}
+
+/* tests if a segment is part of the polygon
+ * @param beginning, the start index of the segment to test
+ * @param end, the end index of the segment to test
+ * @return the index of the segment if found, -1 otherwise
+ */
+int Polygon::segment_match(int beginning, int end) {
+    for(int i = 0; i < segments.size(); i++) {
+        if(((segments[i][0] == beginning) && (segments[i][1] == end)) || ((segments[i][0] == end) && (segments[i][1] == beginning))) {
+            return i;
+        }
+    }
+
+    return -1;
+}

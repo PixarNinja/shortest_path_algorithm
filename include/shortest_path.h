@@ -64,6 +64,7 @@ double dot_product(Vector V1, Vector V2);
 void print(Vector V, Vector T1, Vector T2, double curvature, double theta, double tao, double tao_distance);
 void memory_error(void);
 vector<Polygon> w_polygon_construction(Point *points, int size, FILE *gnu_files[NUM_FILES]);
+vector<Polygon> tessellate_w_polygon(Polygon S, double interval, Point *points, int size);
 bool test_w_segment(Vector L, double interval, Point *points, int n);
 double determinant(Vector V1, Vector V2);
 vector<Point> generate_w_points(vector<Point> w_points, Vector L, double interval);
@@ -71,7 +72,7 @@ Point minimum_tao_distance(Vector V, Point *points, int size);
 vector<int *> remove_crossing_segments(vector<int *> segments, int s, Point *points, int size);
 vector<int *> fix_overlap(int *test, vector<int *> segments, Point *points);
 bool overlap(Vector V1, Vector V2);
-Polygon create_polygon(int *edge, vector<int *> segments, Point *points, int size);
+vector<Polygon> create_polygon(int *edge, vector<int *> segments, Point *points, int size);
 vector<Polygon> delete_duplicate_polygons(vector<Polygon> polygons, Point *points);
 
 #endif
