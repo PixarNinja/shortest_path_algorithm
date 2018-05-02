@@ -1702,3 +1702,85 @@ vector<Polygon> delete_duplicate_polygons(vector<Polygon> polygons, Point *point
 
     return polygons;
 }
+
+/* finds the convex hull of a given set of points using Graham's scan algorithm
+ * @param points, the set of datapoints
+ * @param size, the size of the points array
+ * @return polygon, the polygon representing the convex hull
+ */
+Polygon find_convex_hull(Point *points, int size) {
+    int i;
+    int j;
+
+    /* find the lowest, right-most point */
+    double min_y = DBL_MAX;
+    double max_x = DBL_MIN;
+    int k = -1;
+    for(i = 0; i < size; i++) {
+        if(points[i].y <= min_y) {
+            /* if the y value is equal to min, check x value */
+            if(points[i].y == min_y) {
+                if(points[i].x > max_x) {
+                    k = i;
+                    max_x = points[i].x;
+                }
+            }
+            /* else it is less than the min, so reset x value */
+            else {
+                k = i;
+                max_x = DBL_MAX;
+            }
+            min_y = points[i].y;
+        }
+    }
+
+    /* create remaining point vector */
+    vector<Point> remaining;
+    for(i = 0; i < size; i++) {
+        if(i != k) {
+            remaining.push_back(points[i]);
+        }
+    }
+
+    /* bubble sort the remaining points by polar-angle */
+    Vector X = Vector("X", points[k], points[k]);
+    X.end.offset(1.0, 0.0);
+    X.refresh();
+    for(i = 0; i < remaining.size(); i++) {
+        if(i == k) {
+            continue;
+        }
+        for(j = size - 1; j > i; j--) {
+            if(j == k) {
+                continue;
+            }
+            Vector A = Vector("A", points[k], remaining[j]);
+            Vector B = Vector("B", points[k], remaining[j - 1]);
+            /* find the polar angle */
+            double curr;
+            if(determinant(X, A) >= 0) {
+                curr = angle(A, V) * 180 / M_PI;
+            }
+            else {
+                curr = 360 - (angle(A, V) * 180 / M_PI);
+            }
+            double prev;
+            if(determinant(X, B) >= 0) {
+                prev = angle(B, V) * 180 / M_PI;
+            }
+            else {
+                prev = 360 - (angle(B, V) * 180 / M_PI);
+            }
+            if(curr > prev) {
+                Point tmp = Point(remaining[j]);
+                remaining[j] = remaining[j - 1];
+                remaining[j - 1] = tmp;
+            }
+        }
+    }
+
+    /* push starting values onto the stack */
+
+    /* search for non-left turns and pop them off */
+
+}

@@ -74,5 +74,6 @@ vector<int *> fix_overlap(int *test, vector<int *> segments, Point *points);
 bool overlap(Vector V1, Vector V2);
 vector<Polygon> create_polygon(int *edge, vector<int *> segments, Point *points, int size);
 vector<Polygon> delete_duplicate_polygons(vector<Polygon> polygons, Point *points);
+Polygon find_convex_hull(Point *points, int size);
 
 #endif
