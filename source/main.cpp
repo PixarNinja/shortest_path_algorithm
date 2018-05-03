@@ -211,7 +211,7 @@ int main(int argc, char *argv[])
     Polygon convex_hull = find_convex_hull(points, size);
 
     /* runs experimental algorithm...*/
-    polygons = construct_w_polygons(convex_hull, points, size, gnu_files);
+    polygons = construct_w_polygons(convex_hull, points, size);
 
     /* delete duplicate polygons */
     polygons = delete_duplicate_polygons(polygons, points);

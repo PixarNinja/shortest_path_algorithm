@@ -842,19 +842,24 @@ void memory_error(void)
     printf("\n\nError assigning memory. Exiting Program. Good Day.\n\n");
 }
 
-/* experimental algorithm... */
-vector<Polygon> construct_w_polygons(Polygon base, Point *points, int size, FILE *gnu_files[NUM_FILES]) {
+/* constructs weslean polygons
+ * @param base, the current hull
+ * @param points, the point array of datapoints
+ * @param size, the size of the array
+ * @return the vector of polygons recursively calculated
+ */
+vector<Polygon> construct_w_polygons(Polygon base, Point *points, int size) {
 
     /////////////////////////////////
     // INITIALIZATION OF VARIABLES //
     /////////////////////////////////
 
+    vector<Polygon> polygons;
     vector<int *> segments = base.segments; // initialize the segments to the base segments
     int *tmp_segment = new int [2];
     int i = 0;
     int j = 0;
     int k = 0;
-    int l = 0;
 
     ////////////////////////
     // START CALCULATIONS //
@@ -885,7 +890,7 @@ vector<Polygon> construct_w_polygons(Polygon base, Point *points, int size, FILE
             }
             Vector L = Vector("L", points[i], points[j]);
             if(segment_match(segments, i, j) == -1) {
-                /* if the line is valid, add it as a segment */
+                /* if the line is valid check for crosses */
                 if(test_w_segment(L, interval, points, size)) {
                     bool push = true;
                     /* check if the segment intersects any of the previously recorded segments */
@@ -930,44 +935,57 @@ vector<Polygon> construct_w_polygons(Polygon base, Point *points, int size, FILE
                         else {
                             segments = fix_overlap(tmp_segment, segments, points);
                         }
+
+                        /* see if new w_polygons were created */
+                        vector<int *> edges;
+                        for(k = 0; k < size; k++) {
+                            /* find the polygon starting at each edge */
+                            edges = edge_search(segments, points[k].index, points, size);
+
+                            /* create the polygon buffer */
+                            vector<Polygon> buff;
+                            for(int *edge : edges) {
+                                vector<Polygon> created = create_polygon(edge, segments, points, size);
+
+                                /* add each polygon to the buffer if it isn't already there */
+                                for(Polygon hull : created) {
+                                    if(hull.id == base.id) {
+                                        continue;
+                                    }
+                                    bool found = false;
+                                    for(Polygon recorded : buff) {
+                                        if(hull.id == recorded.id) {
+                                            found = true;
+                                            break;
+                                        }
+                                    }
+                                    if(!found) {
+                                        buff.push_back(hull);
+                                    }
+                                }
+                            }
+
+                            /* for each polygon in the buffer run the construct_w_polygons function on it as the base */
+                            for(Polygon hull : buff) {
+                                cout << "ADD: " << hull.id << endl;
+//                                vector<Polygon> add = construct_w_polygons(hull, points, size);
+//
+//                                /* push each addition */
+//                                for(Polygon polygon : add) {
+//                                    polygons.push_back(polygon);
+//                                }
+                            }
+                        }
                     }
                 }
             }
         }
     }
 
-    printf("\nFILTERED SEGMENTS:\n");
-    for(i = 0; i < segments.size(); i++) {
-        printf("%d: (%d, %d)\n", i, points[segments[i][0]].index, points[segments[i][1]].index);
-    }
-
-    /* create w_polygons */
-    vector<Polygon> polygons;
-    vector<int *> edges;
-    for(i = 0; i < size; i++) {
-        /* find the polygon starting at each edge */
-        edges = edge_search(segments, points[i].index, points, size);
-        for(int *edge : edges) {
-            vector<Polygon> tmp_polygons = create_polygon(edge, segments, points, size);
-            /* push the polygons if they aren't already pushed and if they aren't the base */
-            for(Polygon polygon : tmp_polygons) {
-                if(polygon.id == base.id) {
-                    continue;
-                }
-                bool push = true;
-                for(j = 0; j < polygons.size(); j++) {
-                    if(polygon.id == polygons[j].id) {
-                        cout << "TEST ID: " << polygon.id << endl;
-                        push = false;
-                        break;
-                    }
-                }
-                if(push) {
-                    polygons.push_back(polygon);
-                }
-            }
-        }
-    }
+//    printf("\nFILTERED SEGMENTS:\n");
+//    for(i = 0; i < segments.size(); i++) {
+//        printf("%d: (%d, %d)\n", i, points[segments[i][0]].index, points[segments[i][1]].index);
+//    }
 
     /* if polygons is empty, push the base */
     if(polygons.size() == 0) {
