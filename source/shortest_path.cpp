@@ -843,13 +843,13 @@ void memory_error(void)
 }
 
 /* experimental algorithm... */
-vector<Polygon> w_polygon_construction(Point *points, int size, FILE *gnu_files[NUM_FILES]) {
+vector<Polygon> construct_w_polygons(Polygon base, Point *points, int size, FILE *gnu_files[NUM_FILES]) {
 
     /////////////////////////////////
     // INITIALIZATION OF VARIABLES //
     /////////////////////////////////
 
-    vector<int *> segments;
+    vector<int *> segments = base.segments; // initialize the segments to the base segments
     int *tmp_segment = new int [2];
     int i = 0;
     int j = 0;
@@ -859,8 +859,6 @@ vector<Polygon> w_polygon_construction(Point *points, int size, FILE *gnu_files[
     ////////////////////////
     // START CALCULATIONS //
     ////////////////////////
-
-    Polygon convex_hull = find_convex_hull(points, size);
 
     /* find smallest line segment */
     double interval = DBL_MAX;
@@ -875,10 +873,11 @@ vector<Polygon> w_polygon_construction(Point *points, int size, FILE *gnu_files[
         }
     }
 
+    /* create the interval based off the smallest segment */
     interval /= 2;
     vector<int *> crosses;
 
-    /* test all line segments */
+    /* test all line segments that aren't in the base */
     for(i = 0; i < size; i++) {
         for(j = 0; j < size; j++) {
             if(i == j) {
@@ -892,7 +891,7 @@ vector<Polygon> w_polygon_construction(Point *points, int size, FILE *gnu_files[
                     /* check if the segment intersects any of the previously recorded segments */
                     for(k = segments.size() - 1; k >= 0; k--) {
                         Vector V = Vector("V", points[segments[k][0]], points[segments[k][1]]);
-                        /* always push overlaps, they are handeled later */
+                        /* check for a non-overlap intersection */
                         if(!overlap(V, L) && intersection(V, L)) {
                             if(segment_match(crosses, segments[k][0], segments[k][1]) == -1) {
                                 crosses.push_back(segments[k]);
@@ -950,11 +949,15 @@ vector<Polygon> w_polygon_construction(Point *points, int size, FILE *gnu_files[
         edges = edge_search(segments, points[i].index, points, size);
         for(int *edge : edges) {
             vector<Polygon> tmp_polygons = create_polygon(edge, segments, points, size);
-            /* push the polygons */
+            /* push the polygons if they aren't already pushed and if they aren't the base */
             for(Polygon polygon : tmp_polygons) {
+                if(polygon.id == base.id) {
+                    continue;
+                }
                 bool push = true;
                 for(j = 0; j < polygons.size(); j++) {
                     if(polygon.id == polygons[j].id) {
+                        cout << "TEST ID: " << polygon.id << endl;
                         push = false;
                         break;
                     }
@@ -966,7 +969,10 @@ vector<Polygon> w_polygon_construction(Point *points, int size, FILE *gnu_files[
         }
     }
 
-    /* TODO: remove the convex hull from the set */
+    /* if polygons is empty, push the base */
+    if(polygons.size() == 0) {
+        polygons.push_back(base);
+    }
 
     return polygons;
 }
@@ -1776,10 +1782,20 @@ Polygon find_convex_hull(Point *points, int size) {
             }
             /* if equal check the vector length */
             else if(curr == prev) {
-                if(A.length < B.length) {
-                    Point tmp = Point(remaining[j]);
-                    remaining[j] = remaining[j - 1];
-                    remaining[j - 1] = tmp;
+                /* check if they lie on a horizontal line */
+                if(A.j == 0.0 && B.j == 0.0) {
+                    if(A.length > B.length) {
+                        Point tmp = Point(remaining[j]);
+                        remaining[j] = remaining[j - 1];
+                        remaining[j - 1] = tmp;
+                    }
+                }
+                else {
+                    if(A.length < B.length) {
+                        Point tmp = Point(remaining[j]);
+                        remaining[j] = remaining[j - 1];
+                        remaining[j - 1] = tmp;
+                    }
                 }
             }
         }
@@ -1825,5 +1841,6 @@ Polygon find_convex_hull(Point *points, int size) {
 
     /* return convex hull */
     Polygon polygon = Polygon(shape, points);
+    cout << "BASE ID: " << polygon.id << endl;
     return polygon;
 }

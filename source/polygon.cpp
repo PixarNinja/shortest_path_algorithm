@@ -14,7 +14,6 @@ Polygon::Polygon() {}
 
 /* constructor: base */
 Polygon::Polygon(std::vector<int> shape, Point *points) {
-    this->shape = shape;
     int i;
     for(i = 0; i < shape.size() - 1; i++) {
         this->points.push_back(points[shape[i]]);
@@ -23,10 +22,42 @@ Polygon::Polygon(std::vector<int> shape, Point *points) {
         tmp[1] = shape[i + 1];
         segments.push_back(tmp);
     }
+    this->points.push_back(points[shape[i]]);
     int *tmp = new int [2];
     tmp[0] = shape[i];
     tmp[1] = shape[0];
     segments.push_back(tmp);
+    this->shape = shape;
+    find_perimeter();
+    find_id();
+}
+
+/* constructor: initialize with segments */
+Polygon::Polygon(std::vector<int> shape, std::vector<int *> segments, Point *points) {
+    int i;
+    for(i = 0; i < segments.size(); i++) {
+        bool found = false;
+        for(Point p : this->points) {
+            if(p.index == points[segments[i][0]].index) {
+                found = true;
+                break;
+            }
+        }
+        if(!found) {
+            this->points.push_back(points[segments[i][0]]);
+        }
+        found = false;
+        for(Point p : this->points) {
+            if(p.index == points[segments[i][1]].index) {
+                found = true;
+                break;
+            }
+        }
+        if(!found) {
+            this->points.push_back(points[segments[i][1]]);
+        }
+    }
+    this->shape = shape;
     find_perimeter();
     find_id();
 }

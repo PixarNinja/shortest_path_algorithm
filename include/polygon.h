@@ -51,6 +51,11 @@ class Polygon {
                         tmp[j] = tmp[j - 1];
                         tmp[j - 1] = tmp_point;
                     }
+                    else if(tmp[j].index == tmp[j - 1].index) {
+                        tmp.erase(tmp.begin() + j);
+                        i = 0;
+                        j = 1;
+                    }
                 }
             }
 
@@ -81,7 +86,7 @@ class Polygon {
         /* constructor: base */
         Polygon(std::vector<int> shape, Point *points);
 
-        /* constructor: segments included */
+        /* constructor: initialize with segments */
         Polygon(std::vector<int> shape, std::vector<int *> segments, Point *points);
 
         /* constructor: clone a Polygon */
