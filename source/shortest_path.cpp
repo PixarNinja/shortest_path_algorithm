@@ -860,6 +860,8 @@ vector<Polygon> w_polygon_construction(Point *points, int size, FILE *gnu_files[
     // START CALCULATIONS //
     ////////////////////////
 
+    Polygon convex_hull = find_convex_hull(points, size);
+
     /* find smallest line segment */
     double interval = DBL_MAX;
     for(i = 0; i < size; i++) {
@@ -1728,17 +1730,19 @@ Polygon find_convex_hull(Point *points, int size) {
             /* else it is less than the min, so reset x value */
             else {
                 k = i;
-                max_x = DBL_MAX;
+                max_x = DBL_MIN;
             }
             min_y = points[i].y;
         }
     }
 
+    cout << "Lowest Point: " << points[k].index << endl;
+
     /* create remaining point vector */
     vector<Point> remaining;
     for(i = 0; i < size; i++) {
         if(i != k) {
-            remaining.push_back(points[i]);
+            remaining.push_back(Point(points[i]));
         }
     }
 
@@ -1747,40 +1751,79 @@ Polygon find_convex_hull(Point *points, int size) {
     X.end.offset(1.0, 0.0);
     X.refresh();
     for(i = 0; i < remaining.size(); i++) {
-        if(i == k) {
-            continue;
-        }
-        for(j = size - 1; j > i; j--) {
-            if(j == k) {
-                continue;
-            }
+        for(j = remaining.size() - 1; j > i; j--) {
             Vector A = Vector("A", points[k], remaining[j]);
             Vector B = Vector("B", points[k], remaining[j - 1]);
             /* find the polar angle */
             double curr;
             if(determinant(X, A) >= 0) {
-                curr = angle(A, V) * 180 / M_PI;
+                curr = angle(A, X) * 180 / M_PI;
             }
             else {
-                curr = 360 - (angle(A, V) * 180 / M_PI);
+                curr = 360 - (angle(A, X) * 180 / M_PI);
             }
             double prev;
             if(determinant(X, B) >= 0) {
-                prev = angle(B, V) * 180 / M_PI;
+                prev = angle(B, X) * 180 / M_PI;
             }
             else {
-                prev = 360 - (angle(B, V) * 180 / M_PI);
+                prev = 360 - (angle(B, X) * 180 / M_PI);
             }
-            if(curr > prev) {
+            if(curr < prev) {
                 Point tmp = Point(remaining[j]);
                 remaining[j] = remaining[j - 1];
                 remaining[j - 1] = tmp;
             }
+            /* if equal check the vector length */
+            else if(curr == prev) {
+                if(A.length < B.length) {
+                    Point tmp = Point(remaining[j]);
+                    remaining[j] = remaining[j - 1];
+                    remaining[j - 1] = tmp;
+                }
+            }
         }
     }
 
+    /* print for debug */
+    printf("REMAINING SORTED: ");
+    for(Point p : remaining) {
+        printf("%d ", p.index);
+    }
+    printf("\n");
+
     /* push starting values onto the stack */
+    vector<Point> stack;
+    stack.push_back(points[k]);
+    stack.push_back(remaining[0]);
+    stack.push_back(remaining[1]);
 
     /* search for non-left turns and pop them off */
+    for(i = 2; i < remaining.size(); i++) {
+        Vector V = Vector("V", stack[stack.size() - 1], stack[stack.size() - 2]); // current line segment
+        Vector T = Vector("T", stack[stack.size() - 1], remaining[i]); // test line segment
+        while(determinant(V, T) > 0) { // look for left turns
+            stack.erase(stack.begin() + stack.size() - 1);
+            if(stack.size() <= 2) {
+                break;
+            }
+            V = Vector("V", stack[stack.size() - 1], stack[stack.size() - 2]); // current line segment
+            T = Vector("T", stack[stack.size() - 1], remaining[i]); // test line segment
+        }
+        stack.push_back(remaining[i]);
+    }
+    stack.push_back(points[k]);
 
+    /* create shape */
+    vector<int> shape;
+    cout << "HULL: ";
+    for(Point p : stack) {
+        shape.push_back(point_match(points, size, p.index));
+        cout << p.index << " ";
+    }
+    cout << endl;
+
+    /* return convex hull */
+    Polygon polygon = Polygon(shape, points);
+    return polygon;
 }

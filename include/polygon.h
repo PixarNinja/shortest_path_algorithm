@@ -81,6 +81,9 @@ class Polygon {
         /* constructor: base */
         Polygon(std::vector<int> shape, Point *points);
 
+        /* constructor: segments included */
+        Polygon(std::vector<int> shape, std::vector<int *> segments, Point *points);
+
         /* constructor: clone a Polygon */
         Polygon(const Polygon &S);
 
