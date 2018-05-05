@@ -12,6 +12,7 @@
 #include <vector>
 #include <string>
 #include "point.h"
+#include "vector.h"
 
 class Polygon {
 
@@ -70,6 +71,33 @@ class Polygon {
             }
         }
 
+        /* returns the determinant between two vectors
+         * @param V1, the first vector
+         * @param V2, the second vector
+         * @return the determinant, i_1*j_2 - j_1*i_2
+         */
+        double determinant(Vector V1, Vector V2) {
+            return ((V1.i * V2.j) - (V2.i * V1.j));
+        }
+
+        /* finds the angle between another vector
+         * @param V1, the first vector
+         * @param V2, the second vector
+         * @return the angle in radians
+         */
+        double angle(Vector V1, Vector V2) {
+            return (acos(dot_product(V1, V2) / (V1.length * V2.length)));
+        }
+
+        /* finds the dot product of two vectors
+         * @param V1, the first vector
+         * @param V2, the second vector
+         * @return the dot product of the vectors
+         */
+        double dot_product(Vector V1, Vector V2) {
+            return ((V1.i * V2.i) + (V1.j * V2.j));
+        }
+
     public:
         std::vector<Point> points;
         std::vector<int> shape;
@@ -96,17 +124,34 @@ class Polygon {
         // METHODS //
         /////////////
 
-        /* tests if a point is part of the polygon
-         * @param P, the point to test
+        /* tests if a point is part of a point array
+         * @param points, the point array to test
+         * @param size, the size of the array
+         * @param vertex, the vertex value to find
          * @return the index of the point if found, -1 otherwise
          */
-        int point_match(Point P);
+        int point_match(Point *points, int size, int vertex);
 
-        /* tests if a segment is part of the polygon
-         * @param V, the segment to test given as a vector
+        /* tests if a segment is part of a segement vector
+         * @param segements, the segment vector to test
+         * @param beginning, the beginning index
+         * @param end, the end index
          * @return the index of the segment if found, -1 otherwise
          */
-        int segment_match(int beginning, int end);
+        int segment_match(std::vector<int *> segments, int beginning, int end);
+
+        /* re-orders the points of the shape into a hull
+         * @param data, the overall point array
+         * @param size, the size of the array
+         */
+        void create_hull(Point *data, int size);
+
+        /* finds if a point is inside of the shape (requires the shape to be sorted as a hull)
+         * @param test, the point to test
+         * @param points, the point array in which the test point exists
+         * @return true if the point is inside the shape, false otherwise
+         */
+        bool contains(Point test, Point *points, int size);
 
 };
 

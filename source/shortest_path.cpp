@@ -882,20 +882,24 @@ vector<Polygon> construct_w_polygons(Polygon base, Point *points, int size) {
     interval /= 2;
     vector<int *> crosses;
 
-    /* test all line segments that aren't in the base */
+    /* test all line segments that are connected to the base but not a part of the base */
     for(i = 0; i < size; i++) {
         for(j = 0; j < size; j++) {
-            if(i == j) {
+            if((i == j) || (segment_match(base.segments, i, j) > -1)) {
                 continue;
             }
+            /* TODO: ensure that there is a point on the base */
             Vector L = Vector("L", points[i], points[j]);
             if(segment_match(segments, i, j) == -1) {
+
                 /* if the line is valid check for crosses */
                 if(test_w_segment(L, interval, points, size)) {
                     bool push = true;
+
                     /* check if the segment intersects any of the previously recorded segments */
                     for(k = segments.size() - 1; k >= 0; k--) {
                         Vector V = Vector("V", points[segments[k][0]], points[segments[k][1]]);
+
                         /* check for a non-overlap intersection */
                         if(!overlap(V, L) && intersection(V, L)) {
                             if(segment_match(crosses, segments[k][0], segments[k][1]) == -1) {
@@ -911,10 +915,12 @@ vector<Polygon> construct_w_polygons(Polygon base, Point *points, int size) {
                             push = false;
                         }
                     }
+
                     /* also check if the segment intersects any of the previously deleted segments */
                     if(push) {
                         for(k = 0; k < crosses.size(); k++) {
                             Vector V = Vector("V", points[crosses[k][0]], points[crosses[k][1]]);
+
                             /* always push overlaps, they are handeled later */
                             if(!overlap(V, L) && intersection(V, L)) {
                                 push = false;
@@ -922,6 +928,7 @@ vector<Polygon> construct_w_polygons(Polygon base, Point *points, int size) {
                             }
                         }
                     }
+
                     /* push the segment if it didn't intersect any other segments */
                     if(push) {
                         /* record segment */
@@ -939,6 +946,7 @@ vector<Polygon> construct_w_polygons(Polygon base, Point *points, int size) {
                         /* see if new w_polygons were created */
                         vector<int *> edges;
                         for(k = 0; k < size; k++) {
+
                             /* find the polygon starting at each edge */
                             edges = edge_search(segments, points[k].index, points, size);
 
@@ -967,7 +975,25 @@ vector<Polygon> construct_w_polygons(Polygon base, Point *points, int size) {
 
                             /* for each polygon in the buffer run the construct_w_polygons function on it as the base */
                             for(Polygon hull : buff) {
-                                cout << "ADD: " << hull.id << endl;
+                                //cout << "BASE: " << base.id << endl;
+                                //cout << "ADD: " << hull.id << endl;
+                                cout << "BASE: ";
+                                for(int s : base.shape) {
+                                    cout << points[s].index << " ";
+                                }
+                                cout << endl;
+                                cout << "OLD HULL: ";
+                                for(int s : hull.shape) {
+                                    cout << points[s].index << " ";
+                                }
+                                cout << endl;
+                                hull.create_hull(points, size); // reorder the polygon's points to create a hull
+                                cout << "NEW HULL: ";
+                                for(int s : hull.shape) {
+                                    cout << points[s].index << " ";
+                                }
+                                cout << endl;
+                                cout << endl;
 //                                vector<Polygon> add = construct_w_polygons(hull, points, size);
 //
 //                                /* push each addition */
@@ -991,59 +1017,6 @@ vector<Polygon> construct_w_polygons(Polygon base, Point *points, int size) {
     if(polygons.size() == 0) {
         polygons.push_back(base);
     }
-
-    return polygons;
-}
-
-/* 
- *
- */
-vector<Polygon> tessellate_w_polygon(Polygon S, double interval, Point *points, int size) {
-    vector<Polygon> polygons; // will either contain 1 or 2 polygons
-    Polygon S1;
-    Polygon S2;
-    int i;
-    int j;
-
-    /* test all line segments */
-    vector<int *> w_segments;
-    for(i = 0; i < size; i++) {
-        for(j = 0; j < size; j++) {
-            /* only check segments that touch part of the polygon */
-            if(i == j && ((S.point_match(points[i]) > -1) || (S.point_match(points[j]) > -1))) {
-                continue;
-            }
-            Vector L = Vector("L", points[i], points[j]);
-            /* record the segment if it is a w_segment */
-            if(test_w_segment(L, interval, points, size)) {
-                if(segment_match(w_segments, i, j) == -1) {
-                    int *tmp_segment = new int [2];
-                    tmp_segment[0] = i;
-                    tmp_segment[1] = j;
-                    w_segments.push_back(tmp_segment);
-                }
-            }
-        }
-    }
-
-    /* bubble sort segments by length, smallest to largest */
-    for(i = 0; i < w_segments.size(); i++) {
-        for(j = w_segments.size() - 1; j > i; j--) {
-            double curr = distance_p(points[w_segments[j - 1][0]], points[w_segments[j - 1][1]]);
-            double next = distance_p(points[w_segments[j][0]], points[w_segments[j][1]]);
-            if(next < curr) {
-                int *tmp = new int [2];
-                tmp[0] = w_segments[j][0];
-                tmp[1] = w_segments[j][1];
-                w_segments[j][0] = w_segments[j - 1][0];
-                w_segments[j][1] = w_segments[j - 1][1];
-                w_segments[j - 1][0] = tmp[0];
-                w_segments[j - 1][1] = tmp[1];
-            }
-        }
-    }
-
-    /* if any w_segment intersects with another w_segment, create and test polygons */
 
     return polygons;
 }
@@ -1531,16 +1504,25 @@ bool overlap(Vector V1, Vector V2) {
  */
 vector<Polygon> create_polygon(int *edge, vector<int *> segments, Point *points, int size) {
     int i = 0;
+    int *tmp_segment;
     int e = edge[0];
     int *tmp_edge = new int [2];
     tmp_edge[0] = edge[0];
     tmp_edge[1] = edge[1];
+    vector<int *> processed; // holds processed segments
     vector<Polygon> polygons;
 
-    bool push = true;
+    /* initialize visited array */
+    int *visited = new int [size];
+    for(i = 0; i < size; i++) {
+        visited[i] = 0;
+    }
+
+    /* visit the starting point */
+    visited[edge[1]] = 1;
+
     Polygon polygon = Polygon();
     polygon.shape.push_back(edge[0]);
-    polygon.perimeter = distance_p(points[edge[0]], points[edge[1]]);
 
     /* loop to create the polygon
      * 1. using E and V, find the left-most segment
@@ -1550,16 +1532,24 @@ vector<Polygon> create_polygon(int *edge, vector<int *> segments, Point *points,
      */
     vector<int *> edges;
     while(edge[1] != e) { // use e as a test value
+        /* add edge(s) to processed segments and polygon*/
+        tmp_segment = new int [2];
+        tmp_segment[0] = edge[0];
+        tmp_segment[1] = edge[1];
+        processed.push_back(tmp_segment);
         polygon.shape.push_back(edge[1]);
+
         /* initialize test variables */
         double max = -180.0;
         int index = -1;
         Vector E = Vector("E", points[edge[0]], points[edge[1]], -1);
+
+        /* calculate edges off of edge[1] */
         edges = edge_search(segments, points[edge[1]].index, points, size);
 
         /* find the left-most segment */
         for(i = 0; i < edges.size(); i++) {
-            if(edges[i][1] == edge[0]) { // skip the origin point
+            if((visited[edges[i][1]] == 1) || (edges[i][1] == edge[0])) { // skip visited points
                 continue;
             }
             Vector V = Vector("V", points[edges[i][0]], points[edges[i][1]]);
@@ -1583,30 +1573,51 @@ vector<Polygon> create_polygon(int *edge, vector<int *> segments, Point *points,
             }
         }
 
-        /* return null if the left-most segment was not found */
-        if(max <= -180.0) {
-            push = false;
-            break;
+        /* pop the point off if the left-most segment was not found */
+        if(index == -1) {
+            polygon.shape.pop_back();
+            edge[1] = edge[0];
+            edge[0] = polygon.shape.back();
+            /* test if the shape has been popped off to nothing */
+            if(edge[0] == edge[1]) {
+                polygon = Polygon();
+                break;
+            }
         }
-
-        /* set variables */
-        edge[0] = edge[1];
-        edge[1] = index;
-        polygon.perimeter += distance_p(points[edge[0]], points[edge[1]]);
+        else {
+            /* set variables */
+            visited[index] = 1;
+            edge[0] = edge[1];
+            edge[1] = index;
+        }
     }
-    if(push && polygon.shape.size() >= 2) {
+
+    if(polygon.shape.size() >= 2) {
+        tmp_segment = new int [2];
+        tmp_segment[0] = edge[0];
+        tmp_segment[1] = edge[1];
+        processed.push_back(tmp_segment);
         polygon.shape.push_back(edge[1]);
-        polygon = Polygon(polygon.shape, points);
+        polygon = Polygon(polygon.shape, processed, points); // add all processed segments
         polygons.push_back(polygon);
     }
 
     edge[0] = tmp_edge[1];
     edge[1] = tmp_edge[0];
     e = edge[0];
-    push = true;
+    processed.clear();
+
+    /* initialize visited array */
+    visited = new int [size];
+    for(i = 0; i < size; i++) {
+        visited[i] = 0;
+    }
+
+    /* visit the starting point */
+    visited[edge[1]] = 1;
+
     polygon = Polygon();
     polygon.shape.push_back(edge[0]);
-    polygon.perimeter = distance_p(points[edge[0]], points[edge[1]]);
 
     /* loop to create the polygon
      * 1. using E and V, find the left-most segment
@@ -1614,18 +1625,25 @@ vector<Polygon> create_polygon(int *edge, vector<int *> segments, Point *points,
      * 2. set variables and continue with the new segment
      * 3. continue processing until the first point is reached
      */
-    edges.clear();
     while(edge[1] != e) { // use e as a test value
+        /* add edge(s) to processed segments and polygon*/
+        tmp_segment = new int [2];
+        tmp_segment[0] = edge[0];
+        tmp_segment[1] = edge[1];
+        processed.push_back(tmp_segment);
         polygon.shape.push_back(edge[1]);
+
         /* initialize test variables */
         double max = -180.0;
         int index = -1;
         Vector E = Vector("E", points[edge[0]], points[edge[1]], -1);
+
+        /* calculate edges off of edge[1] */
         edges = edge_search(segments, points[edge[1]].index, points, size);
 
         /* find the left-most segment */
         for(i = 0; i < edges.size(); i++) {
-            if(edges[i][1] == edge[0]) { // skip the origin point
+            if((visited[edges[i][1]] == 1) || (edges[i][1] == edge[0])) { // skip visited points
                 continue;
             }
             Vector V = Vector("V", points[edges[i][0]], points[edges[i][1]]);
@@ -1649,20 +1667,32 @@ vector<Polygon> create_polygon(int *edge, vector<int *> segments, Point *points,
             }
         }
 
-        /* return null if the left-most segment was not found */
-        if(max <= -180.0) {
-            push = false;
-            break;
+        /* pop the point off if the left-most segment was not found */
+        if(index == -1) {
+            polygon.shape.pop_back();
+            edge[1] = edge[0];
+            edge[0] = polygon.shape.back();
+            /* test if the shape has been popped off to nothing */
+            if(edge[0] == edge[1]) {
+                polygon = Polygon();
+                break;
+            }
         }
-
-        /* set variables */
-        edge[0] = edge[1];
-        edge[1] = index;
-        polygon.perimeter += distance_p(points[edge[0]], points[edge[1]]);
+        else {
+            /* set variables */
+            visited[index] = 1;
+            edge[0] = edge[1];
+            edge[1] = index;
+        }
     }
-    if(push && polygon.shape.size() >= 2) {
+
+    if(polygon.shape.size() >= 2) {
+        tmp_segment = new int [2];
+        tmp_segment[0] = edge[0];
+        tmp_segment[1] = edge[1];
+        processed.push_back(tmp_segment);
         polygon.shape.push_back(edge[1]);
-        polygon = Polygon(polygon.shape, points);
+        polygon = Polygon(polygon.shape, processed, points); // add all processed segments
         polygons.push_back(polygon);
     }
 
@@ -1760,8 +1790,6 @@ Polygon find_convex_hull(Point *points, int size) {
         }
     }
 
-    cout << "Lowest Point: " << points[k].index << endl;
-
     /* create remaining point vector */
     vector<Point> remaining;
     for(i = 0; i < size; i++) {
@@ -1819,13 +1847,6 @@ Polygon find_convex_hull(Point *points, int size) {
         }
     }
 
-    /* print for debug */
-    printf("REMAINING SORTED: ");
-    for(Point p : remaining) {
-        printf("%d ", p.index);
-    }
-    printf("\n");
-
     /* push starting values onto the stack */
     vector<Point> stack;
     stack.push_back(points[k]);
@@ -1850,15 +1871,11 @@ Polygon find_convex_hull(Point *points, int size) {
 
     /* create shape */
     vector<int> shape;
-    cout << "HULL: ";
     for(Point p : stack) {
         shape.push_back(point_match(points, size, p.index));
-        cout << p.index << " ";
     }
-    cout << endl;
 
     /* return convex hull */
     Polygon polygon = Polygon(shape, points);
-    cout << "BASE ID: " << polygon.id << endl;
     return polygon;
 }
