@@ -134,90 +134,82 @@ void Polygon::create_hull(Point *data, int size) {
         }
     }
 
-    /* create remaining point std::vector */
+    /* create remaining point vector */
     std::vector<Point> remaining;
     for(i = 0; i < points.size(); i++) {
-        if(i != k) {
-            remaining.push_back(Point(points[i]));
+        if(i == k) {
+            continue;
         }
+        remaining.push_back(Point(points[i]));
     }
+    remaining.push_back(Point(points[k])); // ensure points[k] is not first
 
-    /* bubble sort the remaining points by polar-angle */
-    Vector X = Vector("X", points[k], points[k]);
-    X.end.offset(1.0, 0.0);
-    X.refresh();
-    for(i = 0; i < remaining.size(); i++) {
-        for(j = remaining.size() - 1; j > i; j--) {
-            Vector A = Vector("A", points[k], remaining[j]);
-            Vector B = Vector("B", points[k], remaining[j - 1]);
-            /* find the polar angle */
-            double curr;
-            if(determinant(X, A) >= 0) {
-                curr = angle(A, X) * 180 / M_PI;
-            }
-            else {
-                curr = 360 - (angle(A, X) * 180 / M_PI);
-            }
-            double prev;
-            if(determinant(X, B) >= 0) {
-                prev = angle(B, X) * 180 / M_PI;
-            }
-            else {
-                prev = 360 - (angle(B, X) * 180 / M_PI);
-            }
-            if(curr < prev) {
-                Point tmp = Point(remaining[j]);
-                remaining[j] = remaining[j - 1];
-                remaining[j - 1] = tmp;
-            }
-            /* if equal check the std::vector length */
-            else if(curr == prev) {
-                /* TODO: FIX! check if they lie on a horizontal line */
-                if(A.j == 0.0 && B.j == 0.0) {
-                    if(A.length > B.length) {
-                        Point tmp = Point(remaining[j]);
-                        remaining[j] = remaining[j - 1];
-                        remaining[j - 1] = tmp;
-                    }
-                }
-                else {
-                    if(A.length < B.length) {
-                        Point tmp = Point(remaining[j]);
-                        remaining[j] = remaining[j - 1];
-                        remaining[j - 1] = tmp;
-                    }
-                }
+    /* create initial segment by searching for the least polar angle */
+    Vector M = Vector("M", points[k], remaining[0]);
+    int m = 0;
+    for(i = 1; i < remaining.size() - 1; i++) {
+        Vector X = Vector("X", points[k], points[k]);
+        X.end.offset(1.0, 0.0);
+        X.refresh();
+        Vector V = Vector("V", points[k], remaining[i]);
+
+        /* find the minimum polar angle from points[k] */
+        double curr = angle(X, V) * 180 / M_PI; // we know that det(X, V) >= 0
+        double min = angle(X, M) * 180 / M_PI; // we know that det(X, M) >= 0
+        if(curr < min) {
+            M = Vector(V);
+            m = i;
+        }
+        else if(curr == min) { // if equal check the vector length
+            if(V.length < M.length) {
+                M = Vector(V);
+                m = i;
             }
         }
     }
+    
+    /* remove M.end from remaining vector */
+    remaining.erase(remaining.begin() + m);
 
-    /* push starting values onto the stack */
-    std::vector<Point> stack;
-    stack.push_back(points[k]);
-    stack.push_back(remaining[0]);
-    stack.push_back(remaining[1]);
-
-    /* search for non-left turns and pop them off */
-    for(i = 2; i < remaining.size(); i++) {
-        Vector V = Vector("V", stack[stack.size() - 1], stack[stack.size() - 2]); // current line segment
-        Vector T = Vector("T", stack[stack.size() - 1], remaining[i]); // test line segment
-        while(determinant(V, T) > 0) { // look for left turns
-            printf("POPPING: %d\n", stack.back().index);
-            stack.erase(stack.begin() + stack.size() - 1);
-            if(stack.size() <= 2) {
-                break;
-            }
-            V = Vector("V", stack[stack.size() - 1], stack[stack.size() - 2]); // current line segment
-            T = Vector("T", stack[stack.size() - 1], remaining[i]); // test line segment
-        }
-        stack.push_back(remaining[i]);
-    }
-    stack.push_back(points[k]);
-
-    /* create shape off of original points (function parameter) */
+    /* push starting point */
     std::vector<int> shape;
-    for(Point p : stack) {
-        shape.push_back(point_match(data, size, p.index));
+    shape.push_back(k);
+    shape.push_back(point_match(data, size, M.end.index));
+
+    /* loop until we reach points[k] */
+    while(remaining.size() > 0 && !M.end.equals(points[k])) {
+        /* normalize and shift */
+        Vector T1 = Vector(M);
+        T1.start = T1.end;
+        T1.end.offset(T1.i, T1.j);
+        T1.normalize();
+        T1.refresh();
+
+        /* find the next segment */
+        M = Vector("M", T1.start, remaining[0]);
+        m = 0;
+        for(i = 1; i < remaining.size(); i++) {
+            /* find the minimum polar angle from points[k] */
+            Vector T2 = Vector("T2", T1.start, remaining[i]);
+            double curr = angle(T1, T2) * 180 / M_PI; // we know that det(T1, T2) >= 0
+            double min = angle(T1, M) * 180 / M_PI; // we know that det(T1, M) >= 0
+            if(curr < min) {
+                M = Vector(T2);
+                m = i;
+            }
+            else if(curr == min) { // if equal check the vector length
+                if(T2.length < M.length) {
+                    M = Vector(T2);
+                    m = i;
+                }
+            }
+        }
+
+        /* remove M.end from remaining vector */
+        remaining.erase(remaining.begin() + m);
+
+        /* push found point */
+        shape.push_back(point_match(data, size, M.end.index));
     }
 
     /* store new shape */

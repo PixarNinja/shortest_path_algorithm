@@ -855,7 +855,7 @@ vector<Polygon> construct_w_polygons(Polygon base, Point *points, int size) {
     /////////////////////////////////
 
     vector<Polygon> polygons;
-    vector<int *> segments = base.segments; // initialize the segments to the base segments
+    vector<int *> w_segments = base.segments; // initialize the w_segments to the base segments
     int *tmp_segment = new int [2];
     int i = 0;
     int j = 0;
@@ -882,28 +882,27 @@ vector<Polygon> construct_w_polygons(Polygon base, Point *points, int size) {
     interval /= 2;
     vector<int *> crosses;
 
-    /* test all line segments that are connected to the base but not a part of the base */
+    /* test all line segments that are inside the base but not a part of the base */
     for(i = 0; i < size; i++) {
         for(j = 0; j < size; j++) {
-            if((i == j) || (segment_match(base.segments, i, j) > -1)) {
+            if((i == j) || (segment_match(base.segments, i, j) > -1) || !base.contains(points[i], points, size) || !base.contains(points[j], points, size)) {
                 continue;
             }
-            /* TODO: ensure that there is a point on the base */
             Vector L = Vector("L", points[i], points[j]);
-            if(segment_match(segments, i, j) == -1) {
+            if(segment_match(w_segments, i, j) == -1) {
 
                 /* if the line is valid check for crosses */
                 if(test_w_segment(L, interval, points, size)) {
                     bool push = true;
 
-                    /* check if the segment intersects any of the previously recorded segments */
-                    for(k = segments.size() - 1; k >= 0; k--) {
-                        Vector V = Vector("V", points[segments[k][0]], points[segments[k][1]]);
+                    /* check if the segment intersects any of the previously recorded w_segments */
+                    for(k = w_segments.size() - 1; k >= 0; k--) {
+                        Vector V = Vector("V", points[w_segments[k][0]], points[w_segments[k][1]]);
 
                         /* check for a non-overlap intersection */
                         if(!overlap(V, L) && intersection(V, L)) {
-                            if(segment_match(crosses, segments[k][0], segments[k][1]) == -1) {
-                                crosses.push_back(segments[k]);
+                            if(segment_match(crosses, w_segments[k][0], w_segments[k][1]) == -1) {
+                                crosses.push_back(w_segments[k]);
                             }
                             if(segment_match(crosses, i, j) == -1) {
                                 int *tmp_segment = new int [2];
@@ -911,12 +910,12 @@ vector<Polygon> construct_w_polygons(Polygon base, Point *points, int size) {
                                 tmp_segment[1] = j;
                                 crosses.push_back(tmp_segment);
                             }
-                            segments.erase(segments.begin() + k);
+                            w_segments.erase(w_segments.begin() + k);
                             push = false;
                         }
                     }
 
-                    /* also check if the segment intersects any of the previously deleted segments */
+                    /* also check if the segment intersects any of the previously deleted w_segments */
                     if(push) {
                         for(k = 0; k < crosses.size(); k++) {
                             Vector V = Vector("V", points[crosses[k][0]], points[crosses[k][1]]);
@@ -929,80 +928,104 @@ vector<Polygon> construct_w_polygons(Polygon base, Point *points, int size) {
                         }
                     }
 
-                    /* push the segment if it didn't intersect any other segments */
+                    /* push the segment if it didn't intersect any other w_segments */
                     if(push) {
                         /* record segment */
                         tmp_segment = new int [2];
                         tmp_segment[0] = i;
                         tmp_segment[1] = j;
 
-                        if(segments.size() == 0) {
-                            segments.push_back(tmp_segment);
+                        if(w_segments.size() == 0) {
+                            w_segments.push_back(tmp_segment);
                         }
                         else {
-                            segments = fix_overlap(tmp_segment, segments, points);
-                        }
-
-                        /* see if new w_polygons were created */
-                        vector<int *> edges;
-                        for(k = 0; k < size; k++) {
-
-                            /* find the polygon starting at each edge */
-                            edges = edge_search(segments, points[k].index, points, size);
-
-                            /* create the polygon buffer */
-                            vector<Polygon> buff;
-                            for(int *edge : edges) {
-                                vector<Polygon> created = create_polygon(edge, segments, points, size);
-
-                                /* add each polygon to the buffer if it isn't already there */
-                                for(Polygon hull : created) {
-                                    if(hull.id == base.id) {
-                                        continue;
-                                    }
-                                    bool found = false;
-                                    for(Polygon recorded : buff) {
-                                        if(hull.id == recorded.id) {
-                                            found = true;
-                                            break;
-                                        }
-                                    }
-                                    if(!found) {
-                                        buff.push_back(hull);
-                                    }
-                                }
-                            }
-
-                            /* for each polygon in the buffer run the construct_w_polygons function on it as the base */
-                            for(Polygon hull : buff) {
-                                //cout << "BASE: " << base.id << endl;
-                                //cout << "ADD: " << hull.id << endl;
-                                cout << "BASE: ";
-                                for(int s : base.shape) {
-                                    cout << points[s].index << " ";
-                                }
-                                cout << endl;
-                                cout << "OLD HULL: ";
-                                for(int s : hull.shape) {
-                                    cout << points[s].index << " ";
-                                }
-                                cout << endl;
-                                hull.create_hull(points, size); // reorder the polygon's points to create a hull
-                                cout << "NEW HULL: ";
-                                for(int s : hull.shape) {
-                                    cout << points[s].index << " ";
-                                }
-                                cout << endl;
-                                cout << endl;
-//                                vector<Polygon> add = construct_w_polygons(hull, points, size);
-//
-//                                /* push each addition */
-//                                for(Polygon polygon : add) {
-//                                    polygons.push_back(polygon);
-//                                }
-                            }
+                            w_segments = fix_overlap(tmp_segment, w_segments, points);
                         }
                     }
+                }
+            }
+        }
+    }
+
+    /* bubble sort the pushed w_segments */
+    for(i = 0; i < w_segments.size(); i++) {
+        for(j = w_segments.size() - 1; j > i; j--) {
+            Vector A = Vector("A", points[w_segments[j][0]], points[w_segments[j][1]]);
+            Vector B = Vector("B", points[w_segments[j - 1][0]], points[w_segments[j - 1][1]]);
+            if(A.length > B.length) {
+                int *tmp = new int [2];
+                tmp[0] = w_segments[j][0];
+                tmp[1] = w_segments[j][1];
+                w_segments[j] = w_segments[j - 1];
+                w_segments[j - 1] = tmp;
+            }
+        }
+    }
+
+    vector<int *> segments = base.segments;
+
+    /* add each w_segment in order, and check for w_polygons */
+    for(i = 0; i < w_segments.size(); i++) {
+        if(segment_match(segments, w_segments[i][0], w_segments[i][1]) == -1) {
+            segments.push_back(w_segments[i]);
+
+            /* see if new w_polygons were created */
+            vector<int *> edges;
+            for(k = 0; k < size; k++) {
+
+                /* find the polygon starting at each edge */
+                edges = edge_search(segments, points[k].index, points, size);
+
+                /* create the polygon buffer */
+                vector<Polygon> buff;
+                for(int *edge : edges) {
+                    vector<Polygon> created = create_polygon(edge, segments, points, size);
+
+                    /* add each polygon to the buffer if it isn't already there */
+                    for(Polygon hull : created) {
+                        if(hull.id == base.id) {
+                            continue;
+                        }
+                        bool found = false;
+                        for(Polygon recorded : buff) {
+                            if(hull.id == recorded.id) {
+                                found = true;
+                                break;
+                            }
+                        }
+                        if(!found) {
+                            buff.push_back(hull);
+                        }
+                    }
+                }
+
+                /* for each polygon in the buffer run the construct_w_polygons function on it as the base */
+                for(Polygon hull : buff) {
+                    //cout << "BASE: " << base.id << endl;
+                    //cout << "ADD: " << hull.id << endl;
+                    cout << "BASE: ";
+                    for(int s : base.shape) {
+                        cout << points[s].index << " ";
+                    }
+                    cout << endl;
+                    cout << "OLD HULL: ";
+                    for(int s : hull.shape) {
+                        cout << points[s].index << " ";
+                    }
+                    cout << endl;
+                    hull.create_hull(points, size); // reorder the polygon's points to create a hull
+                    cout << "NEW HULL: ";
+                    for(int s : hull.shape) {
+                        cout << points[s].index << " ";
+                    }
+                    cout << endl;
+                    cout << endl;
+        //            vector<Polygon> add = construct_w_polygons(hull, points, size);
+        //
+        //            /* push each addition */
+        //            for(Polygon polygon : add) {
+        //                polygons.push_back(polygon);
+        //            }
                 }
             }
         }
@@ -1793,86 +1816,79 @@ Polygon find_convex_hull(Point *points, int size) {
     /* create remaining point vector */
     vector<Point> remaining;
     for(i = 0; i < size; i++) {
-        if(i != k) {
-            remaining.push_back(Point(points[i]));
+        if(i == k) {
+            continue;
         }
+        remaining.push_back(Point(points[i]));
     }
+    remaining.push_back(Point(points[k])); // ensure points[k] is not first
 
-    /* bubble sort the remaining points by polar-angle */
-    Vector X = Vector("X", points[k], points[k]);
-    X.end.offset(1.0, 0.0);
-    X.refresh();
-    for(i = 0; i < remaining.size(); i++) {
-        for(j = remaining.size() - 1; j > i; j--) {
-            Vector A = Vector("A", points[k], remaining[j]);
-            Vector B = Vector("B", points[k], remaining[j - 1]);
-            /* find the polar angle */
-            double curr;
-            if(determinant(X, A) >= 0) {
-                curr = angle(A, X) * 180 / M_PI;
-            }
-            else {
-                curr = 360 - (angle(A, X) * 180 / M_PI);
-            }
-            double prev;
-            if(determinant(X, B) >= 0) {
-                prev = angle(B, X) * 180 / M_PI;
-            }
-            else {
-                prev = 360 - (angle(B, X) * 180 / M_PI);
-            }
-            if(curr < prev) {
-                Point tmp = Point(remaining[j]);
-                remaining[j] = remaining[j - 1];
-                remaining[j - 1] = tmp;
-            }
-            /* if equal check the vector length */
-            else if(curr == prev) {
-                /* check if they lie on a horizontal line */
-                if(A.j == 0.0 && B.j == 0.0) {
-                    if(A.length > B.length) {
-                        Point tmp = Point(remaining[j]);
-                        remaining[j] = remaining[j - 1];
-                        remaining[j - 1] = tmp;
-                    }
-                }
-                else {
-                    if(A.length < B.length) {
-                        Point tmp = Point(remaining[j]);
-                        remaining[j] = remaining[j - 1];
-                        remaining[j - 1] = tmp;
-                    }
-                }
+    /* create initial segment by searching for the least polar angle */
+    Vector M = Vector("M", points[k], remaining[0]);
+    int m = 0;
+    for(i = 1; i < remaining.size() - 1; i++) {
+        Vector X = Vector("X", points[k], points[k]);
+        X.end.offset(1.0, 0.0);
+        X.refresh();
+        Vector V = Vector("V", points[k], remaining[i]);
+
+        /* find the minimum polar angle from points[k] */
+        double curr = angle(X, V) * 180 / M_PI; // we know that det(X, V) >= 0
+        double min = angle(X, M) * 180 / M_PI; // we know that det(X, M) >= 0
+        if(curr < min) {
+            M = Vector(V);
+            m = i;
+        }
+        else if(curr == min) { // if equal check the vector length
+            if(V.length < M.length) {
+                M = Vector(V);
+                m = i;
             }
         }
     }
+    
+    /* remove M.end from remaining vector */
+    remaining.erase(remaining.begin() + m);
 
-    /* push starting values onto the stack */
-    vector<Point> stack;
-    stack.push_back(points[k]);
-    stack.push_back(remaining[0]);
-    stack.push_back(remaining[1]);
-
-    /* search for non-left turns and pop them off */
-    for(i = 2; i < remaining.size(); i++) {
-        Vector V = Vector("V", stack[stack.size() - 1], stack[stack.size() - 2]); // current line segment
-        Vector T = Vector("T", stack[stack.size() - 1], remaining[i]); // test line segment
-        while(determinant(V, T) > 0) { // look for left turns
-            stack.erase(stack.begin() + stack.size() - 1);
-            if(stack.size() <= 2) {
-                break;
-            }
-            V = Vector("V", stack[stack.size() - 1], stack[stack.size() - 2]); // current line segment
-            T = Vector("T", stack[stack.size() - 1], remaining[i]); // test line segment
-        }
-        stack.push_back(remaining[i]);
-    }
-    stack.push_back(points[k]);
-
-    /* create shape */
+    /* push starting point */
     vector<int> shape;
-    for(Point p : stack) {
-        shape.push_back(point_match(points, size, p.index));
+    shape.push_back(k);
+    shape.push_back(point_match(points, size, M.end.index));
+
+    /* loop until we reach points[k] */
+    while(remaining.size() > 0 && !M.end.equals(points[k])) {
+        /* normalize and shift */
+        Vector T1 = Vector(M);
+        T1.start = T1.end;
+        T1.end.offset(T1.i, T1.j);
+        T1.normalize();
+        T1.refresh();
+
+        /* find the next segment */
+        M = Vector("M", T1.start, remaining[0]);
+        m = 0;
+        for(i = 1; i < remaining.size(); i++) {
+            /* find the minimum polar angle from points[k] */
+            Vector T2 = Vector("T2", T1.start, remaining[i]);
+            double curr = angle(T1, T2) * 180 / M_PI; // we know that det(T1, T2) >= 0
+            double min = angle(T1, M) * 180 / M_PI; // we know that det(T1, M) >= 0
+            if(curr < min) {
+                M = Vector(T2);
+                m = i;
+            }
+            else if(curr == min) { // if equal check the vector length
+                if(T2.length < M.length) {
+                    M = Vector(T2);
+                    m = i;
+                }
+            }
+        }
+
+        /* remove M.end from remaining vector */
+        remaining.erase(remaining.begin() + m);
+
+        /* push found point */
+        shape.push_back(point_match(points, size, M.end.index));
     }
 
     /* return convex hull */
