@@ -848,7 +848,7 @@ void memory_error(void)
  * @param size, the size of the array
  * @return the vector of polygons recursively calculated
  */
-vector<Polygon> construct_w_polygons(Polygon base, Point *points, int size) {
+vector<Polygon> construct_w_polygons(Polygon base, Point *points, int size, vector<string> processed_hulls) {
 
     /////////////////////////////////
     // INITIALIZATION OF VARIABLES //
@@ -885,12 +885,13 @@ vector<Polygon> construct_w_polygons(Polygon base, Point *points, int size) {
     /* test all line segments that are inside the base but not a part of the base */
     for(i = 0; i < size; i++) {
         for(j = 0; j < size; j++) {
-            if((i == j) || (segment_match(base.segments, i, j) > -1) || !base.contains(points[i], points, size) || !base.contains(points[j], points, size)) {
+            if((i == j) ||
+               (segment_match(base.segments, i, j) > -1) || // check if the segment is part of the base
+               (!base.contains(points[i], points, size) || !base.contains(points[j], points, size))) { // check if either point is not in the base
                 continue;
             }
             Vector L = Vector("L", points[i], points[j]);
             if(segment_match(w_segments, i, j) == -1) {
-
                 /* if the line is valid check for crosses */
                 if(test_w_segment(L, interval, points, size)) {
                     bool push = true;
@@ -965,8 +966,14 @@ vector<Polygon> construct_w_polygons(Polygon base, Point *points, int size) {
     vector<int *> segments = base.segments;
 
     /* add each w_segment in order, and check for w_polygons */
+    cout << "BASE: ";
+    for(int s : base.shape) {
+        cout << points[s].index << " ";
+    }
+    cout << endl;
     for(i = 0; i < w_segments.size(); i++) {
-        if(segment_match(segments, w_segments[i][0], w_segments[i][1]) == -1) {
+        if((segment_match(segments, w_segments[i][0], w_segments[i][1]) == -1) && (segment_match(base.segments, w_segments[i][0], w_segments[i][1]) == -1)) {
+            printf("ADDED: <%d, %d>\n", points[w_segments[i][0]].index, points[w_segments[i][1]].index);
             segments.push_back(w_segments[i]);
 
             /* see if new w_polygons were created */
@@ -986,6 +993,16 @@ vector<Polygon> construct_w_polygons(Polygon base, Point *points, int size) {
                         if(hull.id == base.id) {
                             continue;
                         }
+
+                        /* do not add the hull if it has been added before */
+                        if(find(processed_hulls.begin(), processed_hulls.end(), hull.id) != processed_hulls.end()) {
+                            continue;
+                        }
+                        else {
+                            processed_hulls.push_back(hull.id);
+                        }
+
+                        /* check if we should add the hull to the buffer */
                         bool found = false;
                         for(Polygon recorded : buff) {
                             if(hull.id == recorded.id) {
@@ -1001,31 +1018,19 @@ vector<Polygon> construct_w_polygons(Polygon base, Point *points, int size) {
 
                 /* for each polygon in the buffer run the construct_w_polygons function on it as the base */
                 for(Polygon hull : buff) {
-                    //cout << "BASE: " << base.id << endl;
-                    //cout << "ADD: " << hull.id << endl;
-                    cout << "BASE: ";
-                    for(int s : base.shape) {
-                        cout << points[s].index << " ";
-                    }
-                    cout << endl;
-                    cout << "OLD HULL: ";
-                    for(int s : hull.shape) {
-                        cout << points[s].index << " ";
-                    }
-                    cout << endl;
                     hull.create_hull(points, size); // reorder the polygon's points to create a hull
-                    cout << "NEW HULL: ";
+                    cout << "CREATED HULL: ";
                     for(int s : hull.shape) {
                         cout << points[s].index << " ";
                     }
                     cout << endl;
                     cout << endl;
-        //            vector<Polygon> add = construct_w_polygons(hull, points, size);
-        //
-        //            /* push each addition */
-        //            for(Polygon polygon : add) {
-        //                polygons.push_back(polygon);
-        //            }
+                    vector<Polygon> add = construct_w_polygons(hull, points, size, processed_hulls);
+        
+                    /* push each addition */
+                    for(Polygon polygon : add) {
+                        polygons.push_back(polygon);
+                    }
                 }
             }
         }
@@ -1814,7 +1819,7 @@ Polygon find_convex_hull(Point *points, int size) {
     }
 
     /* create remaining point vector */
-    vector<Point> remaining;
+    std::vector<Point> remaining;
     for(i = 0; i < size; i++) {
         if(i == k) {
             continue;
@@ -1851,7 +1856,7 @@ Polygon find_convex_hull(Point *points, int size) {
     remaining.erase(remaining.begin() + m);
 
     /* push starting point */
-    vector<int> shape;
+    std::vector<int> shape;
     shape.push_back(k);
     shape.push_back(point_match(points, size, M.end.index));
 
@@ -1891,7 +1896,7 @@ Polygon find_convex_hull(Point *points, int size) {
         shape.push_back(point_match(points, size, M.end.index));
     }
 
-    /* return convex hull */
+    /* return polygon */
     Polygon polygon = Polygon(shape, points);
     return polygon;
 }

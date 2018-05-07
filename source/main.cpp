@@ -206,12 +206,13 @@ int main(int argc, char *argv[])
     ////////////////////////
     // CALCULATE POLYGONS //
     ////////////////////////
-    //
+
     /* find the convex hull */
     Polygon convex_hull = find_convex_hull(points, size);
 
     /* runs experimental algorithm...*/
-    polygons = construct_w_polygons(convex_hull, points, size);
+    vector<string> processed_hulls;
+    polygons = construct_w_polygons(convex_hull, points, size, processed_hulls);
 
     /* delete duplicate polygons */
     polygons = delete_duplicate_polygons(polygons, points);

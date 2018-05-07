@@ -25,10 +25,6 @@ Polygon::Polygon(std::vector<int> shape, Point *points) {
         segments.push_back(tmp);
     }
     this->points.push_back(points[shape[i]]);
-    int *tmp = new int [2];
-    tmp[0] = shape[i];
-    tmp[1] = shape[0];
-    segments.push_back(tmp);
     this->shape = shape;
     find_perimeter();
     find_id();
@@ -59,6 +55,7 @@ Polygon::Polygon(std::vector<int> shape, std::vector<int *> segments, Point *poi
             this->points.push_back(points[segments[i][1]]);
         }
     }
+    this->segments = segments;
     this->shape = shape;
     find_perimeter();
     find_id();
@@ -173,7 +170,7 @@ void Polygon::create_hull(Point *data, int size) {
 
     /* push starting point */
     std::vector<int> shape;
-    shape.push_back(k);
+    shape.push_back(point_match(data, size, points[k].index));
     shape.push_back(point_match(data, size, M.end.index));
 
     /* loop until we reach points[k] */

@@ -63,7 +63,7 @@ double distance_v(Vector V1, Vector V2);
 double dot_product(Vector V1, Vector V2);
 void print(Vector V, Vector T1, Vector T2, double curvature, double theta, double tao, double tao_distance);
 void memory_error(void);
-vector<Polygon> construct_w_polygons(Polygon base, Point *points, int size);
+vector<Polygon> construct_w_polygons(Polygon base, Point *points, int size, vector<string> processed_hulls);
 bool test_w_segment(Vector L, double interval, Point *points, int n);
 double determinant(Vector V1, Vector V2);
 vector<Point> generate_w_points(vector<Point> w_points, Vector L, double interval);
