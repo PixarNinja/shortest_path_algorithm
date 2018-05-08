@@ -842,20 +842,20 @@ void memory_error(void)
     printf("\n\nError assigning memory. Exiting Program. Good Day.\n\n");
 }
 
-/* constructs weslean polygons
- * @param base, the current hull
+/* initializes weslean polygon construction
  * @param points, the point array of datapoints
  * @param size, the size of the array
- * @return the vector of polygons recursively calculated
+ * @return the vector of polygons calculated
  */
-vector<Polygon> construct_w_polygons(Polygon base, Point *points, int size, vector<string> processed_hulls) {
+vector<Polygon> init_w_polygons(Point *points, int size) {
 
     /////////////////////////////////
     // INITIALIZATION OF VARIABLES //
     /////////////////////////////////
 
     vector<Polygon> polygons;
-    vector<int *> w_segments = base.segments; // initialize the w_segments to the base segments
+    Polygon convex_hull = find_convex_hull(points, size);
+    vector<int *> w_segments = convex_hull.segments;
     int *tmp_segment = new int [2];
     int i = 0;
     int j = 0;
@@ -885,9 +885,7 @@ vector<Polygon> construct_w_polygons(Polygon base, Point *points, int size, vect
     /* test all line segments that are inside the base but not a part of the base */
     for(i = 0; i < size; i++) {
         for(j = 0; j < size; j++) {
-            if((i == j) ||
-               (segment_match(base.segments, i, j) > -1) || // check if the segment is part of the base
-               (!base.contains(points[i], points, size) || !base.contains(points[j], points, size))) { // check if either point is not in the base
+            if(i == j) {
                 continue;
             }
             Vector L = Vector("L", points[i], points[j]);
@@ -948,22 +946,79 @@ vector<Polygon> construct_w_polygons(Polygon base, Point *points, int size, vect
         }
     }
 
-    /* bubble sort the pushed w_segments */
-    for(i = 0; i < w_segments.size(); i++) {
-        for(j = w_segments.size() - 1; j > i; j--) {
-            Vector A = Vector("A", points[w_segments[j][0]], points[w_segments[j][1]]);
-            Vector B = Vector("B", points[w_segments[j - 1][0]], points[w_segments[j - 1][1]]);
-            if(A.length > B.length) {
-                int *tmp = new int [2];
-                tmp[0] = w_segments[j][0];
-                tmp[1] = w_segments[j][1];
-                w_segments[j] = w_segments[j - 1];
-                w_segments[j - 1] = tmp;
+    /* create shapes and add them to the initial hull vector */
+    vector<Polygon> w_polygons;
+    vector<string> processed_hulls;
+
+    /* find the polygon starting at each edge */
+    for(int *segment : w_segments) {
+        /* find edges off of points[segment[0]] and points[segment[1]] */
+        int index;
+        vector<int *> edges;
+        index = points[segment[0]].index;
+        edges = edge_search(w_segments, index, points, size);
+        
+        for(int *edge : edges) {
+            /* store created polygons */
+            vector<Polygon> created = create_polygon(edge, w_segments, points, size);
+
+            /* add each hull to w_polygons if it isn't already added */
+            for(Polygon hull : created) {
+                /* skip the convex hull */
+                if(hull.id == convex_hull.id) {
+                    continue;
+                }
+
+                /* check if we should add the hull to the w_polygons vector */
+                if(find(processed_hulls.begin(), processed_hulls.end(), hull.id) == processed_hulls.end()) {
+                    w_polygons.push_back(hull);
+                    processed_hulls.push_back(hull.id);
+                }
+            }
+        }
+
+        index = points[segment[1]].index;
+        edges = edge_search(w_segments, index, points, size);
+        
+        for(int *edge : edges) {
+            /* store created polygons */
+            vector<Polygon> created = create_polygon(edge, w_segments, points, size);
+
+            /* add each hull to w_polygons if it isn't already added */
+            for(Polygon hull : created) {
+                if(hull.id == convex_hull.id) {
+                    continue;
+                }
+
+                /* check if we should add the hull to the w_polygons vector */
+                if(find(processed_hulls.begin(), processed_hulls.end(), hull.id) != processed_hulls.end()) {
+                    continue;
+                }
+                else {
+                    w_polygons.push_back(hull);
+                    processed_hulls.push_back(hull.id);
+                }
             }
         }
     }
 
-    vector<int *> segments = base.segments;
+    return w_polygons;
+}
+
+/* constructs weslean polygons
+ * @param base, the current hull
+ * @param points, the point array of datapoints
+ * @param size, the size of the array
+ * @param processed_hulls, the vector of hulls to ensure uniqueness
+ * @return the vector of polygons recursively calculated
+ */
+vector<Polygon> construct_w_polygons(Polygon base, Point *points, int size, vector<string> processed_hulls) {
+    int i = 0;
+    int j = 0;
+    int k = 0;
+    
+    vector<Polygon> polygons;
+    vector<int *> w_segments = base.segments;
 
     /* add each w_segment in order, and check for w_polygons */
     cout << "BASE: ";
@@ -972,21 +1027,21 @@ vector<Polygon> construct_w_polygons(Polygon base, Point *points, int size, vect
     }
     cout << endl;
     for(i = 0; i < w_segments.size(); i++) {
-        if((segment_match(segments, w_segments[i][0], w_segments[i][1]) == -1) && (segment_match(base.segments, w_segments[i][0], w_segments[i][1]) == -1)) {
+        if((segment_match(w_segments, w_segments[i][0], w_segments[i][1]) == -1) && (segment_match(base.segments, w_segments[i][0], w_segments[i][1]) == -1)) {
             printf("ADDED: <%d, %d>\n", points[w_segments[i][0]].index, points[w_segments[i][1]].index);
-            segments.push_back(w_segments[i]);
+            w_segments.push_back(w_segments[i]);
 
             /* see if new w_polygons were created */
             vector<int *> edges;
             for(k = 0; k < size; k++) {
 
                 /* find the polygon starting at each edge */
-                edges = edge_search(segments, points[k].index, points, size);
+                edges = edge_search(w_segments, points[k].index, points, size);
 
                 /* create the polygon buffer */
                 vector<Polygon> buff;
                 for(int *edge : edges) {
-                    vector<Polygon> created = create_polygon(edge, segments, points, size);
+                    vector<Polygon> created = create_polygon(edge, w_segments, points, size);
 
                     /* add each polygon to the buffer if it isn't already there */
                     for(Polygon hull : created) {
