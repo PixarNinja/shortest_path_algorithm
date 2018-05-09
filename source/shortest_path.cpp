@@ -791,12 +791,6 @@ double angle(Vector V1, Vector V2) {
     return (acos(dot_product(V1, V2) / (V1.length * V2.length)));
 }
 
-/* calculates distance given index and structure */
-double tao_distance(Vector V, double curvature, double theta)
-{
-    return (V.length + curvature + theta);
-}
-
 /* calculates distance given two points
  * @param P1, the start point
  * @param P2, the end point
@@ -861,9 +855,18 @@ vector<Polygon> init_w_polygons(Point *points, int size) {
     int j = 0;
     int k = 0;
 
-    ////////////////////////
-    // START CALCULATIONS //
-    ////////////////////////
+    /////////////////////////////
+    // CHECK SIMPLE SHAPE CASE //
+    /////////////////////////////
+
+    if(convex_hull.shape.size() - 1 == size) {
+        polygons.push_back(convex_hull);
+        return polygons;
+    }
+
+    //////////////////////////
+    // CALCULATE W-SEGMENTS //
+    //////////////////////////
 
     /* find smallest line segment */
     double interval = DBL_MAX;
@@ -921,6 +924,12 @@ vector<Polygon> init_w_polygons(Point *points, int size) {
 
                             /* always push overlaps, they are handeled later */
                             if(!overlap(V, L) && intersection(V, L)) {
+                                if(segment_match(crosses, i, j) == -1) {
+                                    int *tmp_segment = new int [2];
+                                    tmp_segment[0] = i;
+                                    tmp_segment[1] = j;
+                                    crosses.push_back(tmp_segment);
+                                }
                                 push = false;
                                 break;
                             }
@@ -946,58 +955,87 @@ vector<Polygon> init_w_polygons(Point *points, int size) {
         }
     }
 
-    /* create shapes and add them to the initial hull vector */
+    //////////////////////////
+    // CREATE INITIAL HULLS //
+    //////////////////////////
+
     vector<Polygon> w_polygons;
+    vector<Polygon> initial_polygons;
+    vector<int> processed_points;
     vector<string> processed_hulls;
 
     /* find the polygon starting at each edge */
     for(int *segment : w_segments) {
-        /* find edges off of points[segment[0]] and points[segment[1]] */
         int index;
         vector<int *> edges;
-        index = points[segment[0]].index;
-        edges = edge_search(w_segments, index, points, size);
-        
-        for(int *edge : edges) {
-            /* store created polygons */
-            vector<Polygon> created = create_polygon(edge, w_segments, points, size);
 
-            /* add each hull to w_polygons if it isn't already added */
-            for(Polygon hull : created) {
-                /* skip the convex hull */
-                if(hull.id == convex_hull.id) {
-                    continue;
-                }
+        /* process each index */
+        for(i = 0; i < 2; i++) {
+            index = points[segment[i]].index;
 
-                /* check if we should add the hull to the w_polygons vector */
-                if(find(processed_hulls.begin(), processed_hulls.end(), hull.id) == processed_hulls.end()) {
-                    w_polygons.push_back(hull);
-                    processed_hulls.push_back(hull.id);
+            /* check if the index is already processed */
+            if(find(processed_points.begin(), processed_points.end(), index) == processed_points.end()) {
+                processed_points.push_back(index);
+                edges = edge_search(w_segments, index, points, size);
+                
+                for(int *edge : edges) {
+                    /* store created polygons */
+                    vector<Polygon> created = create_polygons(edge, w_segments, points, size);
+
+                    /* add each hull to w_polygons if it isn't already added */
+                    for(Polygon hull : created) {
+                        /* skip the convex hull */
+                        if(hull.id == convex_hull.id) {
+                            continue;
+                        }
+
+                        /* check if we should add the hull to the w_polygons vector */
+                        if(find(processed_hulls.begin(), processed_hulls.end(), hull.id) == processed_hulls.end()) {
+                            initial_polygons.push_back(hull);
+                            processed_hulls.push_back(hull.id);
+                        }
+                    }
                 }
             }
         }
+    }
 
-        index = points[segment[1]].index;
-        edges = edge_search(w_segments, index, points, size);
-        
-        for(int *edge : edges) {
-            /* store created polygons */
-            vector<Polygon> created = create_polygon(edge, w_segments, points, size);
+    /////////////////////////////////
+    // PROCESS CROSSING W-SEGMENTS //
+    /////////////////////////////////
 
-            /* add each hull to w_polygons if it isn't already added */
-            for(Polygon hull : created) {
-                if(hull.id == convex_hull.id) {
-                    continue;
-                }
+    /* bubble sort crosses for later processing */
+    for(i = 0; i < crosses.size(); i++) {
+        for(j = crosses.size() - 1; j > i; j--) {
+            if(distance_p(points[crosses[j][0]], points[crosses[j][1]]) < distance_p(points[crosses[j - 1][0]], points[crosses[j - 1][1]])) {
+                int *tmp_segment = new int [2];
+                tmp_segment[0] = crosses[j][0];
+                tmp_segment[1] = crosses[j][1];
+                crosses[j] = crosses[j - 1];
+                crosses[j - 1] = tmp_segment;
+            }
+        }
+    }
 
-                /* check if we should add the hull to the w_polygons vector */
-                if(find(processed_hulls.begin(), processed_hulls.end(), hull.id) != processed_hulls.end()) {
-                    continue;
-                }
-                else {
-                    w_polygons.push_back(hull);
-                    processed_hulls.push_back(hull.id);
-                }
+    printf("CROSSES:\n");
+    for(int *cross : crosses) {
+        printf("<%d, %d>\n", points[cross[0]].index, points[cross[1]].index);
+    }
+
+    /* recursively generate other w_polygons off initial hulls */
+    vector<string> added_hulls;
+    for(Polygon hull : initial_polygons) {
+        vector<Polygon> created = construct_w_polygons(hull, points, size, processed_hulls, crosses);
+        if(created.size() <= 1) {
+            if(find(added_hulls.begin(), added_hulls.end(), hull.id) == added_hulls.end()) {
+                w_polygons.push_back(hull);
+                added_hulls.push_back(hull.id);
+            }
+        }
+        for(Polygon p : created) {
+            if(find(processed_hulls.begin(), processed_hulls.end(), p.id) == processed_hulls.end()) {
+                w_polygons.push_back(p);
+                processed_hulls.push_back(p.id);
             }
         }
     }
@@ -1005,103 +1043,180 @@ vector<Polygon> init_w_polygons(Point *points, int size) {
     return w_polygons;
 }
 
-/* constructs weslean polygons
+/* constructs weslean polygons given a hull to work off of
  * @param base, the current hull
  * @param points, the point array of datapoints
  * @param size, the size of the array
  * @param processed_hulls, the vector of hulls to ensure uniqueness
+ * @param crosses, a vector of all crosses calculated in init
  * @return the vector of polygons recursively calculated
  */
-vector<Polygon> construct_w_polygons(Polygon base, Point *points, int size, vector<string> processed_hulls) {
+vector<Polygon> construct_w_polygons(Polygon base, Point *points, int size, vector<string> processed_hulls, vector<int *> crosses) {
     int i = 0;
     int j = 0;
     int k = 0;
-    
-    vector<Polygon> polygons;
+
+    vector<Polygon> w_polygons;
     vector<int *> w_segments = base.segments;
 
-    /* add each w_segment in order, and check for w_polygons */
+    /* add each w_cross in order, and check for w_polygons */
     cout << "BASE: ";
     for(int s : base.shape) {
         cout << points[s].index << " ";
     }
     cout << endl;
-    for(i = 0; i < w_segments.size(); i++) {
-        if((segment_match(w_segments, w_segments[i][0], w_segments[i][1]) == -1) && (segment_match(base.segments, w_segments[i][0], w_segments[i][1]) == -1)) {
-            printf("ADDED: <%d, %d>\n", points[w_segments[i][0]].index, points[w_segments[i][1]].index);
-            w_segments.push_back(w_segments[i]);
 
-            /* see if new w_polygons were created */
-            vector<int *> edges;
-            for(k = 0; k < size; k++) {
+    vector<int *> filtered;
+    for(i = 0; i < crosses.size(); i++) {
+        vector<int *> base_segments = w_segments;
+        /* make sure the segment is contained within the polygon */
+        Point start = points[point_match(points, size, crosses[i][0])];
+        if((segment_match(w_segments, crosses[i][0], crosses[i][1]) == -1) && base.contains(points[crosses[i][0]], points, size) && base.contains(points[crosses[i][1]], points, size)) {
+            filtered.push_back(crosses[i]);
+        }
+    }
 
-                /* find the polygon starting at each edge */
-                edges = edge_search(w_segments, points[k].index, points, size);
+    /* check if there is a cross for this base */
+    if(filtered.size() == 0) {
+        w_polygons.push_back(base);
+        return w_polygons;
+    }
+    if(filtered.size() == 1) {
+        vector<Polygon> created = create_polygons(filtered[0], w_segments, points, size);
+        w_polygons.push_back(created[0]);
+        w_polygons.push_back(created[1]);
+        return w_polygons;
+    }
 
-                /* create the polygon buffer */
-                vector<Polygon> buff;
-                for(int *edge : edges) {
-                    vector<Polygon> created = create_polygon(edge, w_segments, points, size);
+    /* find the crosses and process them */
+    for(i = 0; i < crosses.size(); i++) {
+        vector<int *> base_segments = w_segments;
+        /* make sure the segment is contained within the polygon */
+        Point start = points[point_match(points, size, crosses[i][0])];
+        if((segment_match(w_segments, crosses[i][0], crosses[i][1]) == -1) && base.contains(points[crosses[i][0]], points, size) && base.contains(points[crosses[i][1]], points, size)) {
+            Vector L = Vector("L", points[crosses[i][0]], points[crosses[i][1]]);
 
-                    /* add each polygon to the buffer if it isn't already there */
+            /* fix crosses when encountered */
+            printf("CHECKING: <%d, %d>\n", points[crosses[i][0]].index, points[crosses[i][1]].index);
+            for(j = 0; j < w_segments.size(); j++) {
+                Vector V = Vector("V", points[w_segments[j][0]], points[w_segments[j][1]]);
+
+                /* check for a non-overlap intersection */
+                if(!overlap(V, L) && intersection(V, L)) {
+                    printf("FIXING CROSS: <%d, %d>, <%d, %d>\n", points[crosses[i][0]].index, points[crosses[i][1]].index, points[w_segments[j][0]].index, points[w_segments[j][1]].index);
+                    int *segment = new int [2];
+                    int *segment_copy = new int [2];
+                    segment[0] = segment_copy[0] = w_segments[j][0];
+                    segment[1] = segment_copy[1] = w_segments[j][1];
+                    int *cross = new int[2];
+                    int *cross_copy = new int[2];
+                    cross[0] = cross_copy[0] = crosses[i][0];
+                    cross[1] = cross_copy[1] = crosses[i][1];
+
+                    w_segments = base.segments; // reset w_segments
+                    w_segments.push_back(segment);
+                    w_segments.push_back(cross);
+                    vector<Polygon> first;
+                    vector<Polygon> second;
+                    vector<Polygon> created;
+                    Polygon S1;
+                    Polygon S2;
+
+                    //TODO: handle dangling crosses
+
+                    /* process first crossing edge for the first polygon */
+                    first = create_polygons(cross, w_segments, points, size); // use first segment
+                    if(first.size() == 1) { // dangling cross
+                        w_segments = base_segments;
+                        break;
+                    }
+
+                    /* store the polygon with the greatest perimeter */
+                    if(first[0].perimeter > first[1].perimeter) {
+                        S1 = first[0];
+                    }
+                    else {
+                        S1 = first[1];
+                    }
+
+                    /* process second crossing edge for the second polygon */
+                    second = create_polygons(segment, w_segments, points, size); // use first segment
+                    if(second.size() == 1) { // dangling cross
+                        w_segments = base_segments;
+                        break;
+                    }
+
+                    /* store the polygon with the greatest perimeter */
+                    if(second[0].perimeter > second[1].perimeter) {
+                        S2 = second[0];
+                    }
+                    else {
+                        S2 = second[1];
+                    }
+
+                    /* keep the polygon with the smallest perimeter */
+                    //TODO: DEBUG!
+                    if(S1.perimeter < S2.perimeter) {
+                        created = first;
+                    }
+                    else {
+                        created = second;
+                    }
+
+                    vector<int *> new_crosses;
+                    for(k = 0; k < crosses.size(); k++) {
+                        if(k != segment_match(crosses, cross_copy[0], cross_copy[1]) && k != segment_match(crosses, segment_copy[0], segment_copy[1])) {
+                            new_crosses.push_back(crosses[k]);
+                        }
+                    }
+
+                    /* add each hull to w_polygons if it isn't already added */
                     for(Polygon hull : created) {
+                        /* skip the convex hull */
                         if(hull.id == base.id) {
                             continue;
                         }
 
-                        /* do not add the hull if it has been added before */
-                        if(find(processed_hulls.begin(), processed_hulls.end(), hull.id) != processed_hulls.end()) {
-                            continue;
-                        }
-                        else {
+                        /* check if we should add the hull to the w_polygons vector */
+                        if(find(processed_hulls.begin(), processed_hulls.end(), hull.id) == processed_hulls.end()) {
+                            /* recursively generate inner w_polygons */
+                            cout << "CREATED HULL: " << hull.id << endl;
+                            vector<Polygon> constructed = construct_w_polygons(hull, points, size, processed_hulls, new_crosses);
                             processed_hulls.push_back(hull.id);
-                        }
 
-                        /* check if we should add the hull to the buffer */
-                        bool found = false;
-                        for(Polygon recorded : buff) {
-                            if(hull.id == recorded.id) {
-                                found = true;
-                                break;
+                            /* add polygons */
+                            vector<Polygon> added;
+                            vector<string> added_ids;
+                            if(constructed.size() == 0) {
+                                added.push_back(hull);
+                            }
+                            else {
+                                for(Polygon p : constructed) {
+                                    cout << "NEW... " << p.id << endl;
+                                    if(find(added_ids.begin(), added_ids.end(), p.id) == added_ids.end()) {
+                                        added.push_back(p);
+                                        added_ids.push_back(p.id);
+                                    }
+                                }
+                            }
+
+                            for(Polygon p : added) {
+                                cout << "PUSHING: " << p.id << endl;
+                                w_polygons.push_back(p);
                             }
                         }
-                        if(!found) {
-                            buff.push_back(hull);
-                        }
                     }
-                }
 
-                /* for each polygon in the buffer run the construct_w_polygons function on it as the base */
-                for(Polygon hull : buff) {
-                    hull.create_hull(points, size); // reorder the polygon's points to create a hull
-                    cout << "CREATED HULL: ";
-                    for(int s : hull.shape) {
-                        cout << points[s].index << " ";
-                    }
-                    cout << endl;
-                    cout << endl;
-                    vector<Polygon> add = construct_w_polygons(hull, points, size, processed_hulls);
-        
-                    /* push each addition */
-                    for(Polygon polygon : add) {
-                        polygons.push_back(polygon);
-                    }
+                    return w_polygons;
                 }
             }
+
+            /* add the cross if it didn't cross any w_segments */
+            w_segments.push_back(crosses[i]);
         }
     }
 
-//    printf("\nFILTERED SEGMENTS:\n");
-//    for(i = 0; i < segments.size(); i++) {
-//        printf("%d: (%d, %d)\n", i, points[segments[i][0]].index, points[segments[i][1]].index);
-//    }
-
-    /* if polygons is empty, push the base */
-    if(polygons.size() == 0) {
-        polygons.push_back(base);
-    }
-
-    return polygons;
+    return w_polygons;
 }
 
 /* tests if a weslean segment is valid
@@ -1285,9 +1400,7 @@ Point minimum_tao_distance(Vector V, Point *points, int size) {
         }
         theta = angle_t(tao);
         curvature = calculate_curvature(V, T, tao);
-        //tao_dist[i] = tao_distance(Vector("T'", V.start, p), curvature, theta);
         tao_dist[i] = Vector("T'", V.start, p).length;
-        //printf("%d -> %d: %0.3lf + %0.3lf + %0.3lf = %0.3lf\n", V.start.index, p.index, distance_p(V.start, p), curvature, theta, tao_dist[i]);
     }
     /* find the least tao_distance */
     double curr = tao_dist[0];
@@ -1585,7 +1698,7 @@ bool overlap(Vector V1, Vector V2) {
  * @param size, the size of the point array
  * @return the generated polygons
  */
-vector<Polygon> create_polygon(int *edge, vector<int *> segments, Point *points, int size) {
+vector<Polygon> create_polygons(int *edge, vector<int *> segments, Point *points, int size) {
     int i = 0;
     int *tmp_segment;
     int e = edge[0];
