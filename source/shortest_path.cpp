@@ -818,16 +818,20 @@ double dot_product(Vector V1, Vector V2) {
     return ((V1.i * V2.i) + (V1.j * V2.j));
 }
 
-/* prints curvature structure for debugging */
-void print(Vector V, Vector T1, Vector T2, double curvature, double theta, double tao, double tao_distance)
-{
-    printf("V: %d[0](%lf, %lf), %d[1](%lf, %lf), <%lf, %lf>, |V| = %lf\n", V.start.index, V.start.x, V.start.y, V.end.index, V.end.x, V.end.y, V.i, V.j, V.length);
-    printf("T1: point[0](%lf, %lf), point[1](%lf, %lf), <%lf, %lf>, |T1| = %lf\n", T1.start.x, T1.start.y, T1.end.x, T1.end.y, T1.i, T1.j, T1.length);
-    printf("T2: point[0](%lf, %lf), point[1](%lf, %lf), <%lf, %lf>, |T2| = %lf\n", T2.start.x, T2.start.y, T2.end.x, T2.end.y, T2.i, T2.j, T2.length);
-    printf("curvature: %lf; ", curvature);
-    printf("angle = %lf; ", theta * 180 / M_PI);
-    printf("tao = %lf; ", tao);
-    printf("tao-distance = %lf\n\n", tao_distance);
+/* finds the projection_V1(V2) of two vectors
+ * @param V1, the first vector
+ * @param V2, the second vector
+ * @return projection_V1(V2)
+ */
+Vector projection(Vector V1, Vector V2) {
+    double coeff = (dot_product(V1, V2) / (V1.length * V1.length));
+    double i = V1.i * coeff;
+    double j = V1.j * coeff;
+    Vector result = Vector(V1);
+    result.end = Point(result.start);
+    result.end.offset(i, j);
+    result.refresh();
+    return result;
 }
 
 /* prints to the terminal if there is an error assigning memory */
@@ -1017,11 +1021,6 @@ vector<Polygon> init_w_polygons(Point *points, int size) {
         }
     }
 
-    printf("CROSSES:\n");
-    for(int *cross : crosses) {
-        printf("<%d, %d>\n", points[cross[0]].index, points[cross[1]].index);
-    }
-
     /* recursively generate other w_polygons off initial hulls */
     vector<string> added_hulls;
     for(Polygon hull : initial_polygons) {
@@ -1056,6 +1055,11 @@ vector<Polygon> construct_w_polygons(Polygon base, Point *points, int size, vect
     int j = 0;
     int k = 0;
 
+    printf("CROSSES:\n");
+    for(int *cross : crosses) {
+        printf("<%d, %d>\n", points[cross[0]].index, points[cross[1]].index);
+    }
+
     vector<Polygon> w_polygons;
     vector<int *> w_segments = base.segments;
 
@@ -1070,11 +1074,16 @@ vector<Polygon> construct_w_polygons(Polygon base, Point *points, int size, vect
     for(i = 0; i < crosses.size(); i++) {
         vector<int *> base_segments = w_segments;
         /* make sure the segment is contained within the polygon */
-        Point start = points[point_match(points, size, crosses[i][0])];
         if((segment_match(w_segments, crosses[i][0], crosses[i][1]) == -1) && base.contains(points[crosses[i][0]], points, size) && base.contains(points[crosses[i][1]], points, size)) {
             filtered.push_back(crosses[i]);
         }
     }
+
+    cout << "FILTERED: ";
+    for(int *s : filtered) {
+        cout << "<" << points[s[0]].index << ", " << points[s[1]].index << "> ";
+    }
+    cout << endl;
 
     /* check if there is a cross for this base */
     if(filtered.size() == 0) {
@@ -1083,9 +1092,15 @@ vector<Polygon> construct_w_polygons(Polygon base, Point *points, int size, vect
     }
     if(filtered.size() == 1) {
         vector<Polygon> created = create_polygons(filtered[0], w_segments, points, size);
-        w_polygons.push_back(created[0]);
-        w_polygons.push_back(created[1]);
-        return w_polygons;
+        if(created.size() <= 1) { // dangling case
+            w_polygons.push_back(base);
+            return w_polygons;
+        }
+        else {
+            w_polygons.push_back(created[0]);
+            w_polygons.push_back(created[1]);
+            return w_polygons;
+        }
     }
 
     /* find the crosses and process them */
@@ -1114,7 +1129,6 @@ vector<Polygon> construct_w_polygons(Polygon base, Point *points, int size, vect
                     cross[1] = cross_copy[1] = crosses[i][1];
 
                     w_segments = base.segments; // reset w_segments
-                    w_segments.push_back(segment);
                     w_segments.push_back(cross);
                     vector<Polygon> first;
                     vector<Polygon> second;
@@ -1126,7 +1140,7 @@ vector<Polygon> construct_w_polygons(Polygon base, Point *points, int size, vect
 
                     /* process first crossing edge for the first polygon */
                     first = create_polygons(cross, w_segments, points, size); // use first segment
-                    if(first.size() == 1) { // dangling cross
+                    if(first.size() <= 1) { // dangling cross
                         w_segments = base_segments;
                         break;
                     }
@@ -1139,9 +1153,12 @@ vector<Polygon> construct_w_polygons(Polygon base, Point *points, int size, vect
                         S1 = first[1];
                     }
 
+                    w_segments = base.segments; // reset w_segments
+                    w_segments.push_back(segment);
+
                     /* process second crossing edge for the second polygon */
                     second = create_polygons(segment, w_segments, points, size); // use first segment
-                    if(second.size() == 1) { // dangling cross
+                    if(second.size() <= 1) { // dangling cross
                         w_segments = base_segments;
                         break;
                     }
@@ -1698,9 +1715,12 @@ bool overlap(Vector V1, Vector V2) {
  * @param size, the size of the point array
  * @return the generated polygons
  */
-vector<Polygon> create_polygons(int *edge, vector<int *> segments, Point *points, int size) {
+vector<Polygon> create_polygons(int *input_edge, vector<int *> segments, Point *points, int size) {
     int i = 0;
     int *tmp_segment;
+    int *edge = new int [2]; // initialize copy
+    edge[0] = input_edge[0];
+    edge[1] = input_edge[1];
     int e = edge[0];
     int *tmp_edge = new int [2];
     tmp_edge[0] = edge[0];

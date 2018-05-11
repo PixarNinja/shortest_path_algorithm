@@ -60,7 +60,7 @@ double angle_t(double tao);
 double distance_p(Point P1, Point P2);
 double distance_v(Vector V1, Vector V2);
 double dot_product(Vector V1, Vector V2);
-void print(Vector V, Vector T1, Vector T2, double curvature, double theta, double tao, double tao_distance);
+Vector projection(Vector V1, Vector V2);
 void memory_error(void);
 vector<Polygon> init_w_polygons(Point *points, int size);
 vector<Polygon> construct_w_polygons(Polygon base, Point *points, int size, vector<string> processed_hulls, vector<int *> crosses);

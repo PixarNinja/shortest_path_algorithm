@@ -98,6 +98,22 @@ class Polygon {
             return ((V1.i * V2.i) + (V1.j * V2.j));
         }
 
+        /* finds the projection_V1(V2) of two vectors
+         * @param V1, the first vector
+         * @param V2, the second vector
+         * @return projection_V1(V2)
+         */
+        Vector projection(Vector V1, Vector V2) {
+            double coeff = (dot_product(V1, V2) / (V1.length * V1.length));
+            double i = V1.i * coeff;
+            double j = V1.j * coeff;
+            Vector result = Vector(V1);
+            result.end = Point(result.start);
+            result.end.offset(i, j);
+            result.refresh();
+            return result;
+        }
+
     public:
         std::vector<Point> points;
         std::vector<int> shape;
