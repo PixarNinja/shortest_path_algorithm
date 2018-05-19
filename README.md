@@ -31,7 +31,7 @@ contour.
 ```
 cmake .
 make
-./shortest_path -f datapoint_file [-o output_file]
+./shortest_path -f <datapoint_file> [-o <output_file>]
 ```
 
 ## Test Files
