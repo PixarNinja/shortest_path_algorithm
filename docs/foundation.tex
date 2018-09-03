@@ -1,0 +1,132 @@
+\documentclass[12pt]{article}
+\usepackage[margin=1.0in]{geometry}
+
+\title{Foundations of the Shortest Path Algorithm}
+\author{
+Mark Wesley Harris
+}
+\date{\today}
+
+\begin{document}
+\maketitle
+
+\section{Introduction}\label{sec:intro}
+This document breifly explains the theoretical concepts behind the
+Shortest Path Algorithm developed in this repository. This algorithm attempts
+to solve the Traveling Salesman Problem, with the input of a 2D graph of datapoints
+represented on a Cartesian coordinate system.
+
+\section{Theoretical Concepts}\label{sec:theory}
+My algorithm is based upon many theoretical concepts I have discovered through
+research and experimentation. They are explained below in different sections.
+
+\subsection{Input Requirements}\label{subsec:req}
+There are some requirements that must be met by the input to this algorithm.
+These are outlined below:
+\begin{enumerate}
+\item Data must be represented on a 2D Cartesian plane
+\item The weights between vertices must be the distance between them
+(i.e. the weight between pionts $p:(x_1, y_1)$ and $q:(x_2, y_2)$ is $\sqrt((x_1 - x_2)^2 + (y_1 - y_2)^2)$)
+\end{enumerate}
+
+\subsection{Definitions}\label{subsec:def}
+\begin{itemize}
+\item $(x,y)$: the definition of a point with coordinates $(x,y)$.
+\item $<p,q>$: the definition of a vector from point $p$ to point $q$.
+\item $n$: the number of points in the dataset.
+\item $V$: the set of all vertices in the dataset.
+Formally, $V = \{p_1, p_2, ..., p_n\}$
+\item $E$: the set of all edges in the dataset.
+There are $n \times n$ edges in this set.
+\item $H$: the convex hull of the dataset. Given any set of points,
+there is only one convex hull.
+\item $S$: the shortest path of a dataset as the set $S = \{s_1, s_2, ..., s_n\}$
+of edges which are contained in the shortest path.
+\item $E'$: the set of all edges in the dataset that are in $E$ but not $S$.
+Formally, $E' = E - S$.
+\item $W$: the set of edges produced by the construction phase of the algorithm.
+Formally, $W = \{w_1, w_2, ..., w_m\}$, where $3 < m < n^2$.
+\item $S' \equiv S$: the path $S'$ has the same perimeter as path $S$
+(they may or may not have the same edges).
+\end{itemize}
+
+\subsection{Properties of Shortest Paths}\label{subsec:props}
+I begin by describing the properties I have found to be true for all shortest
+paths. These properties have been used to create the foundations for my algorithm.
+\begin{enumerate}
+\item For any two edges $s_i,s_j \in S$ where $i \neq j$, $s_i$ and $s_j$ do not cross. 
+\item For any two edges $s_i,s_j \in S$ where $i \neq j$, $s_i$ and $s_j$ do not overlap. 
+\item If we were to add an arbitrary point, $p_{n+1}$ into $V$, the shortest path
+will not change iff $p_{n+1}$ is a point on the line of any $s \in S$.
+\end{enumerate}
+
+\subsection{Construction Phase}\label{subsec:construct}
+The goal of the construction phase of the algorithm is to generate $W$, i.e. a set of
+edges $W = \{w_1, w_2, ..., w_m\}$ such that $W \subset E$ and $S \subset W$.
+These edges must hold the properties of shortest paths, discussed above.
+They must also give us some kind of meaningful information, so that we are able to
+construct a path $S'$ from them with the claim that $S' \equiv S$.
+The construction phase is broken up into steps below:
+\begin{enumerate}
+\item Choose an edge $e$ from $E$ with the points $e_1,e_2$.
+We will test this edge to see if it is possible that $e \in S$.
+\\\\
+Take each edge $e' \in E$ with points $p,q$ such that $p$ and $q$ straddle
+$e$ and where $p$ is on the left side
+of $e$ and $q$ is on the right side of $e$.
+We perform the following tests to see if $e'$ invalidates $e \in S$:
+\begin{enumerate}
+\item Let $V_1$ be the vector $<p,e_1>$.
+\item Let $V_2$ be the vector $<p,e_2>$.
+\item Find the bijection range of equality between $V_1,V_2 and e$,
+represented as $r[lower, upper]$, as follows:
+\begin{enumerate}
+\item Let $B$ start from the bijection of $V_1$
+in the direction of $e$ with length $|V_2|$.
+\item Let the upper bound of $r$ be the intersection of $B$ and $e$.
+\item Let $B$ start from the bijection of $V_2$
+in the direction of $e$ with length $|V_1|$.
+\item Let the lower bound of $r$ be the intersection of $B$ and $e$.
+\end{enumerate}
+\item Repeat steps (a) through (c) with $q$ instead of $p$.
+\item If any of the intersections failed, $e'$ does not invalidate $e$,
+so choose the next $e'$ and repeat from the beginning.
+\item If all intersections suceeded, find the overall intersection area between
+both $r$ generated from $p$ and $q$.
+\item If this intersection area is greater than the threshold, then $e$ is proven
+invalid by $e'$. Choose the next $e$ and repeat from the beginning.
+\end{enumerate}
+\item If no $e'$ invalidated $e$, then $e \in W$.
+\end{enumerate}
+
+\subsection{Expectations for $W$}\label{subsec:exp_w}
+Based upon the properites of shortest paths, $W$ should have the following expectations:
+\begin{enumerate}
+\item $H$ will always be included, since there are no paths which could prove to
+invalidate any $h \in H$.
+\item Any two edges $w_i,w_j \in W$ where $i \neq j$ can cross each other.
+\item Any two edges $w_i,w_j \in W$ where $i \neq j$ are validated to
+not be crossed by any edge $e \in E$.
+Thus if an arbitrary point $p_{n+1}$ was added on the line segment $w$,
+each edge $w \in W$ would not be intersected by an edge $e \in E$ where $e \neq w$
+\\\\
+More specifically, the distances between points
+$w_1$ and $w_2$ and the point $p_{n+1}$
+are smaller than the distances between points
+$p_i$ and $p_j$ and the point $p_{n+1}$ for any $p_i$ and $p_j$
+that are not equal to $w_1$ or $w_2$.
+Thus, if $p_{n+1}$ was a part of $V$, there would be no path $p_i,p_{n+1},p_j$
+in $W$
+except for the path $w_1,p_{n+1},w_2$.
+All other paths have been proven to be too long.
+If there were such a path $p_i,p_{n+1},p_j$ longer than $w_1,p_{n+1}w_2$,
+the segment $w$ would not be in $W$.
+\item A path $S'$ can be made from $W$ which goes through all vertices in $V$ only once
+and starts and ends on the same point.
+If $W$ has multiple paths that fit these requirements, then all such paths
+$S'_1, S'_2, ... S'_k$ should be collected.
+\item It is possible that any path $S'_k \equiv S$.
+\item The shortest path in the set $S'_k$ must be equivalent to $S$.
+\end{enumerate}
+
+\end{document}

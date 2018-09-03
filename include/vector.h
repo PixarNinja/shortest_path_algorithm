@@ -45,7 +45,7 @@ class Vector {
         //////////////////
         // CONSTRUCTORS //
         //////////////////
-        
+
         Vector();
 
         Vector(std::string name, Point start, Point end);
@@ -58,7 +58,7 @@ class Vector {
         /////////////
         // METHODS //
         /////////////
-        
+
         /* normalizes the vector */
         void normalize();
 
@@ -76,7 +76,7 @@ class Vector {
 
         /* prints information about this vector */
         void print();
- 
+
 };
 
 #endif

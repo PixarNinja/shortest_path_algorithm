@@ -36,6 +36,7 @@ using namespace std;
 int main(int argc, char *argv[])
 {
 
+    bool print = false;
     FILE *data;
     FILE *output;
     FILE *gnu_files[NUM_FILES];
@@ -70,11 +71,11 @@ int main(int argc, char *argv[])
     ////////////
 
     if(argc == 1) {
-        printf("\nUsage: ./shortest_path -f datapoint_path [-o output_path]\n\n");
+        printf("\nUsage: ./shortest_path -f datapoint_path [-p] [-o output_path]\n\n");
         exit(EXIT_FAILURE);
     }
 
-    while ((option = getopt(argc, argv,"hHf:o:")) != -1) {
+    while ((option = getopt(argc, argv,"hHpf:o:")) != -1) {
         switch (option) {
             case 'f':
             {
@@ -84,6 +85,11 @@ int main(int argc, char *argv[])
             case 'o':
             {
                 outfile = optarg;
+                break;
+            }
+            case 'p':
+            {
+                print = true;
                 break;
             }
             case 'h':
@@ -203,48 +209,71 @@ int main(int argc, char *argv[])
     fprintf(gnu_files[0], "set style line 3 lc rgb \"#BB0000FF\" lw 6\n");
     fprintf(gnu_files[0], "set style line 4 lc rgb \"#BBFF0000\" lw 6\n");
 
-    ////////////////////////
-    // CALCULATE POLYGONS //
-    ////////////////////////
+    // ////////////////////////
+    // // CALCULATE POLYGONS //
+    // ////////////////////////
+    //
+    // /* runs experimental algorithm...*/
+    // polygons = init_w_polygons(points, size);
+    //
+    // /* bubble sort polygons by perimeter */
+    // for(i = 0; i < polygons.size(); i++) {
+    //     for(j = polygons.size() - 1; j > i; j--) {
+    //         if(polygons[j].perimeter < polygons[j - 1].perimeter) {
+    //             tmp_polygon = polygons[j];
+    //             polygons[j] = polygons[j - 1];
+    //             polygons[j - 1] = tmp_polygon;
+    //         }
+    //     }
+    // }
+    //
+    // /* find shortest path */
+    // shortest_path = find_shortest_path(polygons, points, size);
+    //
+    // /* plot shortest path */
+    // if(shortest_path.shape.size() > 0) {
+    //     printf("\nCALCULATED PATH: ");
+    //     for(i = 0; i < shortest_path.shape.size(); i++) {
+    //         printf("%d->", points[shortest_path.shape[i]].index);
+    //         fprintf(gnu_files[5], "%lf %lf\n", points[shortest_path.shape[i]].x, points[shortest_path.shape[i]].y);
+    //     }
+    //     printf("%d\n\n", points[shortest_path.shape[0]].index);
+    // }
+    //
+    // ///////////////////////
+    // // PLOT POLYGON DATA //
+    // ///////////////////////
+    //
+    // for(Polygon polygon : polygons) {
+    //     for(int *segment : polygon.segments) {
+    //         if(segment_match(*segments, segment[0], segment[1]) == -1) {
+    //             segments->push_back(segment);
+    //         }
+    //     }
+    // }
+    //
+    // /* print polygon information */
+    // printf("\nPOLYGONS:\n");
+    // for(i = 0; i < polygons.size(); i++) {
+    //     printf("%d: ", i);
+    //     for(j = 0; j < (polygons[i]).shape.size(); j++) {
+    //         printf("%d ", points[(polygons[i]).shape[j]].index);
+    //     }
+    //     printf("= %0.2lf\n", polygons[i].perimeter);
+    // }
 
-    /* runs experimental algorithm...*/
-    polygons = init_w_polygons(points, size);
+    //////////////////////////
+    // CALCULATE W SEGMENTS //
+    //////////////////////////
 
-    /* bubble sort polygons by perimeter */
-    for(i = 0; i < polygons.size(); i++) {
-        for(j = polygons.size() - 1; j > i; j--) {
-            if(polygons[j].perimeter < polygons[j - 1].perimeter) {
-                tmp_polygon = polygons[j];
-                polygons[j] = polygons[j - 1];
-                polygons[j - 1] = tmp_polygon;
-            }
-        }
-    }
-
-    /* find shortest path */
-    shortest_path = find_shortest_path(polygons, points, size);
-
-    /* plot shortest path */
-    if(shortest_path.shape.size() > 0) {
-        printf("\nCALCULATED PATH: ");
-        for(i = 0; i < shortest_path.shape.size(); i++) {
-            printf("%d->", points[shortest_path.shape[i]].index);
-            fprintf(gnu_files[5], "%lf %lf\n", points[shortest_path.shape[i]].x, points[shortest_path.shape[i]].y);
-        }
-        printf("%d\n\n", points[shortest_path.shape[0]].index);
+    vector<int *> stored_segments = all_w_segments(points, size);
+    for(int *segment : stored_segments) {
+        segments->push_back(segment);
     }
 
     ///////////////////////
-    // PLOT POLYGON DATA //
+    // PLOT SEGMENT DATA //
     ///////////////////////
-
-    for(Polygon polygon : polygons) {
-        for(int *segment : polygon.segments) {
-            if(segment_match(*segments, segment[0], segment[1]) == -1) {
-                segments->push_back(segment);
-            }
-        }
-    }
 
     /* plot segment information */
     for(i = 0; i < segments->size(); i++) {
@@ -256,6 +285,11 @@ int main(int argc, char *argv[])
             fprintf(output, "%d %d\n", points[(*segments)[i][0]].index, points[(*segments)[i][1]].index);
         }
     }
+
+    /////////////////////
+    // PLOT OTHER DATA //
+    /////////////////////
+
     /* plot perimeter data */
     for(i = 0; i < polygons.size(); i++) {
         sum_x = 0.0;
@@ -268,15 +302,6 @@ int main(int argc, char *argv[])
         center.y = sum_y / (double)((polygons[i]).shape.size() - 1);
         //fprintf(gnu_files[3], "%lf %lf %d\n", center.x, center.y, i);
         fprintf(gnu_files[3], "%lf %lf %0.2lf\n", center.x, center.y, polygons[i].perimeter);
-    }
-    /* print polygon information */
-    printf("\nPOLYGONS:\n");
-    for(i = 0; i < polygons.size(); i++) {
-        printf("%d: ", i);
-        for(j = 0; j < (polygons[i]).shape.size(); j++) {
-            printf("%d ", points[(polygons[i]).shape[j]].index);
-        }
-        printf("= %0.2lf\n", polygons[i].perimeter);
     }
 
     /////////////////////////
@@ -302,7 +327,9 @@ int main(int argc, char *argv[])
     fclose(gnu_files[5]);
     char plot[1024];
     sprintf(plot, "gnuplot -persistent %s", commands);
-    system(plot);
+    if(print) {
+        system(plot);
+    }
     fclose(gnu_files[7]);
     return 0;
 }
