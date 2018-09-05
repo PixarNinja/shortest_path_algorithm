@@ -69,6 +69,7 @@ bool test_w_segment(Vector L, double interval, Point *points, int n);
 bool test_w_segment_bijection(Vector L, double interval, Point *points, int n);
 Point *find_bijection_range(Vector L, Point p);
 Point find_bijection_bound(Vector L, Vector V1, Vector V2);
+Point find_intersection(Vector V1, Vector V2);
 double determinant(Vector V1, Vector V2);
 vector<Point> generate_w_points(vector<Point> w_points, Vector L, double interval);
 Point minimum_tao_distance(Vector V, Point *points, int size);

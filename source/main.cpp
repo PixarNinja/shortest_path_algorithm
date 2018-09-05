@@ -308,7 +308,7 @@ int main(int argc, char *argv[])
     // FINAL PLOT COMMANDS //
     /////////////////////////
 
-    fprintf(gnu_files[0], "plot '%s' using 1:2 with lines ls 1 title \"Tessellations\",", lines);
+    fprintf(gnu_files[0], "plot '%s' using 1:2 with lines ls 1 title \"Tessellations (%ld)\",", lines, segments->size() * 2);
     fprintf(gnu_files[0], "'%s' using 1:2 with points pt 7 notitle,", datapoints);
     fprintf(gnu_files[0], "'' using 1:2:3 with labels point pt 7 offset char -1,-1 notitle,");
     fprintf(gnu_files[0], "'%s' using 1:2:3 with labels point pt 3 offset char -1,-1 notitle, ", extrapoints);

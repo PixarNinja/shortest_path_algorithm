@@ -1437,6 +1437,8 @@ bool test_w_segment_bijection(Vector L, double interval, Point *points, int n) {
     vector<double> angles; // holds angles corresponding to test set
     double *intervals = new double [2]; // holds clostest starting and ending intervals
     double epsilon = 0.000001;
+    Vector V1;
+    Vector V2;
 
     /* find test point set */
     for(k = 0; k < n; k++) {
@@ -1464,22 +1466,28 @@ bool test_w_segment_bijection(Vector L, double interval, Point *points, int n) {
         }
     }
 
+    /* normalize L vector */
+    if(L.i == 0) { // use y values
+        if(L.start.y > L.end.y) {
+            L = Vector(L.name, L.end, L.start);
+        }
+    }
+    else { // use x values
+        if(L.start.x > L.end.x) {
+            L = Vector(L.name, L.end, L.start);
+        }
+    }
+
+    /* find the midpoint of L */
+    Point m = Point(L.start.x, L.start.y, -1);
+    m.offset(L.i / 2, L.j / 2);
+
+    /* store radius */
+    double radius = distance_p(L.start, m);
+
     /* run tests on point set */
     for(i = 0; i < n; i++) {
         Point p = Point(points[i]);
-
-        /* bubble sort t_points by distance from p */
-        for(j = 0; j < n; j++) {
-            for(k = n - 1; k > j; k--) {
-                double curr = distance_p(p, t_points[k]);
-                double next = distance_p(p, t_points[k - 1]);
-                if(curr < next) {
-                    Point tmp = t_points[k];
-                    t_points[k] = t_points[k - 1];
-                    t_points[k - 1] = tmp;
-                }
-            }
-        }
 
         for(j = 0; j < n; j++) {
             Point q = Point(t_points[j]);
@@ -1489,56 +1497,15 @@ bool test_w_segment_bijection(Vector L, double interval, Point *points, int n) {
                 continue;
             }
 
-            /* record angle between X axis and q */
-            double stored_angle;
-            Point x = Point(p);
-            x.offset(1, 0);
-            Vector X = Vector("X", p, x);
-            Vector V = Vector("V", p, q);
-
-            /* test if the vector is on the left side */
-            if(determinant(X, V) == 0) {
-                if(same_direction(X, V)) {
-                    stored_angle = 0;
-                }
-                else {
-                    stored_angle = 180;
-                }
-            }
-            else if(determinant(X, V) > 0) {
-                stored_angle = angle(X, V) * 180 / M_PI;
-            }
-            /* test if the vector is on the right side */
-            else {
-                stored_angle = 360 - angle(X, V) * 180 / M_PI;
-            }
-
-            //printf("P: %d, Q: %d = %lf\n", p.index, q.index, stored_angle);
-
-            /* check if the angle is already recorded */
-            for(double test_angle : angles) {
-                double difference = test_angle - stored_angle;
-                if(difference < 0) {
-                    if(difference >= -epsilon) {
-                        continue; // the segment overlaps a smaller segment
-                    }
-                }
-                else {
-                    if(difference <= epsilon) {
-                        continue; // the segment overlaps a smaller segment
-                    }
-                }
-            }
-
             /* skip starting at L.start and L.end */
             if(p.equals(L.start) || p.equals(L.end) || q.equals(L.start) || q.equals(L.end)) {
                 continue;
             }
 
-            /* skip if either point is too close to an end point */
-            if(distance_p(p, L.start) <= intervals[0] + epsilon || distance_p(p, L.end) <= intervals[1] + epsilon || distance_p(q, L.start) <= intervals[0] + epsilon || distance_p(q, L.end) <= intervals[1] + epsilon) {
-                continue;
-            }
+            // /* skip if either point is too close to an end point */
+            // if(distance_p(p, L.start) <= intervals[0] + epsilon || distance_p(p, L.end) <= intervals[1] + epsilon || distance_p(q, L.start) <= intervals[0] + epsilon || distance_p(q, L.end) <= intervals[1] + epsilon) {
+            //     continue;
+            // }
 
             Vector P = Vector("P", L.start, p);
             Vector Q = Vector("Q", L.start, q);
@@ -1552,113 +1519,127 @@ bool test_w_segment_bijection(Vector L, double interval, Point *points, int n) {
                 continue;
             }
 
-            /* skip if either point lies on L */
-            if((determinant(P1, P2) == 0) || (determinant(Q1, Q2) == 0)) {
+            /* EXPERIMENTAL */
+            Vector E = Vector("E", p, q);
+            Point t = find_intersection(E, L);
+            if(t.index == -1) {
                 continue;
             }
+            // if(E.length < L.length) {
+            //     return false; // invalid
+            // }
 
-            /* skip if any vector has component 0, the infinite case */
-            if(P1.i == 0 || P1.j == 0 || P2.i == 0 || P2.j == 0 || Q1.i == 0 || Q1.j == 0 || Q2.i == 0 || Q2.j == 0) {
-                continue;
+            if((distance_p(p, m) <= radius) && (distance_p(q, m) <= radius)) {
+                return false; // invalid
             }
 
-            /* ensure p is "below" and q is "above" with respect to L */
-            if(determinant(L, P) > 0) {
-                Point tmp = Point(p);
-                p = Point(q);
-                q = tmp;
-            }
-
-            /* find the forward (upper) area */
-             Point *forward = find_bijection_range(L, p);
-
-             /* find the follow (lower) area */
-             L = Vector(L.name, L.end, L.start);
-             Point *follow = find_bijection_range(L, q);
-
-             /* skip if either are null */
-             if(!forward || !follow) {
-                 continue;
-             }
-
-             /* normalize areas */
-             if(L.i == 0) { // use y values
-                 if(L.start.y > L.end.y) {
-                     L = Vector(L.name, L.end, L.start);
-                 }
-                 if(forward[0].y > forward[1].y) {
-                     Point tmp = forward[0];
-                     forward[0] = forward[1];
-                     forward[1] = tmp;
-                 }
-                 if(follow[0].y > follow[1].y) {
-                     Point tmp = follow[0];
-                     follow[0] = follow[1];
-                     follow[1] = tmp;
-                 }
-             }
-             else { // use x values
-                 if(L.start.x > L.end.x) {
-                     L = Vector(L.name, L.end, L.start);
-                 }
-                 if(forward[0].x > forward[1].x) {
-                     Point tmp = forward[0];
-                     forward[0] = forward[1];
-                     forward[1] = tmp;
-                 }
-                 if(follow[0].x > follow[1].x) {
-                     Point tmp = follow[0];
-                     follow[0] = follow[1];
-                     follow[1] = tmp;
-                 }
-             }
-
-             /* check if areas overlap */
-             printf("CHECKING L (%d, %d) BY %d and %d ON %lf\n", L.start.index, L.end.index, p.index, q.index, interval);
-             printf("P RANGE: (%lf, %lf) -- (%lf, %lf)\n", forward[0].x, forward[0].y, forward[1].x, forward[1].y);
-             printf("Q RANGE: (%lf, %lf) -- (%lf, %lf)\n", follow[0].x, follow[0].y, follow[1].x, follow[1].y);
-
-             /* returns false if invalidated */
-             if(L.i == 0) { // use y values
-                 if(forward[0].y <= follow[0].y) { // P1 <= P3
-                     if(follow[0].y < forward[1].y) { // P1 --> P3 --> P2 --> P4
-                         double range = distance_p(follow[0], forward[1]);
-                         if(range > interval) {
-                             printf("INVALID (%lf): P1 --> P3 --> P2 --> P4\n\n", range);
-                             return false;
-                         }
-                     }
-                 }
-                 else if(follow[0].y <= forward[0].y) { // P3 <= P1
-                     if(forward[0].y < follow[1].y) { // P3 --> P1 --> P4 --> P2
-                         double range = distance_p(forward[0], follow[1]);
-                         if(range > interval) {
-                             printf("INVALID (%lf): P3 --> P1 --> P4 --> P2\n\n", range);
-                             return false;
-                         }
-                     }
-                 }
-             }
-             else { // use x values
-                 if(forward[0].x <= follow[0].x) { // P1 <= P3
-                     if(follow[0].x < forward[1].x) { // P1 --> P3 --> P2 --> P4
-                         double range = distance_p(follow[0], forward[1]);
-                         if(range > interval) {
-                             printf("INVALID (%lf): P1 --> P3 --> P2 --> P4\n\n", range);
-                             return false;
-                         }
-                     }
-                 }
-                 else if(follow[0].x <= forward[0].x) { // P3 <= P1
-                     if(forward[0].x < follow[1].x) { // P3 --> P1 --> P4 --> P2
-                         double range = distance_p(forward[0], follow[1]);
-                         if(range > interval) {
-                             printf("INVALID (%lf): P3 --> P1 --> P4 --> P2\n\n", range);
-                             return false;
-                         }
-                     }
-                 }
-             }
+            // /* skip if any vector has component 0, the infinite case */
+            // if(P1.i == 0 || P1.j == 0 || P2.i == 0 || P2.j == 0 || Q1.i == 0 || Q1.j == 0 || Q2.i == 0 || Q2.j == 0) {
+            //     continue;
+            // }
+            //
+            // /* ensure p is "below" and q is "above" with respect to L */
+            // if(determinant(L, P) > 0) {
+            //     Point tmp = Point(p);
+            //     p = Point(q);
+            //     q = tmp;
+            // }
+            //
+            // /* find the forward area */
+            // Point *forward = find_bijection_range(L, p);
+            // if(!forward) {
+            //     continue;
+            // }
+            //
+            // /* find the follow area */
+            // L = Vector("L", L.end, L.start);
+            // Point *follow = find_bijection_range(L, q);
+            // L = Vector("L", L.end, L.start);
+            // if(!follow) {
+            //     continue;
+            // }
+            //
+            // /* correct follow area */
+            // Point tmp = follow[0];
+            // follow[0] = follow[1];
+            // follow[1] = tmp;
+            //
+            // /* check if areas overlap */
+            // printf("CHECKING L (%d, %d) BY %d and %d ON %lf\n", L.start.index, L.end.index, p.index, q.index, interval);
+            // printf("P RANGE: (%lf, %lf) -- (%lf, %lf)\n", forward[0].x, forward[0].y, forward[1].x, forward[1].y);
+            // printf("Q RANGE: (%lf, %lf) -- (%lf, %lf)\n", follow[0].x, follow[0].y, follow[1].x, follow[1].y);
+            //
+            // /* check p range using p */
+            // V1 = Vector("V1", p, forward[1]);
+            // V2 = Vector("V2", p, forward[0]);
+            // if(determinant(V1, V2) <= 0) {
+            //     printf("... P RANGE NOT CONSEQUTIVE!\n\n");
+            //     j = n;
+            //     continue; // upper bound was lower than lower bound
+            // }
+            //
+            // /* check q range using p */
+            // V1 = Vector("V1", p, follow[1]);
+            // V2 = Vector("V2", p, follow[0]);
+            // if(determinant(V1, V2) <= 0) {
+            //     printf("... Q RANGE NOT CONSEQUTIVE!\n\n");
+            //     continue; // upper bound was lower than lower bound
+            // }
+            //
+            // /* ensure that forward is on the left */
+            // V1 = Vector("V1", p, follow[0]);
+            // V2 = Vector("V2", p, forward[0]);
+            // if(determinant(V1, V2) <= 0) {
+            //     Point *tmp_range = new Point [2];
+            //     tmp_range[0] = forward[0];
+            //     tmp_range[1] = forward[1];
+            //     forward[0] = follow[0];
+            //     forward[1] = follow[1];
+            //     follow[0] = tmp_range[0];
+            //     follow[1] = tmp_range[1];
+            // }
+            //
+            // /* returns false if invalidated */
+            // if(L.i == 0) { // use y values
+            //     if(forward[0].y <= follow[0].y) { // P1 <= P3
+            //         if(follow[0].y < forward[1].y) { // P1 --> P3 --> P2 --> P4
+            //             double range = distance_p(follow[0], forward[1]);
+            //             if(range > interval) {
+            //                 printf("INVALID (%lf): P1 --> P3 --> P2 --> P4\n\n", range);
+            //                 return false; // invalid
+            //             }
+            //         }
+            //     }
+            //     else if(follow[0].y <= forward[0].y) { // P3 <= P1
+            //         if(forward[0].y < follow[1].y) { // P3 --> P1 --> P4 --> P2
+            //             double range = distance_p(forward[0], follow[1]);
+            //             if(range > interval) {
+            //                 printf("INVALID (%lf): P3 --> P1 --> P4 --> P2\n\n", range);
+            //                 return false; // invalid
+            //             }
+            //         }
+            //     }
+            // }
+            // else { // use x values
+            //     if(forward[0].x <= follow[0].x) { // P1 <= P3
+            //         if(follow[0].x <= forward[1].x) { // P1 --> P3 --> P2 --> P4
+            //             double range = distance_p(follow[0], forward[1]);
+            //             if(range > interval) {
+            //                 printf("INVALID (%lf): P1 --> P3 --> P2 --> P4\n\n", range);
+            //                 return false; // invalid
+            //             }
+            //         }
+            //     }
+            //     else if(follow[0].x <= forward[0].x) { // P3 <= P1
+            //         if(forward[0].x < follow[1].x) { // P3 --> P1 --> P4 --> P2
+            //             double range = distance_p(forward[0], follow[1]);
+            //             if(range > interval) {
+            //                 printf("INVALID (%lf): P3 --> P1 --> P4 --> P2\n\n", range);
+            //                 return false; // invalid
+            //             }
+            //         }
+            //     }
+            // }
 
          }
     }
@@ -1740,78 +1721,79 @@ Point find_bijection_bound(Vector L, Vector V1, Vector V2) {
         }
     }
 
+    Point t = find_intersection(B, L);
+
+    return t;
+}
+
+/* finds the intersection point between two vectors
+ * @param V1, one of the vectors to test
+ * @param V2, the other vector to test
+ * @return m, a point with index 0 if found, -1 if not found
+ */
+Point find_intersection(Vector V1, Vector V2) {
+    double y = 0.0;
+    double x = 0.0;
+    double m1 = 0.0;
+    double m2 = 0.0;
+    double b1 = 0.0;
+    double b2 = 0.0;
+
     /* find intercept point */
-    if(L.i == 0) { // shift axis to L
-        /* create equation for B */
-        if(B.i == 0) {
+    if(V1.i == 0) { // shift axis to V1
+        /* create equation for V2 */
+        if(V2.i == 0) {
             return Point(-1, -1, -1); // invalid state
         }
         else {
-            y = B.start.y;
-            m2 = (B.end.y - B.start.y) / (B.end.x - B.start.x);
-            x = B.start.x;
+            y = V2.start.y;
+            m2 = (V2.end.y - V2.start.y) / (V2.end.x - V2.start.x);
+            x = V2.start.x;
             b2 = y - m2 * x;
         }
 
-        x = L.start.x;
+        x = V1.start.x;
         y = m2 * x + b2;
     }
-    else if(B.i == 0) { // shift axis to B
-        /* create equation for B */
-        y = L.start.y;
-        m2 = (L.end.y - L.start.y) / (L.end.x - L.start.x);
-        x = L.start.x;
+    else if(V2.i == 0) { // shift axis to V2
+        /* create equation for V2 */
+        y = V1.start.y;
+        m2 = (V1.end.y - V1.start.y) / (V1.end.x - V1.start.x);
+        x = V1.start.x;
         b2 = y - m2 * x;
 
-        x = B.start.x;
+        x = V2.start.x;
         y = m2 * x + b2;
     }
     else { // solve regularly
-        /* create equation for L */
-        if(L.i == 0) { // use x intercept
-            y = L.start.x;
-            m1 = (L.end.x - L.start.x) / (L.end.y - L.start.y);
-            x = L.start.y;
-            b1 = y - m1 * x;
-        }
-        else { // use y intercept
-            y = L.start.y;
-            m1 = (L.end.y - L.start.y) / (L.end.x - L.start.x);
-            x = L.start.x;
-            b1 = y - m1 * x;
-        }
+        /* create equation for V1 */
+        y = V1.start.y;
+        m1 = (V1.end.y - V1.start.y) / (V1.end.x - V1.start.x);
+        x = V1.start.x;
+        b1 = y - m1 * x;
 
-        /* create equation for B */
-        if(B.i == 0) { // use x intercept
-            y = B.start.x;
-            m2 = (B.end.x - B.start.x) / (B.end.y - B.start.y);
-            x = B.start.y;
-            b2 = y - m2 * x;
-        }
-        else { // use y intercept
-            y = B.start.y;
-            m2 = (B.end.y - B.start.y) / (B.end.x - B.start.x);
-            x = B.start.x;
-            b2 = y - m2 * x;
-        }
+        /* create equation for V2 */
+        y = V2.start.y;
+        m2 = (V2.end.y - V2.start.y) / (V2.end.x - V2.start.x);
+        x = V2.start.x;
+        b2 = y - m2 * x;
 
         x = (b2 - b1) / (m1 - m2);
         y = m1 * x + b1;
     }
 
     /* check if vectors intersects */
-    Point t = Point(x, y, -1);
-    Vector T = Vector("T", B.start, t);
-    if(same_direction(T, B) && (T.length < B.length)) { // vector T is inside of vector B
-        T = Vector("T", L.start, t);
-        if(same_direction(T, L) && (T.length < L.length)) { // vector T is also inside of vector L
-            /* the vectors intersect, return bound */
-            t.index = 0;
-            return t;
+    Point m = Point(x, y, 0);
+    Vector M = Vector("M", V1.start, m);
+    if(same_direction(M, V1) && (M.length < V1.length)) { // vector M is inside of vector V1
+        M = Vector("M", V2.start, m);
+        if(same_direction(M, V2) && (M.length < V2.length)) { // vector M is also inside of vector V2
+            /* the vectors intersect, return point */
+            return m;
         }
     }
 
-    return t;
+    return Point(-1, -1, -1);
 }
 
 /* returns the determinant between two vectors

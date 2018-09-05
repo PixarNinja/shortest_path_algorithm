@@ -1,0 +1,10 @@
+set xrange [-7.000000:7.000000]
+set yrange [-7.000000:7.000000]
+set size ratio 1
+set grid
+set title "datapoints/overlap.dat"
+set style line 1 lc rgb "black" lw 1
+set style line 2 lc rgb "red" lw 3
+set style line 3 lc rgb "#BB0000FF" lw 6
+set style line 4 lc rgb "#BBFF0000" lw 6
+plot './gnu_files/overlap_lines.gpf' using 1:2 with lines ls 1 title "Tessellations (1060)",'./gnu_files/overlap_datapoints.gpf' using 1:2 with points pt 7 notitle,'' using 1:2:3 with labels point pt 7 offset char -1,-1 notitle,'./gnu_files/overlap_extrapoints.gpf' using 1:2:3 with labels point pt 3 offset char -1,-1 notitle, './gnu_files/overlap_shortest_path.gpf' using 1:2 with lines ls 3 title "Shortest Path"

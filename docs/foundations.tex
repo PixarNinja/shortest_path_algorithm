@@ -1,5 +1,7 @@
 \documentclass[12pt]{article}
 \usepackage[margin=1.0in]{geometry}
+\usepackage{amsmath,amsthm,amssymb,amsfonts}
+\usepackage{enumerate}
 
 \title{Shortest Path Algorithm:\\
 Foundations and Theoretical Concepts}
@@ -66,6 +68,49 @@ then $e \notin S$.
 \item If we were to add an arbitrary point $p_{n+1}$ to $V$, $S$
 will not change iff $p_{n+1}$ is a point on the line of any $s \in S$.
 \end{enumerate}
+
+\subsection{Invalidating a Segment}\label{subsec:invalid}
+My algorithm is based upon the concept of invalidating as many segments of $E$
+as possible, but keep all segments which could be in $S$. In order to do this,
+I propose a method of construction that invalidates segments based upon the properties
+above. Any segment which fails these properties cannot be in $S$.
+
+\subsection*{Bijection Range Method}\label{subsec*:bijection-range-method}
+...
+
+\subsection*{Using Intersections Instead}\label{subsec*:intersection-method}
+The Bijection Range Method works for determining ranges on a segment $w$
+for which points $p,q \in V$ are closer to $w$ than $w_1$ or $w_2$.
+However, since we are only interested
+in invalidating the line with respect to this property, it is worth looking at
+the possibility of using the intersection of any $e \in E$ instead.
+\\\\
+Claim: For each $p,q \in V$ where $p \neq w_1,w_2$ and $q \neq w_1,w_2$,
+$p$ and $q$ have overlapping Bijection Ranges
+if the line passing through them intersects $w$.
+
+\begin{proof}
+The proof is shown below:
+\begin{enumerate}[(1)]
+\item Given that $p$ and $q$ have overlapping Bijection Ranges,
+it is evident that there are 2 intersection points formed by
+the lower and upper bounds of the intersection of ranges.
+Let these points be $w_l$ and $w_u$.
+\item By Theorem \#.\#, these points form a quadralateral.
+Let the quadralateral $p,w_l,q,w_u$ be denoted as $A$.
+\item Since $A$ is a quadralateral,
+a line segment can be drawn between $p$ and $q$ that lies within
+the inner region formed by $A$.
+Let that line be denoted as $e$.
+\item Since $w_l$ and $w_u$ both intersect $w$, and $e$ is a continuous line
+that lies between $w_l$ and $w_u$, then $e$ must also intersect $w$.
+\end{enumerate}
+\end{proof}
+
+It is not sufficient, however, to claim that if a line $e \in E$ intersects $w$
+that they then have overlapping Bijection Ranges.
+Points $p$ and $q$ of line $e$ must also be within the circular area created by
+revolving $w$ about it's midpoint.
 
 \subsection{Construction Phase}\label{subsec:construct}
 The goal of the construction phase of the algorithm is to generate $W$, i.e. a set of
