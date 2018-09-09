@@ -1088,7 +1088,7 @@ vector<int *> all_w_segments(Point *points, int size) {
             Vector L = Vector("L", points[i], points[j]);
             if(segment_match(w_segments, i, j) == -1) {
                 /* if the line is valid check for crosses */
-                if(test_w_segment_bijection(L, interval, points, size)) {
+                if(test_w_segment(L, interval, points, size)) {
                     /* record segment */
                     tmp_segment = new int [2];
                     tmp_segment[0] = i;
@@ -1302,134 +1302,13 @@ vector<Polygon> construct_w_polygons(Polygon base, Point *points, int size, vect
     return w_polygons;
 }
 
-/* tests if a weslean segment is valid
- * @param L, the weslean line being tested
- * @param interval, the weslean point generation interval
- * @param points, the array of datapoints
- * @param n, the size of the array
- * @return valid, whether or not the segment is validated */
-bool test_w_segment(Vector L, double interval, Point *points, int n) {
-    bool valid = true;
-    int i = 0;
-    int j = 0;
-    int k = 0;
-
-    //printf("TESTING: (%d, %d)\n", L.start.index, L.end.index);
-
-    /* create initial point set */
-    int l = 0;
-    int m = 0;
-    Point *t_points = new Point [n + 1];
-    for(; l < n; l++) {
-        t_points[m++] = points[l];
-    }
-
-    /* create w_points */
-    vector<Point> w_points;
-    w_points = generate_w_points(w_points, L, interval);
-
-    /* test all w_points, q = {q_1, q_2, ..., q*} */
-    for(j = 0; j < w_points.size(); j++) {
-        Point q = Point(w_points[j]);
-        bool skip = false;
-        /* skip q if it is equal to any of the actual points */
-        for(i = 0; i < n; i++) {
-            if(q.equals(points[i])) {
-                skip = true;
-                break;
-            }
-        }
-        if(skip) {
-            continue;
-        }
-        /* add q to the point set */
-        t_points[m] = q;
-
-        /* test point set */
-        for(i = 0; i < n + 1; i++) {
-            /* skip starting at q, L.start, and L.end */
-            if(t_points[i].equals(q) || t_points[i].equals(L.start) || t_points[i].equals(L.end)) {
-                continue;
-            }
-
-            Point p = Point(t_points[i]);
-
-            /* find the forward connection, i.e.
-             * find the minimum tao_distance between all
-             * vectors <p, *> and Q = <p, q>
-             */
-            Vector Q = Vector("Q", p, q);
-            Q.normalize();
-            Point t = minimum_tao_distance(Q, t_points, n + 1);
-            //printf("%d: %d\n", p.index, t.index);
-
-            /* check if the line needs further testing */
-            if(!t.equals(q)) {
-                continue;
-            }
-
-            /* find the follow connection, i.e.
-             * find the minimum tao_distance between all
-             * vectors <q, p> and Q = <q, q'>
-             */
-            Q = Vector("Q", p, q, -1); // shift and normalize
-            l = 0;
-            Point r;
-            if(L.start.y == L.end.y) {
-                if(L.start.x <= L.end.x) {
-                    r = Point(L.start);
-                }
-                else {
-                    r = Point(L.end);
-                }
-            }
-            else if(L.start.y < L.end.y) {
-                r = Point(L.start);
-            }
-            else {
-                r = Point(L.end);
-            }
-            Vector R = Vector("R", r, q, -1); // shift and normalize
-            //R.print();
-            for(k = 0; k < n; k++) {
-                Point s = Point(points[k]);
-                Vector S = Vector("S", q, s);
-                S.normalize();
-                /* check if point s should remain in the test set */
-                if((determinant(Q, R) < 0 && determinant(S, R) < 0) || (determinant(Q, R) > 0 && determinant(S, R) > 0)) {
-                    //S.print();
-                    //printf("  determinant = %lf\n", determinant(R, S));
-                    //printf("... %d is GOOD!\n", s.index);
-                    t_points[l++] = s;
-                }
-            }
-            t_points[l++] = L.start;
-            t_points[l++] = L.end;
-            //printf("q':<(%0.3lf, %0.3lf), (%0.3lf, %0.3lf)>\n", Q.start.x, Q.start.y, Q.end.x, Q.end.y);
-            t = minimum_tao_distance(Q, t_points, l);
-            //printf("%d: %d\n", p.index, t.index);
-
-            /* check if the line was found to be invalid */
-            if(!t.equals(L.start) && !t.equals(L.end)) {
-                if((distance_p(t_points[i], q) - distance_p(L.start, q)) > interval && (distance_p(t_points[i], q) - distance_p(L.end, q)) > interval)
-                valid = false;
-                break;
-            }
-        }
-        if(!valid) {
-            break;
-        }
-    }
-    return valid;
-}
-
 /* creates a normalized bijection vector to a
  * @param L, the tested segment
  * @param points, the set of datapoints
  * @param n, the size of the points array
  * @return true if the segment is validated, false otherwise
  */
-bool test_w_segment_bijection(Vector L, double interval, Point *points, int n) {
+bool test_w_segment(Vector L, double interval, Point *points, int n) {
     int i = 0;
     int j = 0;
     int k = 0;
@@ -1502,10 +1381,10 @@ bool test_w_segment_bijection(Vector L, double interval, Point *points, int n) {
                 continue;
             }
 
-            // /* skip if either point is too close to an end point */
-            // if(distance_p(p, L.start) <= intervals[0] + epsilon || distance_p(p, L.end) <= intervals[1] + epsilon || distance_p(q, L.start) <= intervals[0] + epsilon || distance_p(q, L.end) <= intervals[1] + epsilon) {
-            //     continue;
-            // }
+            /* skip if either point is too close to an end point */
+            if(distance_p(p, L.start) <= intervals[0] + epsilon || distance_p(p, L.end) <= intervals[1] + epsilon || distance_p(q, L.start) <= intervals[0] + epsilon || distance_p(q, L.end) <= intervals[1] + epsilon) {
+                continue;
+            }
 
             Vector P = Vector("P", L.start, p);
             Vector Q = Vector("Q", L.start, q);
@@ -1533,197 +1412,18 @@ bool test_w_segment_bijection(Vector L, double interval, Point *points, int n) {
                 return false; // invalid
             }
 
-            // /* skip if any vector has component 0, the infinite case */
-            // if(P1.i == 0 || P1.j == 0 || P2.i == 0 || P2.j == 0 || Q1.i == 0 || Q1.j == 0 || Q2.i == 0 || Q2.j == 0) {
-            //     continue;
-            // }
-            //
-            // /* ensure p is "below" and q is "above" with respect to L */
-            // if(determinant(L, P) > 0) {
-            //     Point tmp = Point(p);
-            //     p = Point(q);
-            //     q = tmp;
-            // }
-            //
-            // /* find the forward area */
-            // Point *forward = find_bijection_range(L, p);
-            // if(!forward) {
-            //     continue;
-            // }
-            //
-            // /* find the follow area */
-            // L = Vector("L", L.end, L.start);
-            // Point *follow = find_bijection_range(L, q);
-            // L = Vector("L", L.end, L.start);
-            // if(!follow) {
-            //     continue;
-            // }
-            //
-            // /* correct follow area */
-            // Point tmp = follow[0];
-            // follow[0] = follow[1];
-            // follow[1] = tmp;
-            //
-            // /* check if areas overlap */
-            // printf("CHECKING L (%d, %d) BY %d and %d ON %lf\n", L.start.index, L.end.index, p.index, q.index, interval);
-            // printf("P RANGE: (%lf, %lf) -- (%lf, %lf)\n", forward[0].x, forward[0].y, forward[1].x, forward[1].y);
-            // printf("Q RANGE: (%lf, %lf) -- (%lf, %lf)\n", follow[0].x, follow[0].y, follow[1].x, follow[1].y);
-            //
-            // /* check p range using p */
-            // V1 = Vector("V1", p, forward[1]);
-            // V2 = Vector("V2", p, forward[0]);
-            // if(determinant(V1, V2) <= 0) {
-            //     printf("... P RANGE NOT CONSEQUTIVE!\n\n");
-            //     j = n;
-            //     continue; // upper bound was lower than lower bound
-            // }
-            //
-            // /* check q range using p */
-            // V1 = Vector("V1", p, follow[1]);
-            // V2 = Vector("V2", p, follow[0]);
-            // if(determinant(V1, V2) <= 0) {
-            //     printf("... Q RANGE NOT CONSEQUTIVE!\n\n");
-            //     continue; // upper bound was lower than lower bound
-            // }
-            //
-            // /* ensure that forward is on the left */
-            // V1 = Vector("V1", p, follow[0]);
-            // V2 = Vector("V2", p, forward[0]);
-            // if(determinant(V1, V2) <= 0) {
-            //     Point *tmp_range = new Point [2];
-            //     tmp_range[0] = forward[0];
-            //     tmp_range[1] = forward[1];
-            //     forward[0] = follow[0];
-            //     forward[1] = follow[1];
-            //     follow[0] = tmp_range[0];
-            //     follow[1] = tmp_range[1];
-            // }
-            //
-            // /* returns false if invalidated */
-            // if(L.i == 0) { // use y values
-            //     if(forward[0].y <= follow[0].y) { // P1 <= P3
-            //         if(follow[0].y < forward[1].y) { // P1 --> P3 --> P2 --> P4
-            //             double range = distance_p(follow[0], forward[1]);
-            //             if(range > interval) {
-            //                 printf("INVALID (%lf): P1 --> P3 --> P2 --> P4\n\n", range);
-            //                 return false; // invalid
-            //             }
-            //         }
-            //     }
-            //     else if(follow[0].y <= forward[0].y) { // P3 <= P1
-            //         if(forward[0].y < follow[1].y) { // P3 --> P1 --> P4 --> P2
-            //             double range = distance_p(forward[0], follow[1]);
-            //             if(range > interval) {
-            //                 printf("INVALID (%lf): P3 --> P1 --> P4 --> P2\n\n", range);
-            //                 return false; // invalid
-            //             }
-            //         }
-            //     }
-            // }
-            // else { // use x values
-            //     if(forward[0].x <= follow[0].x) { // P1 <= P3
-            //         if(follow[0].x <= forward[1].x) { // P1 --> P3 --> P2 --> P4
-            //             double range = distance_p(follow[0], forward[1]);
-            //             if(range > interval) {
-            //                 printf("INVALID (%lf): P1 --> P3 --> P2 --> P4\n\n", range);
-            //                 return false; // invalid
-            //             }
-            //         }
-            //     }
-            //     else if(follow[0].x <= forward[0].x) { // P3 <= P1
-            //         if(forward[0].x < follow[1].x) { // P3 --> P1 --> P4 --> P2
-            //             double range = distance_p(forward[0], follow[1]);
-            //             if(range > interval) {
-            //                 printf("INVALID (%lf): P3 --> P1 --> P4 --> P2\n\n", range);
-            //                 return false; // invalid
-            //             }
-            //         }
-            //     }
-            // }
-
          }
     }
 
     return true; //valid
-
 }
 
-/* finds the bijection range for a vector and point
- * @param L, the tested segment
- * @param p, the tested point
- * @return range, a 2D array of an upper and lower bound
+/* generate all shortest paths from W
+ * @return paths, the vector of shortest paths
  */
-Point *find_bijection_range(Vector L, Point p) {
-    Point *range = NULL; // initialize to invalid state
-    Vector V1;
-    Vector V2;
-
-    V1 = Vector("V1", p, L.end);
-    V2 = Vector("V2", p, L.start);
-
-    /* calculate upper bound */
-    Point u = find_bijection_bound(L, V1, V2);
-
-    V1 = Vector("V1", L.start, p);
-    V2 = Vector("V2", p, L.end);
-
-    /* calculate lower bound */
-    Point l = find_bijection_bound(L, V1, V2);
-
-    if(l.index != -1 && u.index != -1) {
-        /* set range */
-        range = new Point [2];
-        range[0] = l;
-        range[1] = u;
-    }
-
-    return range;
-}
-
-/* finds the bijection range for a vector and point
- * @param L, the tested segment
- * @param V1, the right-side test vector
- * @param V2, the left-side test vector
- * @return t, a point with index 0 if valid, -1 if invalid
- */
-Point find_bijection_bound(Vector L, Vector V1, Vector V2) {
-    double y = 0.0;
-    double x = 0.0;
-    double m1 = 0.0;
-    double m2 = 0.0;
-    double b1 = 0.0;
-    double b2 = 0.0;
-
-    /* create vector B, from the midpoint of
-     * V1 perpendicular to V1 with length V2.length
-     */
-    Point b = Point(V1.start.x, V1.start.y, -1);
-    b.offset(V1.i / 2, V1.j / 2);
-    Vector B = Vector("B", b, b);
-    B.end.offset(-V1.j, V1.i); // counter-clockwise 90 degree rotation
-    B.refresh();
-    B.normalize();
-    B.i *= V2.length;
-    B.j *= V2.length;
-    B.end.x = B.i + B.start.x;
-    B.end.y = B.j + B.start.y;
-    B.refresh();
-
-    /* sort the points of B */
-    if(B.i == 0) { // use y values
-        if(B.end.y < B.start.y) {
-            B = Vector(B.name, B.end, B.start);
-        }
-    }
-    else { // use x values
-        if(B.end.x < B.start.x) {
-            B = Vector(B.name, B.end, B.start);
-        }
-    }
-
-    Point t = find_intersection(B, L);
-
-    return t;
+vector<Polygon> generate_paths() {
+    vector<Polygon> paths;
+    return paths;
 }
 
 /* finds the intersection point between two vectors

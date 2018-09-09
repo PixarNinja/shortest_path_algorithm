@@ -1,10 +1,12 @@
 \documentclass[12pt]{article}
 \usepackage[margin=1.0in]{geometry}
 \usepackage{amsmath,amsthm,amssymb,amsfonts}
-\usepackage{enumerate}
+\usepackage{enumerate,mathtools}
 
-\title{Shortest Path Algorithm:\\
-Foundations and Theoretical Concepts}
+\newtheorem{theorem}{Theorem}[section]
+
+\title{The Harris Path Algorithm:\\
+Terminology and Theoretical Concepts}
 \author{
 Mark Wesley Harris
 }
@@ -34,21 +36,24 @@ These are outlined below:
 \item $<p,q>$: the definition of a vector from point $p$ to point $q$.
 \item $[s_1, s_2, ..., s_k]$: the definition for a path through a known set of edges.
 \item $n$: the number of points in the dataset.
-\item $V$: the set of all vertices in the dataset.
-Formally, $V = \{p_1, p_2, ..., p_n\}$
-\item $E$: the set of all edges in the dataset.
-The size of $E$ is $n \times n$.
-\item $H$: the convex hull of the dataset.
-Formally, $H = \{h_1, h_2, ..., h_k\}$, where $k \leq n - 1$.
+\item $\mathcal{V}$: the set of all vertices in the dataset.
+Formally, $\mathcal{V} = \{p_1, p_2, ..., p_n\}$
+\item $\mathcal{E}$: the set of all edges in the dataset.
+The size of $\mathcal{E}$ is $n \times n$.
+\item $\mathcal{H}$: the convex hull of the dataset.
+Formally, $\mathcal{H} = \{h_1, h_2, ..., h_k\}$, where $k \leq n - 1$.
 Given any set of points,
 there is only one convex hull.
-\item $S$: the shortest path of a dataset as the set $S = \{s_1, s_2, ..., s_n\}$
+\item $\mathcal{S}$: the shortest path of a dataset as the set
+$\mathcal{S} = \{s_1, s_2, ..., s_n\}$
 of edges which are contained in the shortest path.
-\item $E'$: the set of all edges in the dataset that are in $E$ but not $S$.
-Formally, $E' = E - S$.
-\item $W$: the set of edges produced by the construction phase of the algorithm.
-Formally, $W = \{w_1, w_2, ..., w_m\}$, where $3 < m < n^2$.
-\item $S' \equiv S$: the path $S'$ has the same perimeter as path $S$
+\item $\mathcal{E}'$: the set of all edges in the dataset that are in $\mathcal{E}$
+but not $\mathcal{S}$.
+Formally, $\mathcal{E}' = \mathcal{E} - \mathcal{S}$.
+\item $\mathcal{W}$: the set of edges produced by the construction phase of the algorithm.
+Formally, $\mathcal{W} = \{w_1, w_2, ..., w_m\}$, where $3 < m < n^2$.
+\item $\mathcal{S}' \equiv \mathcal{S}$: the path $\mathcal{S}'$ has the same
+perimeter as path $\mathcal{S}$
 (they may or may not have the same edges).
 \end{itemize}
 
@@ -60,35 +65,45 @@ research and experimentation. They are explained below in different sections.
 I begin by describing the properties I have found to be true for all shortest
 paths. These properties have been used to create the foundations for my algorithm.
 \begin{enumerate}
-\item For any two edges $s_i,s_j \in S$ where $i \neq j$, $s_i$ and $s_j$ do not cross. 
-\item For any two edges $s_i,s_j \in S$ where $i \neq j$, $s_i$ and $s_j$ do not overlap. 
-\item No edge $s \in S$ intersects a point $p \in V$ where $s_1,s_2 \neq p$.
+\item For any two edges $s_i,s_j \in \mathcal{S}$ where
+$i \neq j$, $s_i$ and $s_j$ do not cross. 
+\item For any two edges $s_i,s_j \in \mathcal{S}$ where
+$i \neq j$, $s_i$ and $s_j$ do not overlap. 
+\item No edge $s \in \mathcal{S}$ intersects a point
+$p \in \mathcal{V}$ where $s_1,s_2 \neq p$.
 I.e. if an edge $e$ intersects a point $p$ that isn't an end point of $e$,
-then $e \notin S$.
-\item If we were to add an arbitrary point $p_{n+1}$ to $V$, $S$
-will not change iff $p_{n+1}$ is a point on the line of any $s \in S$.
+then $e \notin \mathcal{S}$.
+\item If we were to add an arbitrary point $p_{n+1}$ to $\mathcal{V}$, $\mathcal{S}$
+will not change iff $p_{n+1}$ is a point on the line of any $s \in \mathcal{S}$.
 \end{enumerate}
 
 \subsection{Invalidating a Segment}\label{subsec:invalid}
-My algorithm is based upon the concept of invalidating as many segments of $E$
-as possible, but keep all segments which could be in $S$. In order to do this,
-I propose a method of construction that invalidates segments based upon the properties
-above. Any segment which fails these properties cannot be in $S$.
+My algorithm is based upon the concept of invalidating as many segments of $\mathcal{E}$
+as possible, but keep all segments which could be in $\mathcal{S}$. In order to do this,
+I propose a method of construction that invalidates segments based upon the
+properties for shortest paths which I have produced
+above. Any segment which fails these properties cannot be in $\mathcal{S}$,
+and so it should
+not be included in $\mathcal{W}$.
+\\\\
+We test each line segment $w \in \mathcal{E}$ such that there is no point
+$v \in \mathcal{V}$
+where $v \neq w_1,w_2$ that lies on $w$.
 
 \subsection*{Bijection Range Method}\label{subsec*:bijection-range-method}
 ...
 
-\subsection*{Using Intersections Instead}\label{subsec*:intersection-method}
+\subsection*{Using Intersections}\label{subsec*:intersection-method}
 The Bijection Range Method works for determining ranges on a segment $w$
-for which points $p,q \in V$ are closer to $w$ than $w_1$ or $w_2$.
+for which points $p,q \in \mathcal{V}$ are closer to $w$ than $w_1$ or $w_2$.
 However, since we are only interested
 in invalidating the line with respect to this property, it is worth looking at
-the possibility of using the intersection of any $e \in E$ instead.
-\\\\
-Claim: For each $p,q \in V$ where $p \neq w_1,w_2$ and $q \neq w_1,w_2$,
-$p$ and $q$ have overlapping Bijection Ranges
-if the line passing through them intersects $w$.
-
+the possibility of using the intersection of any $e \in \mathcal{E}$ instead.
+\begin{theorem}\label{thm:overlap}
+For each $p,q \in \mathcal{V}$ where $p \neq w_1,w_2$ and $q \neq w_1,w_2$,
+if $p$ and $q$ have overlapping Bijection Ranges
+then the line passing through them intersects $w$.
+\end{theorem}
 \begin{proof}
 The proof is shown below:
 \begin{enumerate}[(1)]
@@ -96,39 +111,172 @@ The proof is shown below:
 it is evident that there are 2 intersection points formed by
 the lower and upper bounds of the intersection of ranges.
 Let these points be $w_l$ and $w_u$.
-\item By Theorem \#.\#, these points form a quadralateral.
-Let the quadralateral $p,w_l,q,w_u$ be denoted as $A$.
-\item Since $A$ is a quadralateral,
+\item By definition, these points form a quadralateral.
+Let the quadralateral $p,w_l,q,w_u$ be denoted as $Q$.
+\item Since $Q$ is a quadralateral,
 a line segment can be drawn between $p$ and $q$ that lies within
-the inner region formed by $A$.
+the inner region formed by $Q$.
 Let that line be denoted as $e$.
 \item Since $w_l$ and $w_u$ both intersect $w$, and $e$ is a continuous line
 that lies between $w_l$ and $w_u$, then $e$ must also intersect $w$.
 \end{enumerate}
 \end{proof}
 
-It is not sufficient, however, to claim that if a line $e \in E$ intersects $w$
-that they then have overlapping Bijection Ranges.
-Points $p$ and $q$ of line $e$ must also be within the circular area created by
-revolving $w$ about it's midpoint.
+\subsection*{Abstracting Bijection Ranges}\label{subsec*:bijection-range-method}
+Calculating both bijections of each possible point $v \in \mathcal{V}$
+for each edge $e \in \mathcal{E}$
+is a very costly method of validating a segment. Instead of having to do the calculations
+each time, it would be nice if there were a mathematical area to represent
+when a point's bijection ranges will overlap for a given segment.
+\begin{theorem}\label{thm:semicircle}
+The area in which there is a bijection range created from point $p \in \mathcal{V}$
+using segment $w \in \mathcal{E}$
+can be represented as a semicircle, $M$, where $w$ is the segment opposite its arc.
+\end{theorem}
+\begin{proof} The proof is shown below:
+\begin{enumerate}[(1)]
+\item Let $w$ be the edge we are testing, with points $w_1,w_2 \in \mathcal{V}$.
+\item Take a point $p \in \mathcal{V}$ where $p \neq w_1,w_2$ and $p$ does not lie on $w$.
+\item Let $M$ be the unique semicircle in the direction of $p$ formed using $w$ as the
+flat segment of $M$.
+\item Let $A$, $B$, and $C$ represent the points $w_1$, $p$, and $w_2$, respectively.
+Similarly, let $D$, $E$, and $F$ represent the midpoints of segments
+$AC$, $BC$, and $AC$, respectively.
+\item Now we assume the 3 cases for the position of $p$ relative to $M$:
+\begin{enumerate}[(i)]
+\item Assume that $p$ lies on the arc of semicircle $M$:
+\begin{enumerate}[(a)]
+\item Points $A$, $B$, and $C$ satsify the requirements of Thale's Theorem:
+``if segment $AB$ is a diameter, then the angle at $C$ is a right angle.''
+Thus $\angle ACB = 90$.
+\item Let vector $V$ be the bijection of $BC$, so that $V$ passes through
+$E$ and is perpendicular to $BC$.
+Let the intersection point of $V$ and $AC$ be point $I$.
+\item Since $\angle ABC$ = $\angle IBE$ and $\angle BCA = \angle BEI$,
+$\triangle ABC$ and $\triangle IBE$ are similar triangles.
+\item Given that $BE$ is half the length of $BC$,
+then $BI = \frac{BA}{2} = BD$.
+Thus $I$ is halfway between $A$ and $B$, so $I \equiv D$.
+\item Now let $V$ be the bijection of $AC$, so that $V$ passes through
+$F$ and is perpendicular to $AC$.
+Let the intersection point of $V$ and $AC$ be point $I$.
+\item Since $\angle BAC$ = $\angle IAF$ and $\angle ACB = \angle AFI$,
+$\triangle ABC$ and $\triangle AIF$ are similar triangles.
+\item Given that $AF$ is half the length of $AC$,
+then $AI = \frac{BA}{2} = AD$.
+Thus $I$ is halfway between $A$ and $B$, so $I \equiv D$.
+\item Since both bijections for $p$ meet in the center of $w$,
+the Bijection Range is a single point.
+\end{enumerate}
+This shows that the Bijection Range for points along the arc of $M$ are equal to
+the center $w$.
+\item Now assume that $p$ lies inside the area of $M$ but not on the arc of $M$:
+\begin{enumerate}[(a)]
+\item As shown above, if $p$ is on the arc of $M$ then $\angle ACB = 90$.
+Thus if $p$ is inside the arc, $\angle ACB < 90$ or $\angle ACB > 90$.
+\item As $p$ approaches $w$, $\angle ACB$ approaches $180$. So $\angle ACB > 90$.
+\item Since $\angle ACB > 90$,
+the two bijection vectors will intersect somewhere below $w$,
+opposite to $M$.
+\item The area between the intersections of these vectors with $w$ is
+the Bijection Range found previously through iteration.
+\end{enumerate}
+This shows that the Bijection Range for points inside the area of $M$ is equal to the
+intersection of the bijection vectors with $w$.
+\item Now assume the final case, that $p$ lies outside the area of $M$ but not on
+the arc of $M$:
+\begin{enumerate}[(a)]
+\item If $p$ is outside of the arc, then $\angle ACB < 90$.
+\item Since $\angle ACB < 90$,
+the two bijection vectors will intersect somewhere in the region above $w$,
+on the same side as $M$.
+\item The area between the intersections of these vectors with $w$ is not
+the Bijection Range, since the inequalities will not contain the same ranges.
+\end{enumerate}
+Thus the Bijection Range for points outside the area of $M$ is undefined.
+\end{enumerate}
+\item This shows that the only possible way a Bijection Range is formed by
+point $p$ on segment $w$ is if $p$ is inside or on the arc of semicircle $M$.
+\end{enumerate}
+\end{proof}
 
-\subsection{Construction Phase}\label{subsec:construct}
-The goal of the construction phase of the algorithm is to generate $W$, i.e. a set of
-edges $W = \{w_1, w_2, ..., w_m\}$ such that $W \subseteq E$ and $S \subseteq W$.
+\subsection*{Final Segment Invalidation}
+I have decided to classify a segment $w$ as a part of $\mathcal{E}'$ instead of
+$\mathcal{W}$ (i.e. as ``invalid'') in the following manner:
+\begin{align*}
+&\begin{aligned}
+\mathcal{E}' &= \{e'\text{ }|\text{ }\exists\text{ }e \in \mathcal{E} \text{ where } e \neq e'
+\text{ and } e_1,e_2 \text{ have overlapping}\\
+&\qquad \text{Bijection Ranges on opposite sides of } e'\}
+\end{aligned}
+\end{align*}
+This means that for each edge $e' \in \mathcal{E}'$ there are two points,
+$p,q \in \mathcal{V}$ which lie inside opposite semicircles
+(by Theorem \ref{thm:semicircle}) and intersect $e'$ through an edge $e \in \mathcal{E}$
+(by Theorem \ref{thm:overlap}). Since $\mathcal{W} = \mathcal{E} - \mathcal{E}'$,
+$\mathcal{W}$ therefore contains all segments which were not intersected by two
+points that have overlapping Bijection Ranges.
+
+\subsection{Expectations for $\mathcal{W}$}\label{subsec:exp_w}
+Based upon the properites of shortest paths, $\mathcal{W}$ should have the following expectations:
+\begin{enumerate}
+\item $\mathcal{H}$ will always be included, since there are no paths
+which could prove to invalidate any $h \in \mathcal{H}$.
+\item Any two edges $w_i,w_j \in \mathcal{W}$ where $i \neq j$ can cross each other.
+However any path $\mathcal{S}'$ can only contain one of these edges.
+\item If an arbitrary point $p_{n+1}$ was added on an edge $w \in \mathcal{W}$,
+$w$ would not be intersected by an edge $e \in \mathcal{E}$ where $e \neq w$.
+\\\\
+Derived from the construction phase of the algorithm,
+the sum of the distances between points
+$w_1$ and $w_2$ and the point $p_{n+1}$
+is smaller than the sum of the distances between points
+$e_1$ and $e_2$ and the point $p_{n+1}$ for all $e \in \mathcal{E}$ such that $e \neq w$.
+Thus, if it were true that $p_{n+1} \in \mathcal{V}$,
+the only path in $\mathcal{W}$ passing
+through $p_{n + 1}$ would be the path $[w_1,p_{n+1},w_2]$.
+All other paths have been proven to be too long.
+Thus $[e_1,p_{n+1},e_2] \equiv [w_1,p_{n+1},w_2] \Rightarrow w \equiv e$
+and $e$ cannot cross $w$.
+\item A path $\mathcal{S}'$ can be made from $\mathcal{W}$
+which goes through all vertices in $\mathcal{V}$ only once
+and starts and ends on the same point.
+If $\mathcal{W}$ has multiple paths that fit these requirements, then all such paths
+$\{\mathcal{S}'_1, \mathcal{S}'_2, ... \mathcal{S}'_k\}$ should be collected.
+The shortest path in this set must be equivalent to $\mathcal{S}$.
+\end{enumerate}
+
+\section{The Harris Path Algorithm}
+The Harris Path Algorithm is made up of 3 consecutive phases,
+Edge Invalidation, Path Generation, and Decision.
+The Edge Invalidation Phase is
+responsible for invalidating edges from $\mathcal{E}$ to generate the set
+$\mathcal{W}$. The Path Generation Phase uses a greedy strategy to combine the resultant
+shapes inside of $\mathcal{W}$ into a set of possible shortest paths,
+$\mathcal{S}' = \mathcal{S}'_1, \mathcal{S}'_2, ... \mathcal{S}'_k\}$.
+The Decision Phase chooses the shortest of these paths and returns it as the
+found shortest path, $\mathcal{S}$.
+
+\subsection{Edge Invalidation Phase}\label{subsec:edge-gen}
+The goal of the construction phase of the algorithm is to generate $\mathcal{W}$,
+i.e. a set of
+edges $\mathcal{W} = \{w_1, w_2, ..., w_m\}$ such that
+$\mathcal{W} \subseteq \mathcal{E}$ and $\mathcal{S} \subseteq \mathcal{W}$.
 These edges must hold the properties of shortest paths, discussed in section
 \ref{subsec:props}.
 They must also give us some kind of meaningful information, so that we are able to
-construct a path $S'$ from them with the claim that $S' \equiv S$.
+construct a path $\mathcal{S}'$ from them with the claim that
+$\mathcal{S}' \equiv \mathcal{S}$.
 The construction phase is broken up into steps below:
 \begin{enumerate}
-\item Choose an edge $e$ from $E$ with the points $e_1,e_2$.
+\item Choose an edge $e$ from $\mathcal{E}$ with the points $e_1,e_2$.
 We will test this edge to see if it is possible that $e$ is part of a shortest path,
-and subsequently that $e \in W$.
+and subsequently that $e \in \mathcal{W}$.
 \\\\
-Take each edge $e' \in E$ with points $p,q$ such that $p$ and $q$ straddle
+Take each edge $e' \in \mathcal{E}$ with points $p,q$ such that $p$ and $q$ straddle
 $e$ and where $p$ is on the right side
 of $e$ and $q$ is on the left side of $e$.
-We perform the following tests to see if $e'$ invalidates $e \in W$:
+We perform the following tests to see if $e'$ invalidates $e \in \mathcal{W}$:
 \begin{enumerate}
 \item Let $V_1$ be the vector $<p,e_1>$.
 \item Let $V_2$ be the vector $<p,e_2>$.
@@ -150,34 +298,13 @@ both $r$ ranges generated from steps (a) through (c) using $p$ and $q$.
 \item If this intersection area is greater than the threshold, then $e$ is proven
 invalid by $e'$. Choose the next $e$ and repeat from the beginning.
 \end{enumerate}
-\item If no $e'$ invalidated $e$, then $e \in W$.
+\item If no $e'$ invalidated $e$, then $e \in \mathcal{W}$.
 \end{enumerate}
 
-\subsection{Expectations for $W$}\label{subsec:exp_w}
-Based upon the properites of shortest paths, $W$ should have the following expectations:
-\begin{enumerate}
-\item $H$ will always be included, since there are no paths which could prove to
-invalidate any $h \in H$.
-\item Any two edges $w_i,w_j \in W$ where $i \neq j$ can cross each other.
-However any path $S'$ can only contain one of these edges.
-\item If an arbitrary point $p_{n+1}$ was added on an edge $w \in W$,
-$w$ would not be intersected by an edge $e \in E$ where $e \neq w$.
-\\\\
-Derived from the construction phase of the algorithm,
-the sum of the distances between points
-$w_1$ and $w_2$ and the point $p_{n+1}$
-is smaller than the sum of the distances between points
-$e_1$ and $e_2$ and the point $p_{n+1}$ for all $e \in E$ such that $e \neq w$.
-Thus, if it were true that $p_{n+1} \in V$, the only path in $W$ passing
-through $p_{n + 1}$ would be the path $[w_1,p_{n+1},w_2]$.
-All other paths have been proven to be too long.
-Thus $[e_1,p_{n+1},e_2] \equiv [w_1,p_{n+1},w_2] \Rightarrow w \equiv e$
-and $e$ cannot cross $w$.
-\item A path $S'$ can be made from $W$ which goes through all vertices in $V$ only once
-and starts and ends on the same point.
-If $W$ has multiple paths that fit these requirements, then all such paths
-$\{S'_1, S'_2, ... S'_k\}$ should be collected.
-The shortest path in this set must be equivalent to $S$.
-\end{enumerate}
+\subsection{Path Generation Phase}\label{subsec:path-gen}
+...
+
+\subsection{Decision Phase}\label{subsec:decision}
+...
 
 \end{document}
