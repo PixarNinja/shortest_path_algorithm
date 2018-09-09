@@ -325,6 +325,7 @@ int main(int argc, char *argv[])
     fclose(gnu_files[3]);
     fclose(gnu_files[4]);
     fclose(gnu_files[5]);
+    fclose(gnu_files[6]);
     char plot[1024];
     sprintf(plot, "gnuplot -persistent %s", commands);
     if(print) {

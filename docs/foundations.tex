@@ -2,8 +2,12 @@
 \usepackage[margin=1.0in]{geometry}
 \usepackage{amsmath,amsthm,amssymb,amsfonts}
 \usepackage{enumerate,mathtools}
+\usepackage{pgfplots}
+\usepackage{caption}
+\usepackage{float}
 
 \newtheorem{theorem}{Theorem}[section]
+\graphicspath{ {./images/} }
 
 \title{The Harris Path Algorithm:\\
 Terminology and Theoretical Concepts}
@@ -79,7 +83,8 @@ will not change iff $p_{n+1}$ is a point on the line of any $s \in \mathcal{S}$.
 
 \subsection{Invalidating a Segment}\label{subsec:invalid}
 My algorithm is based upon the concept of invalidating as many segments of $\mathcal{E}$
-as possible, but keep all segments which could be in $\mathcal{S}$. In order to do this,
+as possible, but keeping all segments which could be in $\mathcal{S}$.
+In order to do this,
 I propose a method of construction that invalidates segments based upon the
 properties for shortest paths which I have produced
 above. Any segment which fails these properties cannot be in $\mathcal{S}$,
@@ -216,6 +221,16 @@ $p,q \in \mathcal{V}$ which lie inside opposite semicircles
 (by Theorem \ref{thm:overlap}). Since $\mathcal{W} = \mathcal{E} - \mathcal{E}'$,
 $\mathcal{W}$ therefore contains all segments which were not intersected by two
 points that have overlapping Bijection Ranges.
+The set $\mathcal{E}'$ for a random set of datapoints
+in $[-10, 10]$ is produced below. I have overlaid the actual shortest path,
+$\mathcal{S}$, in transparent blue. Notice that there is once segment which
+was proved to be invalid which actually belongs to a shortest path.
+\begin{figure}[h!]
+\begin{center}
+\includegraphics{e'_random}
+\end{center}
+\caption{$\mathcal{E}'$ with actual shortest path}\label{fig:E'-short}
+\end{figure}
 
 \subsection{Expectations for $\mathcal{W}$}\label{subsec:exp_w}
 Based upon the properites of shortest paths, $\mathcal{W}$ should have the following expectations:
@@ -228,22 +243,26 @@ However any path $\mathcal{S}'$ can only contain one of these edges.
 $w$ would not be intersected by an edge $e \in \mathcal{E}$ where $e \neq w$.
 \\\\
 Derived from the construction phase of the algorithm,
-the sum of the distances between points
-$w_1$ and $w_2$ and the point $p_{n+1}$
-is smaller than the sum of the distances between points
-$e_1$ and $e_2$ and the point $p_{n+1}$ for all $e \in \mathcal{E}$ such that $e \neq w$.
+$\nexists$ $w \in \mathcal{W}$ such that $w \in \mathcal{E}'$
+given that $\mathcal{E}'$ is defined in the following way:
+\begin{align*}
+&\begin{aligned}
+\mathcal{E}' &= \{e'\text{ }|\text{ }\exists\text{ }e \in \mathcal{E} \text{ where } e \neq e'
+\text{ and } e_1,e_2 \text{ have overlapping}\\
+&\qquad \text{Bijection Ranges on opposite sides of } e'\}
+\end{aligned}
+\end{align*}
 Thus, if it were true that $p_{n+1} \in \mathcal{V}$,
 the only path in $\mathcal{W}$ passing
 through $p_{n + 1}$ would be the path $[w_1,p_{n+1},w_2]$.
-All other paths have been proven to be too long.
-Thus $[e_1,p_{n+1},e_2] \equiv [w_1,p_{n+1},w_2] \Rightarrow w \equiv e$
-and $e$ cannot cross $w$.
+All other paths have been proven to be invalid,
+and thus unlikely to be part of the path $\mathcal{S}$.
 \item A path $\mathcal{S}'$ can be made from $\mathcal{W}$
 which goes through all vertices in $\mathcal{V}$ only once
 and starts and ends on the same point.
 If $\mathcal{W}$ has multiple paths that fit these requirements, then all such paths
 $\{\mathcal{S}'_1, \mathcal{S}'_2, ... \mathcal{S}'_k\}$ should be collected.
-The shortest path in this set must be equivalent to $\mathcal{S}$.
+The shortest path in this set is likely to be equivalent to $\mathcal{S}$.
 \end{enumerate}
 
 \section{The Harris Path Algorithm}

@@ -1381,10 +1381,13 @@ bool test_w_segment(Vector L, double interval, Point *points, int n) {
                 continue;
             }
 
-            /* skip if either point is too close to an end point */
+            printf("CHECKING L (%d, %d) BY %d and %d ON %lf\n", L.start.index, L.end.index, p.index, q.index, interval);
+
+            /* skip if either point is too close to an end point
             if(distance_p(p, L.start) <= intervals[0] + epsilon || distance_p(p, L.end) <= intervals[1] + epsilon || distance_p(q, L.start) <= intervals[0] + epsilon || distance_p(q, L.end) <= intervals[1] + epsilon) {
+                printf("TOO CLOSE!\n");
                 continue;
-            }
+            }*/
 
             Vector P = Vector("P", L.start, p);
             Vector Q = Vector("Q", L.start, q);
@@ -1395,21 +1398,25 @@ bool test_w_segment(Vector L, double interval, Point *points, int n) {
 
             /* skip if p and q don't straddle L */
             if((determinant(L, P) * determinant(L, Q)) >= 0) {
+                printf("DOES NOT STRADDLE!\n");
                 continue;
             }
 
-            /* EXPERIMENTAL */
+            /* find intersection between E and L */
             Vector E = Vector("E", p, q);
             Point t = find_intersection(E, L);
             if(t.index == -1) {
+                printf("NO INTERSECTION!\n");
                 continue;
             }
-            // if(E.length < L.length) {
-            //     return false; // invalid
-            // }
 
+            /* check if the points are within the circular bijection range */
             if((distance_p(p, m) <= radius) && (distance_p(q, m) <= radius)) {
+                printf("INVALID!\n");
                 return false; // invalid
+            }
+            else {
+                printf("NOT IN BIJECTION RANGE!\n");
             }
 
          }
