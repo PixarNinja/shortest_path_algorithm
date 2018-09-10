@@ -105,6 +105,16 @@ int segment_match(vector<int *> segments, int beginning, int end)
     return -1;
 }
 
+/* searches through a vector of segments for a matching segment */
+int index_match(vector<int *> segments, int beginning, int end) {
+    for(int i = 0; i < segments.size(); i++) {
+        if((segments[i][0] == beginning && segments[i][1] == end) || (segments[i][1] == beginning && segments[i][0] == end)) {
+            return i;
+        }
+    }
+    return -1;
+}
+
 /* searches through a shape for a duplicate */
 int duplicate_search(vector<int> shape)
 {
@@ -1381,7 +1391,7 @@ bool test_w_segment(Vector L, double interval, Point *points, int n) {
                 continue;
             }
 
-            printf("CHECKING L (%d, %d) BY %d and %d ON %lf\n", L.start.index, L.end.index, p.index, q.index, interval);
+            //printf("CHECKING L (%d, %d) BY %d and %d ON %lf\n", L.start.index, L.end.index, p.index, q.index, interval);
 
             /* skip if either point is too close to an end point
             if(distance_p(p, L.start) <= intervals[0] + epsilon || distance_p(p, L.end) <= intervals[1] + epsilon || distance_p(q, L.start) <= intervals[0] + epsilon || distance_p(q, L.end) <= intervals[1] + epsilon) {
@@ -1398,7 +1408,7 @@ bool test_w_segment(Vector L, double interval, Point *points, int n) {
 
             /* skip if p and q don't straddle L */
             if((determinant(L, P) * determinant(L, Q)) >= 0) {
-                printf("DOES NOT STRADDLE!\n");
+                //printf("DOES NOT STRADDLE!\n");
                 continue;
             }
 
@@ -1406,23 +1416,136 @@ bool test_w_segment(Vector L, double interval, Point *points, int n) {
             Vector E = Vector("E", p, q);
             Point t = find_intersection(E, L);
             if(t.index == -1) {
-                printf("NO INTERSECTION!\n");
+                //printf("NO INTERSECTION!\n");
                 continue;
             }
 
             /* check if the points are within the circular bijection range */
             if((distance_p(p, m) <= radius) && (distance_p(q, m) <= radius)) {
-                printf("INVALID!\n");
+                //printf("INVALID!\n");
                 return false; // invalid
             }
             else {
-                printf("NOT IN BIJECTION RANGE!\n");
+                //printf("NOT IN BIJECTION RANGE!\n");
             }
 
          }
     }
 
     return true; //valid
+}
+
+/* correct invalid segments so that there are crossing quadrilateral
+ * @param segments, the vector of arrays which define all found segments
+ * @param points, the set of datapoints
+ * @param n, the size of the points array
+ * @return none
+ */
+void cross_quads(vector<int *> *original_segments, Point *points, int n) {
+    int i = 0;
+    int j = 0;
+    int k = 0;
+    int l = 0;
+    vector<int *> segments = *original_segments;
+
+    /* attempt to form quadrilateral
+     *             C
+     *        +-------+
+     *       /       /
+     *    A /       / D
+     *     /       /
+     *    +-------+
+     *        B
+     */
+    for(int *segment_a : segments) {
+        Vector A = Vector("A", points[segment_a[0]], points[segment_a[1]]);
+
+        /* normalize A vector */
+        if(A.i == 0) { // use y values
+            if(A.start.y > A.end.y) {
+                A = Vector(A.name, A.end, A.start);
+            }
+        }
+        else { // use x values
+            if(A.start.x > A.end.x) {
+                A = Vector(A.name, A.end, A.start);
+            }
+        }
+
+        vector<int *>edges_a = edge_search(segments, A.start.index, points, n);
+
+        for(int *segment_b : edges_a) {
+            Vector B = Vector("B", points[segment_b[0]], points[segment_b[1]]);
+            /* skip segment if A == B */
+            if(A.equals(B)) {
+                continue;
+            }
+
+            /* normalize B vector based on A */
+            if(!B.start.equals(A.start)) {
+                B = Vector(B.name, B.end, B.start);
+            }
+
+            /* find vectors C and D */
+            vector<int *>edges_b = edge_search(segments, B.end.index, points, n);
+            vector<int *>edges_c = edge_search(segments, A.end.index, points, n);
+
+            for(int *segment_c : edges_c) {
+                Vector C = Vector("C", points[segment_c[0]], points[segment_c[1]]);
+                /* skip segment if A == C */
+                if(A.equals(C)) {
+                    continue;
+                }
+                /* skip segment if B == C */
+                if(B.equals(C)) {
+                    continue;
+                }
+
+                /* normalize C vector based on A */
+                if(!C.start.equals(A.end)) {
+                    C = Vector(C.name, C.end, C.start);
+                }
+
+                for(int *segment_d : edges_b) {
+                    Vector D = Vector("D", points[segment_d[0]], points[segment_d[1]]);
+                    /* skip segment if B == D */
+                    if(B.equals(D)) {
+                        continue;
+                    }
+                    /* skip segment if C == D */
+                    if(C.equals(D)) {
+                        continue;
+                    }
+
+                    /* normalize D vector based on B */
+                    if(!D.start.equals(B.end)) {
+                        D = Vector(D.name, D.end, D.start);
+                    }
+
+                    //printf("QUAD: A<%d, %d>, B<%d, %d>, C<%d, %d>, D<%d, %d>\n", A.start.index, A.end.index, B.start.index, B.end.index, C.start.index, C.end.index, D.start.index, D.end.index);
+
+                    /* check quadrilateral if it was formed */
+                    if(C.end.equals(D.end)) {
+                        /* add crossing segments */
+                        if(index_match(*original_segments, A.start.index, C.end.index) == -1) {
+                            int *tmp_segment = new int [2];
+                            tmp_segment[0] = point_match(points, n, A.start.index);
+                            tmp_segment[1] = point_match(points, n, C.end.index);
+                            original_segments->push_back(tmp_segment);
+                            //printf("ADDING <%d, %d>\n", A.start.index, C.end.index);
+                        }
+                        if(index_match(*original_segments, A.end.index, B.end.index) == -1) {
+                            int *tmp_segment = new int [2];
+                            tmp_segment[0] = point_match(points, n, A.end.index);
+                            tmp_segment[1] = point_match(points, n, B.end.index);
+                            original_segments->push_back(tmp_segment);
+                            //printf("ADDING <%d, %d>\n", A.end.index, B.end.index);
+                        }
+                    }
+                }
+            }
+        }
+    }
 }
 
 /* generate all shortest paths from W

@@ -74,6 +74,12 @@ class Vector {
          */
         void offset(double x_offset, double y_offset);
 
+        /* tests if a vector is equal
+         * @param V, the vector to test
+         * @return true if equal, false otherwise
+         */
+        bool equals(Vector V);
+
         /* prints information about this vector */
         void print();
 

@@ -267,6 +267,7 @@ int main(int argc, char *argv[])
     //////////////////////////
 
     vector<int *> stored_segments = all_w_segments(points, size);
+    //cross_quads(&stored_segments, points, size);
     for(int *segment : stored_segments) {
         segments->push_back(segment);
     }
@@ -325,7 +326,7 @@ int main(int argc, char *argv[])
     fclose(gnu_files[3]);
     fclose(gnu_files[4]);
     fclose(gnu_files[5]);
-    fclose(gnu_files[6]);
+    //fclose(gnu_files[6]); // SEGFAULT
     char plot[1024];
     sprintf(plot, "gnuplot -persistent %s", commands);
     if(print) {

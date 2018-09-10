@@ -36,7 +36,7 @@
 using namespace std;
 
 vector<int *> edge_search(vector<int *> segments, int vertex, Point *points, int size);
-int index_match(vector<int *> segments, int vertex);
+int index_match(vector<int *> segments, int beginning, int end);
 int shape_search(vector<int> shape, int vertex);
 int edge_match(Polygon polygon, int *edge);
 int polygons_search(vector<vector<int> > polygons, int vertex);
@@ -66,7 +66,8 @@ vector<Polygon> init_w_polygons(Point *points, int size);
 vector<int *> all_w_segments(Point *points, int size);
 vector<Polygon> construct_w_polygons(Polygon base, Point *points, int size, vector<string> processed_hulls, vector<int *> crosses);
 bool test_w_segment(Vector L, double interval, Point *points, int n);
-vector<Polygon> generate_paths();
+void cross_quads(vector<int *> *original_segments, Point *points, int n);
+vector<Polygon> generate_final_paths();
 Point find_intersection(Vector V1, Vector V2);
 double determinant(Vector V1, Vector V2);
 vector<Point> generate_w_points(vector<Point> w_points, Vector L, double interval);

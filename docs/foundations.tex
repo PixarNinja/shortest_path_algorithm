@@ -9,7 +9,7 @@
 \newtheorem{theorem}{Theorem}[section]
 \graphicspath{ {./images/} }
 
-\title{The Harris Path Algorithm:\\
+\title{Shortest Path Algorithm:\\
 Terminology and Theoretical Concepts}
 \author{
 Mark Wesley Harris
@@ -221,15 +221,26 @@ $p,q \in \mathcal{V}$ which lie inside opposite semicircles
 (by Theorem \ref{thm:overlap}). Since $\mathcal{W} = \mathcal{E} - \mathcal{E}'$,
 $\mathcal{W}$ therefore contains all segments which were not intersected by two
 points that have overlapping Bijection Ranges.
-The set $\mathcal{E}'$ for a random set of datapoints
+The set $\mathcal{W}$ for a random set of datapoints
 in $[-10, 10]$ is produced below. I have overlaid the actual shortest path,
 $\mathcal{S}$, in transparent blue. Notice that there is once segment which
 was proved to be invalid which actually belongs to a shortest path.
 \begin{figure}[h!]
 \begin{center}
-\includegraphics{e'_random}
+\includegraphics{w_random}
 \end{center}
-\caption{$\mathcal{E}'$ with actual shortest path}\label{fig:E'-short}
+\caption{$\mathcal{W}$ And Actual Shortest Path}\label{fig:W-random}
+\end{figure}
+\\\\
+There is another quality of $\mathcal{W}$ that we can notice by looking at many
+outputs. While not all convex quadrilaterals in $\mathcal{W}$ have all possible segments
+connected, it is clear from the instances where an edge $s$ is in $\mathcal{S}$ but
+not in $\mathcal{W}$ that connecting the corners of each quadrilateral would...
+\begin{figure}[h!]
+\begin{center}
+\includegraphics{w_quads}
+\end{center}
+\caption{$\mathcal{W}$ With Crossing Quadrilaterals}\label{fig:W-quads}
 \end{figure}
 
 \subsection{Expectations for $\mathcal{W}$}\label{subsec:exp_w}
@@ -265,8 +276,8 @@ $\{\mathcal{S}'_1, \mathcal{S}'_2, ... \mathcal{S}'_k\}$ should be collected.
 The shortest path in this set is likely to be equivalent to $\mathcal{S}$.
 \end{enumerate}
 
-\section{The Harris Path Algorithm}
-The Harris Path Algorithm is made up of 3 consecutive phases,
+\section{The Algorithm}
+The algorithm is made up of 3 consecutive phases,
 Edge Invalidation, Path Generation, and Decision.
 The Edge Invalidation Phase is
 responsible for invalidating edges from $\mathcal{E}$ to generate the set

@@ -62,6 +62,17 @@ void Vector::offset(double x_offset, double y_offset) {
     end.offset(x_offset, y_offset);
 }
 
+/* tests if a vector is equal
+ * @param V, the vector to test
+ * @return true if equal, false otherwise
+ */
+bool Vector::equals(Vector V) {
+    if((start.equals(V.start) && end.equals(V.end)) || (start.equals(V.end) && end.equals(V.start))) {
+        return true;
+    }
+    return false;
+}
+
 /* prints information about this vector */
 void Vector::print() {
     std::cout << name;
