@@ -18,4 +18,3 @@ compile_commands.json
 *.swp*
 *.out
 datapoints/tests/
-docs/output/
