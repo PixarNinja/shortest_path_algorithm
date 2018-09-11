@@ -3,6 +3,12 @@
 \usepackage{amsmath,amsthm,amssymb,amsfonts}
 \usepackage{enumerate,mathtools}
 \usepackage{pgfplots}
+\usepackage{tikz,tkz-euclide}
+\usepackage{siunitx}
+\usepackage{pgfplots}
+\usetikzlibrary{calc}
+\usetikzlibrary{positioning}
+\usetkzobj{all}
 \usepackage{caption}
 \usepackage{float}
 
@@ -150,6 +156,45 @@ $AC$, $BC$, and $AC$, respectively.
 \item Now we assume the 3 cases for the position of $p$ relative to $M$:
 \begin{enumerate}[(i)]
 \item Assume that $p$ lies on the arc of semicircle $M$:
+\\\\
+\begin{figure}[h!]
+\begin{center}
+\begin{tikzpicture}
+% A clipped circle is drawn
+\begin{scope}
+    \clip (-3,0) rectangle (3,3);
+    \draw (0,0) circle(3);
+    \draw (-3,0) -- (3,0);
+\end{scope}
+\coordinate (A) at (-3,0);
+\coordinate (B) at (3,0);
+\coordinate (C) at (60:3);
+\coordinate (D) at (0,0);
+\coordinate (E) at (2.25,1.29905);
+\coordinate (F) at (-0.75,1.29905);
+\tkzMarkSegment[color=black,pos=.5,mark=|](A,D)
+\tkzMarkSegment[color=black,pos=.5,mark=|](D,B)
+\tkzMarkSegment[color=black,pos=.5,mark=||](B,E)
+\tkzMarkSegment[color=black,pos=.5,mark=||](E,C)
+\tkzMarkSegment[color=black,pos=.5,mark=|||](A,F)
+\tkzMarkSegment[color=black,pos=.5,mark=|||](F,C)
+\draw (-3,0) -- (61:3); % AC
+\draw (3,0) -- (61:3); % BC
+\draw (0,0) -- (2.25,1.29905); % DE
+\draw (0,0) -- (-0.75,1.29905); % DF
+\node[right = -3mm of (60:3)] {\textbullet}; % p
+%%Labels for the vertices are typeset.
+\node[below left = 1mm of {(-3,0)}] {$A$};
+\node[below right = 1mm of {(3,0)}] {$B$};
+\node[above right = 1mm of {(60:3)}] {$C$};
+\node[below = 2.5mm of {(65:3)}] {$p$};
+\node[below = 1mm of {(0,0)}] {$D$};
+\node[below left = 5mm of {(25:3)}] {$E$};
+\node[below right = 15mm of {(120:3)}] {$F$};
+\end{tikzpicture}
+\end{center}
+\caption{$p$ lies on $M$}\label{fig:case1}
+\end{figure}
 \begin{enumerate}[(a)]
 \item Points $A$, $B$, and $C$ satsify the requirements of Thale's Theorem:
 ``if segment $AB$ is a diameter, then the angle at $C$ is a right angle.''
@@ -176,6 +221,43 @@ the Bijection Range is a single point.
 This shows that the Bijection Range for points along the arc of $M$ are equal to
 the center $w$.
 \item Now assume that $p$ lies inside the area of $M$ but not on the arc of $M$:
+\\\\
+\begin{figure}[h!]
+\begin{center}
+\begin{tikzpicture}
+% A clipped circle is drawn
+\begin{scope}
+    \clip (-3,0) rectangle (3,3);
+    \draw (0,0) circle(3);
+    \draw (-3,0) -- (3,0);
+\end{scope}
+\coordinate (A) at (-3,0);
+\coordinate (B) at (3,0);
+\coordinate (C) at (60:2);
+\coordinate (D) at (0,0);
+\coordinate (E) at (2,0.86605);
+\coordinate (F) at (-1,0.86605);
+\tkzMarkSegment[color=black,pos=.5,mark=|](B,E)
+\tkzMarkSegment[color=black,pos=.5,mark=|](E,C)
+\tkzMarkSegment[color=black,pos=.5,mark=||](A,F)
+\tkzMarkSegment[color=black,pos=.5,mark=||](F,C)
+\draw (-3,0) -- (61:2); % AC
+\draw (3,0) -- (61:2); % BC
+\draw (0,-1.443352) -- (2,0.86605); % DE
+\draw (0,-1.443352) -- (-1,0.86605); % DF
+\node[right = -3mm of (60:2)] {\textbullet}; % p
+%%Labels for the vertices are typeset.
+\node[below left = 1mm of {(-3,0)}] {$A$};
+\node[below right = 1mm of {(3,0)}] {$B$};
+\node[above right = 1mm of {(60:2)}] {$C$};
+\node[below = 2.5mm of {(65:2)}] {$p$};
+\node[below = 1mm of {(0,0)}] {$D$};
+\node[above right = 1mm of {(25:2)}] {$E$};
+\node[below left = 6mm of {(105:2)}] {$F$};
+\end{tikzpicture}
+\end{center}
+\caption{$p$ lies inside $M$}\label{fig:case2}
+\end{figure}
 \begin{enumerate}[(a)]
 \item As shown above, if $p$ is on the arc of $M$ then $\angle ACB = 90$.
 Thus if $p$ is inside the arc, $\angle ACB < 90$ or $\angle ACB > 90$.
@@ -190,6 +272,43 @@ This shows that the Bijection Range for points inside the area of $M$ is equal t
 intersection of the bijection vectors with $w$.
 \item Now assume the final case, that $p$ lies outside the area of $M$ but not on
 the arc of $M$:
+\\\\
+\begin{figure}[h!]
+\begin{center}
+\begin{tikzpicture}
+% A clipped circle is drawn
+\begin{scope}
+    \clip (-3,0) rectangle (3,3);
+    \draw (0,0) circle(3);
+    \draw (-3,0) -- (3,0);
+\end{scope}
+\coordinate (A) at (-3,0);
+\coordinate (B) at (3,0);
+\coordinate (C) at (60:4);
+\coordinate (D) at (0,0);
+\coordinate (E) at (2.5,1.73205);
+\coordinate (F) at (-0.5,1.73205);
+\tkzMarkSegment[color=black,pos=.5,mark=|](B,E)
+\tkzMarkSegment[color=black,pos=.5,mark=|](E,C)
+\tkzMarkSegment[color=black,pos=.5,mark=||](A,F)
+\tkzMarkSegment[color=black,pos=.5,mark=||](F,C)
+\draw (-3,0) -- (61:4); % AC
+\draw (3,0) -- (61:4); % BC
+\draw (0,1.010361) -- (2.5,1.73205); % DE
+\draw (0,1.010361) -- (-0.5,1.73205); % DF
+\node[right = -3mm of (60:4)] {\textbullet}; % p
+%%Labels for the vertices are typeset.
+\node[below left = 1mm of {(-3,0)}] {$A$};
+\node[below right = 1mm of {(3,0)}] {$B$};
+\node[above right = 1mm of {(60:4)}] {$C$};
+\node[below = 2.5mm of {(65:4)}] {$p$};
+\node[below = 1mm of {(0,0)}] {$D$};
+\node[above right = 1mm of {(30:3)}] {$E$};
+\node[above left = -2mm of {(105:2)}] {$F$};
+\end{tikzpicture}
+\end{center}
+\caption{$p$ lies outside $M$}\label{fig:case3}
+\end{figure}
 \begin{enumerate}[(a)]
 \item If $p$ is outside of the arc, then $\angle ACB < 90$.
 \item Since $\angle ACB < 90$,
@@ -229,19 +348,24 @@ was proved to be invalid which actually belongs to a shortest path.
 \begin{center}
 \includegraphics{w_random}
 \end{center}
-\caption{$\mathcal{W}$ And Actual Shortest Path}\label{fig:W-random}
+\caption{$\mathcal{W}$ and $\mathcal{S}$}\label{fig:W-random}
 \end{figure}
-\\\\
-There is another quality of $\mathcal{W}$ that we can notice by looking at many
-outputs. While not all convex quadrilaterals in $\mathcal{W}$ have all possible segments
-connected, it is clear from the instances where an edge $s$ is in $\mathcal{S}$ but
-not in $\mathcal{W}$ that connecting the corners of each quadrilateral would...
-\begin{figure}[h!]
-\begin{center}
-\includegraphics{w_quads}
-\end{center}
-\caption{$\mathcal{W}$ With Crossing Quadrilaterals}\label{fig:W-quads}
-\end{figure}
+%\\\\
+%There is another quality of $\mathcal{W}$ that we can notice by looking at many
+%of the outputs, including the one above. There are some edges proven invalid
+%which we would rather not be, i.e. they are in
+%$\mathcal{S}$ but not in $\mathcal{W}$.
+%Using approximately 300 tests, only about 1\% of paths have a segment in
+%$\mathcal{S}$ but not in $\mathcal{W}$. All of the segments for which this was
+%true were inside the Circular Bijection Range, however the circle which
+%they create, $M'$, lies outside of $M$.
+%Correcting for this, we obtain the output of $\mathcal{W}$ below:
+%\begin{figure}[h!]
+%\begin{center}
+%\includegraphics{w_grad}
+%\end{center}
+%\caption{$\mathcal{W}$ With Gradient Validation}\label{fig:W-grad}
+%\end{figure}
 
 \subsection{Expectations for $\mathcal{W}$}\label{subsec:exp_w}
 Based upon the properites of shortest paths, $\mathcal{W}$ should have the following expectations:
