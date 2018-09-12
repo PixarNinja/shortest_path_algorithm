@@ -67,6 +67,7 @@ vector<int *> all_w_segments(Point *points, int size);
 vector<Polygon> construct_w_polygons(Polygon base, Point *points, int size, vector<string> processed_hulls, vector<int *> crosses);
 bool test_w_segment(Vector L, double interval, Point *points, int n);
 void cross_quads(vector<int *> *original_segments, Point *points, int n);
+Vector circular_gradient(Point center, double radius, Point p);
 vector<Polygon> generate_final_paths();
 Point find_intersection(Vector V1, Vector V2);
 double determinant(Vector V1, Vector V2);

@@ -1087,7 +1087,7 @@ vector<int *> all_w_segments(Point *points, int size) {
         }
     }
 
-    //interval *= 2;
+    interval /= 5;
 
     /* test all line segments that are inside the base but not a part of the base */
     for(i = 0; i < size; i++) {
@@ -1324,7 +1324,6 @@ bool test_w_segment(Vector L, double interval, Point *points, int n) {
     int k = 0;
     Point *t_points = new Point [n]; // holds test points sorted by distance
     vector<double> angles; // holds angles corresponding to test set
-    double *intervals = new double [2]; // holds clostest starting and ending intervals
     double epsilon = 0.000001;
     Vector V1;
     Vector V2;
@@ -1332,27 +1331,6 @@ bool test_w_segment(Vector L, double interval, Point *points, int n) {
     /* find test point set */
     for(k = 0; k < n; k++) {
         t_points[k] = Point(points[k]); // copy data
-    }
-
-    /* record closest intervals */
-    intervals[0] = DBL_MAX;
-    for(k = 0; k < n; k++) {
-        if(points[k].equals(L.start)) {
-            continue;
-        }
-        if(distance_p(L.start, points[k]) < intervals[0]) {
-            intervals[0] = distance_p(L.start, points[k]);
-        }
-    }
-
-    intervals[1] = DBL_MAX;
-    for(k = 0; k < n; k++) {
-        if(points[k].equals(L.end)) {
-            continue;
-        }
-        if(distance_p(L.end, points[k]) < intervals[1]) {
-            intervals[1] = distance_p(L.end, points[k]);
-        }
     }
 
     /* normalize L vector */
@@ -1393,12 +1371,6 @@ bool test_w_segment(Vector L, double interval, Point *points, int n) {
 
             //printf("CHECKING L (%d, %d) BY %d and %d ON %lf\n", L.start.index, L.end.index, p.index, q.index, interval);
 
-            /* skip if either point is too close to an end point
-            if(distance_p(p, L.start) <= intervals[0] + epsilon || distance_p(p, L.end) <= intervals[1] + epsilon || distance_p(q, L.start) <= intervals[0] + epsilon || distance_p(q, L.end) <= intervals[1] + epsilon) {
-                printf("TOO CLOSE!\n");
-                continue;
-            }*/
-
             Vector P = Vector("P", L.start, p);
             Vector Q = Vector("Q", L.start, q);
             Vector P1 = Vector("P1", p, L.start);
@@ -1419,6 +1391,28 @@ bool test_w_segment(Vector L, double interval, Point *points, int n) {
                 //printf("NO INTERSECTION!\n");
                 continue;
             }
+
+            // /* store midpoint of <p, q> */
+            // Vector S = Vector("S", p, q);
+            // Point s = Point(S.start.x, S.start.y, -1);
+            // s.offset(S.i / 2, S.j / 2);
+            //
+            // /* store grad(f(s)) */
+            // double radius = distance_p(m, L.start);
+            // Vector G = circular_gradient(m, radius, s);
+            // G.normalize();
+            // G.i *= radius;
+            // G.j *= radius;
+            //
+            // /* find intersection point between G and circle M */
+            // Point g = Point(m);
+            // g.offset(G.i, G.j);
+            //
+            // /* check if points should be tested for ranges */
+            // if(abs(distance_p(s, p) - distance_p(s, g)) <= interval) {
+            //     //printf("CIRCLE NOT CONTAINED IN M!\n");
+            //     continue;
+            // }
 
             /* check if the points are within the circular bijection range */
             if((distance_p(p, m) <= radius) && (distance_p(q, m) <= radius)) {
@@ -1548,10 +1542,31 @@ void cross_quads(vector<int *> *original_segments, Point *points, int n) {
     }
 }
 
-/* generate all shortest paths from W
+/* calculates the ciruclar gradient for a point p
+ * @param center, the center point of the circle
+ * @param radius, the radius of the circle
+ * @param p, the point to use in calcualtion
+ * @return grad, the gradient vector
+ */
+Vector circular_gradient(Point center, double radius, Point p) {
+    /* Using the equation f(x,y) = [(x - x_0)^2 + (y - y_0)^2]/r^2
+     * grad(f) = d/dx[(x - x_0)^2 + (y - y_0)^2)]i/r^2 +
+     *           d/dy[(x - x_0)^2 + (y - y_0)^2]j/r^2
+     *         = d/dx[x^2 - 2xx_0 + x_0^2 + y^2 - 2yy_0 + y_0^2]i/r^2 +
+     *           d/dy[x^2 - 2xx_0 + x_0^2 + y^2 - 2yy_0 + y_0^2]j/r^2
+     *         = (2x - 2x_0)i/r^2 + (2y - 2y_0)j/r^2 */
+    Vector grad = Vector("G", center, center);
+    grad.i = (2 * (p.x) - 2 * center.x) / pow(radius, 2);
+    grad.j = (2 * (p.y) - 2 * center.y) / pow(radius, 2);
+    grad.end.offset(grad.i, grad.j);
+    grad.refresh();
+    return grad;
+}
+
+/* generates all shortest paths from W
  * @return paths, the vector of shortest paths
  */
-vector<Polygon> generate_paths() {
+vector<Polygon> generate_final_paths() {
     vector<Polygon> paths;
     return paths;
 }

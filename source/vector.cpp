@@ -75,6 +75,10 @@ bool Vector::equals(Vector V) {
 
 /* prints information about this vector */
 void Vector::print() {
+    std::cout << name << ":\n";
+    start.print();
+    end.print();
+    printf("<i,j>\t<%0.3lf,%0.3lf>\n|", i, j);
     std::cout << name;
-    printf(": datapoints = %d (%0.3lf,%0.3lf), %d (%0.3lf,%0.3lf)\n   components = <%0.3lf,%0.3lf>\n   length     = %0.3lf\n\n", start.index, start.x, start.y, end.index, end.x, end.y, i, j, length);
+    printf("|\t%0.3lf\n\n", length);
 }

@@ -67,3 +67,8 @@ bool Point::equals(Point P) {
     }
     return false;
 }
+
+/* prints information about this point */
+void Point::print() {
+    printf("%d\t(%0.3lf,%0.3lf)\n", index, x, y);
+}

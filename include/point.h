@@ -63,6 +63,8 @@ class Point {
          */
         bool equals(Point P);
 
+        /* prints information about this point */
+        void print();
 };
 
 #endif
