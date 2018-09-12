@@ -266,11 +266,13 @@ int main(int argc, char *argv[])
     // CALCULATE W SEGMENTS //
     //////////////////////////
 
-    vector<int *> stored_segments = all_w_segments(points, size);
-    //cross_quads(&stored_segments, points, size);
-    for(int *segment : stored_segments) {
-        segments->push_back(segment);
+    *segments = all_w_segments(points, size);
+    polygons = generate_final_paths(*segments, points, size);
+    printf("POLYGON CREATED:");
+    for(int index : polygons[0].shape) {
+        printf("->%d", points[index].index);
     }
+    printf("\nPERIMETER: %lf\n", polygons[0].perimeter);
 
     ///////////////////////
     // PLOT SEGMENT DATA //

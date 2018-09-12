@@ -44,15 +44,15 @@ vector<int *> edge_search(vector<int *> segments, int vertex, Point *points, int
     int j = 0;
     int index;
 
+    /* find the indexed value */
+    for(index = 0; index < size; index++) {
+        if(points[index].index == vertex) {
+            break;
+        }
+    }
+
     /* check if the segment is found */
     for(i = 0; i < segments.size(); i++) {
-        /* find the indexed value */
-        for(j = 0; j < size; j++) {
-            if(points[j].index == vertex) {
-                break;
-            }
-        }
-        index = j;
 
         if(points[segments[i][0]].index == vertex) {
             for(j = 0; j < size; j++) {
@@ -1429,119 +1429,6 @@ bool test_w_segment(Vector L, double interval, Point *points, int n) {
     return true; //valid
 }
 
-/* correct invalid segments so that there are crossing quadrilateral
- * @param segments, the vector of arrays which define all found segments
- * @param points, the set of datapoints
- * @param n, the size of the points array
- * @return none
- */
-void cross_quads(vector<int *> *original_segments, Point *points, int n) {
-    int i = 0;
-    int j = 0;
-    int k = 0;
-    int l = 0;
-    vector<int *> segments = *original_segments;
-
-    /* attempt to form quadrilateral
-     *             C
-     *        +-------+
-     *       /       /
-     *    A /       / D
-     *     /       /
-     *    +-------+
-     *        B
-     */
-    for(int *segment_a : segments) {
-        Vector A = Vector("A", points[segment_a[0]], points[segment_a[1]]);
-
-        /* normalize A vector */
-        if(A.i == 0) { // use y values
-            if(A.start.y > A.end.y) {
-                A = Vector(A.name, A.end, A.start);
-            }
-        }
-        else { // use x values
-            if(A.start.x > A.end.x) {
-                A = Vector(A.name, A.end, A.start);
-            }
-        }
-
-        vector<int *>edges_a = edge_search(segments, A.start.index, points, n);
-
-        for(int *segment_b : edges_a) {
-            Vector B = Vector("B", points[segment_b[0]], points[segment_b[1]]);
-            /* skip segment if A == B */
-            if(A.equals(B)) {
-                continue;
-            }
-
-            /* normalize B vector based on A */
-            if(!B.start.equals(A.start)) {
-                B = Vector(B.name, B.end, B.start);
-            }
-
-            /* find vectors C and D */
-            vector<int *>edges_b = edge_search(segments, B.end.index, points, n);
-            vector<int *>edges_c = edge_search(segments, A.end.index, points, n);
-
-            for(int *segment_c : edges_c) {
-                Vector C = Vector("C", points[segment_c[0]], points[segment_c[1]]);
-                /* skip segment if A == C */
-                if(A.equals(C)) {
-                    continue;
-                }
-                /* skip segment if B == C */
-                if(B.equals(C)) {
-                    continue;
-                }
-
-                /* normalize C vector based on A */
-                if(!C.start.equals(A.end)) {
-                    C = Vector(C.name, C.end, C.start);
-                }
-
-                for(int *segment_d : edges_b) {
-                    Vector D = Vector("D", points[segment_d[0]], points[segment_d[1]]);
-                    /* skip segment if B == D */
-                    if(B.equals(D)) {
-                        continue;
-                    }
-                    /* skip segment if C == D */
-                    if(C.equals(D)) {
-                        continue;
-                    }
-
-                    /* normalize D vector based on B */
-                    if(!D.start.equals(B.end)) {
-                        D = Vector(D.name, D.end, D.start);
-                    }
-
-                    //printf("QUAD: A<%d, %d>, B<%d, %d>, C<%d, %d>, D<%d, %d>\n", A.start.index, A.end.index, B.start.index, B.end.index, C.start.index, C.end.index, D.start.index, D.end.index);
-
-                    /* check quadrilateral if it was formed */
-                    if(C.end.equals(D.end)) {
-                        /* add crossing segments */
-                        if(index_match(*original_segments, A.start.index, C.end.index) == -1) {
-                            int *tmp_segment = new int [2];
-                            tmp_segment[0] = point_match(points, n, A.start.index);
-                            tmp_segment[1] = point_match(points, n, C.end.index);
-                            original_segments->push_back(tmp_segment);
-                            //printf("ADDING <%d, %d>\n", A.start.index, C.end.index);
-                        }
-                        if(index_match(*original_segments, A.end.index, B.end.index) == -1) {
-                            int *tmp_segment = new int [2];
-                            tmp_segment[0] = point_match(points, n, A.end.index);
-                            tmp_segment[1] = point_match(points, n, B.end.index);
-                            original_segments->push_back(tmp_segment);
-                            //printf("ADDING <%d, %d>\n", A.end.index, B.end.index);
-                        }
-                    }
-                }
-            }
-        }
-    }
-}
-
 /* calculates the ciruclar gradient for a point p
  * @param center, the center point of the circle
  * @param radius, the radius of the circle
@@ -1566,9 +1453,86 @@ Vector circular_gradient(Point center, double radius, Point p) {
 /* generates all shortest paths from W
  * @return paths, the vector of shortest paths
  */
-vector<Polygon> generate_final_paths() {
+vector<Polygon> generate_final_paths(vector<int *> segments, Point *points, int n) {
     vector<Polygon> paths;
+    int *segment = segments[0];
+
+    paths.push_back(dijkstra_polygon(segments, segment, points, n));
+
     return paths;
+}
+
+/* implements a special version of Dijkstra's Algorithm
+ * @param segments, all edges which form graph G
+ * @param segment, the segment to use as a seed
+ * @param points, the dataset of points
+ * @param n, the size of the dataset
+ */
+Polygon dijkstra_polygon(vector<int *> segments, int *segment, Point *points, int n) {
+    double *dist = new double [n]; // smallest distances
+    vector<int> path; // stores the path of the polygon
+    vector<int> *prev = new vector<int> [n]; // vector of sub paths
+    vector<int> set; // working set of points
+    double smallest = DBL_MAX;
+    int index = 0;
+    int i = 0;
+    int j = 0;
+
+    for(i = 0; i < n; i++) {
+        set.push_back(i);
+        dist[i] = DBL_MAX;
+    }
+    dist[segment[0]] = 0; // source to source is 0
+
+    while(set.size() > 0) {
+        /* choose the point with the smallest dist value */
+        for(j = 0; j < n; j++) {
+            if(dist[j] < smallest && find(set.begin(), set.end(), j) != set.end()) {
+                smallest = dist[j];
+                index = j;
+            }
+        }
+
+        /* remove points[index] from set of points */
+        for(j = 0; j < n; j++) {
+            if(set[j] == index) {
+                set.erase(set.begin() + j);
+                break;
+            }
+        }
+
+        /* iterate over all neighbors of p */
+        vector<int *> edges = edge_search(segments, points[index].index, points, n);
+        for(int *edge : edges) {
+            /* skip if the prev is going directly from start to end */
+            if(edge[0] == segment[0] && edge[1] == segment[1]) {
+                continue;
+            }
+
+            double alt = dist[index] + distance_p(points[index], points[edge[1]]);
+            if(alt < dist[edge[1]]) {
+                dist[edge[1]] = alt;
+                prev[edge[1]].push_back(index);
+            }
+        }
+        smallest = DBL_MAX;
+        index = 0;
+    }
+
+    /* store the shortest prev from start to end */
+    i = segment[1];
+    path.push_back(i);
+    while(i != segment[0]) {
+        for(j = 0; j < prev[i].size(); j++) {
+            path.push_back(prev[i][j]); // store the index in the path
+            //printf("PUSHED %d\n", points[prev[i][j]].index);
+        }
+        i = prev[i][j - 1];
+    }
+
+    Polygon polygon = Polygon(path, points);
+
+    return polygon;
 }
 
 /* finds the intersection point between two vectors
