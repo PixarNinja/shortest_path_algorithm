@@ -29,7 +29,7 @@
 
 #include "shortest_path.h"
 
-#define NUM_FILES 8
+#define NUM_FILES 10
 
 using namespace std;
 
@@ -141,7 +141,9 @@ int main(int argc, char *argv[])
     char *extrapoints = new char [strlen(gnu_path) + strlen(name) + strlen("_lines.gpf") + 1];
     char *centerpoint = new char [strlen(gnu_path) + strlen(name) + strlen("_centerpoint.gpf") + 1];
     char *path = new char [strlen(gnu_path) + strlen(name) + strlen("_calculated_path.gpf") + 1];
-    char *shortest = new char [strlen(gnu_path) + strlen(name) + strlen("_shortest_path.gpf") + 1];
+    char *shortest_dist = new char [strlen(gnu_path) + strlen(name) + strlen("_shortest_dist.gpf") + 1];
+    char *shortest_curv = new char [strlen(gnu_path) + strlen(name) + strlen("_shortest_curv.gpf") + 1];
+    char *shortest_tao = new char [strlen(gnu_path) + strlen(name) + strlen("_shortest_tao.gpf") + 1];
     char *gnu_tmp = new char [strlen(gnu_path) + strlen("tmp.gpf") + 1];
     sprintf(commands, "%s%s_commands.gpf", gnu_path, name);
     sprintf(datapoints, "%s%s_datapoints.gpf", gnu_path, name);
@@ -149,7 +151,9 @@ int main(int argc, char *argv[])
     sprintf(extrapoints, "%s%s_extrapoints.gpf", gnu_path, name);
     sprintf(centerpoint, "%s%s_centerpoint.gpf", gnu_path, name);
     sprintf(path, "%s%s_calculated_path.gpf", gnu_path, name);
-    sprintf(shortest, "%s%s_shortest_path.gpf", gnu_path, name);
+    sprintf(shortest_dist, "%s%s_shortest_dist.gpf", gnu_path, name);
+    sprintf(shortest_curv, "%s%s_shortest_curv.gpf", gnu_path, name);
+    sprintf(shortest_tao, "%s%s_shortest_tao.gpf", gnu_path, name);
     sprintf(gnu_tmp, "%stmp.gpf", gnu_path);
     gnu_files[0] = fopen(commands, "w+");
     gnu_files[1] = fopen(datapoints, "w+");
@@ -157,8 +161,10 @@ int main(int argc, char *argv[])
     gnu_files[3] = fopen(extrapoints, "w+");
     gnu_files[4] = fopen(centerpoint, "w+");
     gnu_files[5] = fopen(path, "w+");
-    gnu_files[6] = fopen(shortest, "r");
-    gnu_files[7] = fopen(gnu_tmp, "w+");
+    gnu_files[6] = fopen(shortest_dist, "r");
+    gnu_files[7] = fopen(shortest_curv, "r");
+    gnu_files[8] = fopen(shortest_tao, "r");
+    gnu_files[NUM_FILES - 1] = fopen(gnu_tmp, "w+");
     while(fgets(buf, 1024, data)) {
         size++;
     }
@@ -206,8 +212,9 @@ int main(int argc, char *argv[])
     fprintf(gnu_files[0], "set title \"%s\"\n", datafile);
     fprintf(gnu_files[0], "set style line 1 lc rgb \"black\" lw 1\n");
     fprintf(gnu_files[0], "set style line 2 lc rgb \"red\" lw 3\n");
-    fprintf(gnu_files[0], "set style line 3 lc rgb \"#BB0000FF\" lw 6\n");
-    fprintf(gnu_files[0], "set style line 4 lc rgb \"#BBFF0000\" lw 6\n");
+    fprintf(gnu_files[0], "set style line 3 lc rgb \"#990000FF\" lw 6\n");
+    fprintf(gnu_files[0], "set style line 4 lc rgb \"#AAFF0000\" lw 6\n");
+    fprintf(gnu_files[0], "set style line 5 lc rgb \"#BB00FF00\" lw 6\n");
 
     // ////////////////////////
     // // CALCULATE POLYGONS //
@@ -267,12 +274,12 @@ int main(int argc, char *argv[])
     //////////////////////////
 
     *segments = all_w_segments(points, size);
-    polygons = generate_final_paths(*segments, points, size);
+    /*polygons = generate_final_paths(*segments, points, size);
     printf("POLYGON CREATED:");
     for(int index : polygons[0].shape) {
         printf("->%d", points[index].index);
     }
-    printf("\nPERIMETER: %lf\n", polygons[0].perimeter);
+    printf("\nPERIMETER: %lf\n", polygons[0].perimeter);*/
 
     ///////////////////////
     // PLOT SEGMENT DATA //
@@ -293,7 +300,7 @@ int main(int argc, char *argv[])
     // PLOT OTHER DATA //
     /////////////////////
 
-    /* plot perimeter data */
+    /* plot perimeter data
     for(i = 0; i < polygons.size(); i++) {
         sum_x = 0.0;
         sum_y = 0.0;
@@ -305,7 +312,7 @@ int main(int argc, char *argv[])
         center.y = sum_y / (double)((polygons[i]).shape.size() - 1);
         //fprintf(gnu_files[3], "%lf %lf %d\n", center.x, center.y, i);
         fprintf(gnu_files[3], "%lf %lf %0.2lf\n", center.x, center.y, polygons[i].perimeter);
-    }
+    }*/
 
     /////////////////////////
     // FINAL PLOT COMMANDS //
@@ -314,10 +321,22 @@ int main(int argc, char *argv[])
     fprintf(gnu_files[0], "plot '%s' using 1:2 with lines ls 1 title \"Tessellations (%ld)\",", lines, segments->size() * 2);
     fprintf(gnu_files[0], "'%s' using 1:2 with points pt 7 notitle,", datapoints);
     fprintf(gnu_files[0], "'' using 1:2:3 with labels point pt 7 offset char -1,-1 notitle,");
-    fprintf(gnu_files[0], "'%s' using 1:2:3 with labels point pt 3 offset char -1,-1 notitle, ", extrapoints);
+    fprintf(gnu_files[0], "'%s' using 1:2:3 with labels point pt 3 offset char -1,-1 notitle", extrapoints);
     //fprintf(gnu_files[0], "'%s' using 1:2:3 with labels point pt 2 offset char -1,-1 notitle, ", centerpoint);
     //fprintf(gnu_files[0], "'%s' using 1:2 with lines ls 4 title \"Calculated Path\", ", path);
-    fprintf(gnu_files[0], "'%s' using 1:2 with lines ls 3 title \"Shortest Path\"\n", shortest);
+    if(gnu_files[6] != NULL) {
+        fprintf(gnu_files[0], ", '%s' using 1:2 with lines ls 3 title \"Shortest Distance\"", shortest_dist);
+        fclose(gnu_files[6]);
+    }
+    if(gnu_files[7] != NULL) {
+        fprintf(gnu_files[0], ", '%s' using 1:2 with lines ls 4 title \"Shortest Curvature\"", shortest_curv);
+        fclose(gnu_files[7]);
+    }
+    if(gnu_files[8] != NULL) {
+        fprintf(gnu_files[0], ", '%s' using 1:2 with lines ls 5 title \"Shortest Tao\"", shortest_tao);
+        fclose(gnu_files[8]);
+    }
+    fprintf(gnu_files[0], "\n");
     if(outfile != NULL) {
         fclose(output);
     }
@@ -328,12 +347,11 @@ int main(int argc, char *argv[])
     fclose(gnu_files[3]);
     fclose(gnu_files[4]);
     fclose(gnu_files[5]);
-    //fclose(gnu_files[6]); // SEGFAULT
     char plot[1024];
     sprintf(plot, "gnuplot -persistent %s", commands);
     if(print) {
         system(plot);
     }
-    fclose(gnu_files[7]);
+    fclose(gnu_files[NUM_FILES - 1]);
     return 0;
 }

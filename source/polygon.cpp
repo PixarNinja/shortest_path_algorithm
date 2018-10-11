@@ -255,3 +255,14 @@ bool Polygon::contains(Point test, Point *points, int size) {
 
     return false;
 }
+
+/* tests if a polygon is equal
+ * @param S, the polygon to test
+ * @return true if equal, false otherwise
+ */
+bool Polygon::equals(Polygon S) {
+    if(id == S.id) {
+        return true;
+    }
+    return false;
+}

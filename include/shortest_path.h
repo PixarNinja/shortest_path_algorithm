@@ -26,16 +26,18 @@
 #include <iterator>
 #include <array>
 #include <string>
+#include <unordered_map>
+#include <sstream>
 
 #include "polygon.h"
 #include "point.h"
 #include "vector.h"
 
-#define NUM_FILES 8
-
 using namespace std;
 
 vector<int *> edge_search(vector<int *> segments, int vertex, Point *points, int size);
+vector<int> breadth_first_index_search(vector<int *> segments, vector<int> *processed, vector<int> seed, Point *points, int size);
+vector<int> index_search(vector<int *> segments, vector<int> *processed, int vertex, Point *points, int size);
 int index_match(vector<int *> segments, int beginning, int end);
 int shape_search(vector<int> shape, int vertex);
 int edge_match(Polygon polygon, int *edge);
@@ -65,7 +67,7 @@ void memory_error(void);
 vector<Polygon> init_w_polygons(Point *points, int size);
 vector<int *> all_w_segments(Point *points, int size);
 vector<Polygon> construct_w_polygons(Polygon base, Point *points, int size, vector<string> processed_hulls, vector<int *> crosses);
-bool test_w_segment(Vector L, double interval, Point *points, int n);
+bool test_w_segment(vector<int *> segments, Vector L, double interval, Point *points, int n);
 Vector circular_gradient(Point center, double radius, Point p);
 vector<Polygon> generate_final_paths(vector<int *> segments, Point *points, int n);
 Polygon dijkstra_polygon(vector<int *> segments, int *segment, Point *points, int n);

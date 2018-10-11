@@ -80,6 +80,88 @@ vector<int *> edge_search(vector<int *> segments, int vertex, Point *points, int
     return edges;
 }
 
+/* uses BFS traversal to reach all edges of a seed, called recursively
+ * @param segments, all edges which form graph G
+ * @param processed, the nodes that have already been visited completely
+ * @param seed, the seed to traverse before processing child nodes
+ * @param points, the dataset of points
+ * @param size, the size of the dataset
+ */
+vector<int> breadth_first_index_search(vector<int *> segments, vector<int> *processed, vector<int> seed, Point *points, int size)
+{
+    vector<int> indices;
+    int i;
+
+    for(i = 0; i < seed.size(); i++) {
+        /* processed is updated at the end to mark seed[i] as processed */
+        printf("TESTING VERTEX = %d ...\n", seed[i]);
+        vector<int> index_buff = index_search(segments, processed, seed[i], points, size);
+        printf("NEIGHBORS : ");
+        for(int index : index_buff) {
+            printf("%d ", points[index].index);
+            /* insert if not already in indices */
+            if(find(indices.begin(), indices.end(), index) == indices.end()) {
+                indices.push_back(index);
+            }
+        }
+        printf("\n");
+    }
+
+    /* remove the current seed from the indices to generate a new seed */
+    for(int vert : seed) {
+        for(i = 0; i < indices.size(); i++) {
+            if(points[indices[i]].index == vert) {
+                break;
+            }
+        }
+        if(i < indices.size()) {
+            indices.erase(indices.begin() + i);
+        }
+    }
+
+    /* base case */
+    if(indices.size() <= 0) {
+        return *processed;
+    }
+
+    return breadth_first_index_search(segments, processed, indices, points, size);
+}
+
+/* searches through a vector of segments for all recursive matching end or
+ * @param segments, all edges which form graph G
+ * @param processed, the nodes that have already been visited completely
+ * @param vertex, the point.index value to start from (not an index)
+ * @param points, the dataset of points
+ * @param size, the size of the dataset
+ */
+vector<int> index_search(vector<int *> segments, vector<int> *processed, int vertex, Point *points, int size)
+{
+    vector<int> indices;
+
+    if(find(processed->begin(), processed->end(), vertex) == processed->end()) {
+        /* find all segements with an endpoint at the vertex */
+        for(int i = 0; i < segments.size(); i++) {
+            if(points[segments[i][0]].index == vertex) {
+                /* don't process if the segment connects to a node already been visited */
+                if(find(processed->begin(), processed->end(), points[segments[i][1]].index) == processed->end()) {
+                    indices.push_back(segments[i][1]);
+                }
+            }
+            else if(points[segments[i][1]].index == vertex) {
+                /* don't process if the segment connects to a node already been visited */
+                if(find(processed->begin(), processed->end(), points[segments[i][0]].index) == processed->end()) {
+                    indices.push_back(segments[i][0]);
+                }
+            }
+        }
+
+        /* mark the vertex as processed */
+        processed->push_back(vertex);
+    }
+
+    return indices;
+}
+
 /* searches through a vector of polygons for a matching vertex */
 int polygons_search(vector<Polygon> polygons, int vertex)
 {
@@ -906,9 +988,23 @@ vector<Polygon> init_w_polygons(Point *points, int size) {
                 continue;
             }
             Vector L = Vector("L", points[i], points[j]);
+
+            /* normalize L vector */
+            if(L.i == 0) { // use y values
+                if(L.start.y > L.end.y) {
+                    L = Vector(L.name, L.end, L.start);
+                }
+            }
+            else { // use x values
+                if(L.start.x > L.end.x) {
+                    L = Vector(L.name, L.end, L.start);
+                }
+            }
+
+            /* test segment */
             if(segment_match(w_segments, i, j) == -1) {
                 /* if the line is valid check for crosses */
-                if(test_w_segment(L, interval, points, size)) {
+                if(test_w_segment(w_segments, L, interval, points, size)) {
                     bool push = true;
 
                     /* check if the segment intersects any of the previously recorded w_segments */
@@ -1064,7 +1160,8 @@ vector<int *> all_w_segments(Point *points, int size) {
     /////////////////////////////////
 
     Polygon convex_hull = find_convex_hull(points, size);
-    vector<int *> w_segments = convex_hull.segments;
+    vector<int *> w_segments = convex_hull.segments; // output segments
+    vector<int *> t_segments; // test segments
     int *tmp_segment = new int [2];
     int i = 0;
     int j = 0;
@@ -1074,7 +1171,7 @@ vector<int *> all_w_segments(Point *points, int size) {
     // CALCULATE W-SEGMENTS //
     //////////////////////////
 
-    /* create the interval based off the smallest segment */
+    /* create the interval based off the smallest segment
     double interval = DBL_MAX;
     for(i = 0; i < size; i++) {
         for(j = 0; j < size; j++) {
@@ -1087,7 +1184,7 @@ vector<int *> all_w_segments(Point *points, int size) {
         }
     }
 
-    interval /= 5;
+    interval /= 5;*/
 
     /* test all line segments that are inside the base but not a part of the base */
     for(i = 0; i < size; i++) {
@@ -1095,22 +1192,55 @@ vector<int *> all_w_segments(Point *points, int size) {
             if(i == j) {
                 continue;
             }
-            Vector L = Vector("L", points[i], points[j]);
             if(segment_match(w_segments, i, j) == -1) {
-                /* if the line is valid check for crosses */
-                if(test_w_segment(L, interval, points, size)) {
-                    /* record segment */
-                    tmp_segment = new int [2];
-                    tmp_segment[0] = i;
-                    tmp_segment[1] = j;
+                /* record segment */
+                tmp_segment = new int [2];
+                tmp_segment[0] = i;
+                tmp_segment[1] = j;
+                t_segments.push_back(tmp_segment);
+            }
+        }
+    }
 
-                    if(w_segments.size() == 0) {
-                        w_segments.push_back(tmp_segment);
-                    }
-                    else {
-                        w_segments = fix_overlap(tmp_segment, w_segments, points);
-                    }
-                }
+    /* bubble sort test segments by smallest length */
+   for(i = 0; i < t_segments.size(); i++) {
+        for(j = t_segments.size() - 1; j > i; j--) {
+            if(distance_p(points[t_segments[j][0]], points[t_segments[j][1]]) < distance_p(points[t_segments[j - 1][0]], points[t_segments[j - 1][1]])) {
+                tmp_segment = new int [2];
+                tmp_segment[0] = t_segments[j][0];
+                tmp_segment[1] = t_segments[j][1];
+                t_segments[j] = t_segments[j - 1];
+                t_segments[j - 1] = tmp_segment;
+            }
+        }
+    } 
+
+    for(i = 0; i < t_segments.size(); i++) {
+        /*if((t_segments[i][0] == 3 && t_segments[i][1] == 5) || (t_segments[i][0] == 5 && t_segments[i][1] == 3))
+            break;*/
+        Vector L = Vector("L", points[t_segments[i][0]], points[t_segments[i][1]]);
+
+        /* normalize L vector */
+        if(L.i == 0) { // use y values
+            if(L.start.y > L.end.y) {
+                L = Vector(L.name, L.end, L.start);
+            }
+        }
+        else { // use x values
+            if(L.start.x > L.end.x) {
+                L = Vector(L.name, L.end, L.start);
+            }
+        }
+
+        if(segment_match(w_segments, t_segments[i][0], t_segments[i][1]) == -1) {
+            /* if the line is valid check for crosses */
+            if(test_w_segment(w_segments, L, 0, points, size)) { // interval value is not necessary...
+                /* record segment */
+                tmp_segment = new int [2];
+                tmp_segment[0] = t_segments[i][0];
+                tmp_segment[1] = t_segments[i][1];
+
+                w_segments.push_back(tmp_segment);
             }
         }
     }
@@ -1318,31 +1448,16 @@ vector<Polygon> construct_w_polygons(Polygon base, Point *points, int size, vect
  * @param n, the size of the points array
  * @return true if the segment is validated, false otherwise
  */
-bool test_w_segment(Vector L, double interval, Point *points, int n) {
-    int i = 0;
-    int j = 0;
-    int k = 0;
-    Point *t_points = new Point [n]; // holds test points sorted by distance
-    vector<double> angles; // holds angles corresponding to test set
-    double epsilon = 0.000001;
+bool test_w_segment(vector<int *> segments, Vector L, double interval, Point *points, int n) {
     Vector V1;
     Vector V2;
+    vector<int> top; // stores the left-side indices
+    vector<int> bottom; // stores the right-side indices
+    int *ignore = new int [n]; // ignore array
+    int i = 0;
 
-    /* find test point set */
-    for(k = 0; k < n; k++) {
-        t_points[k] = Point(points[k]); // copy data
-    }
-
-    /* normalize L vector */
-    if(L.i == 0) { // use y values
-        if(L.start.y > L.end.y) {
-            L = Vector(L.name, L.end, L.start);
-        }
-    }
-    else { // use x values
-        if(L.start.x > L.end.x) {
-            L = Vector(L.name, L.end, L.start);
-        }
+    for(i = 0; i < n; i++) {
+        ignore[i] = -1;
     }
 
     /* find the midpoint of L */
@@ -1356,74 +1471,64 @@ bool test_w_segment(Vector L, double interval, Point *points, int n) {
     for(i = 0; i < n; i++) {
         Point p = Point(points[i]);
 
-        for(j = 0; j < n; j++) {
-            Point q = Point(t_points[j]);
+        /* skip starting at L.start and L.end */
+        if(p.equals(L.start) || p.equals(L.end)) {
+            continue;
+        }
 
-            /* skip if points are the same */
-            if(p.equals(q)) {
-                continue;
-            }
-
-            /* skip starting at L.start and L.end */
-            if(p.equals(L.start) || p.equals(L.end) || q.equals(L.start) || q.equals(L.end)) {
-                continue;
-            }
-
-            //printf("CHECKING L (%d, %d) BY %d and %d ON %lf\n", L.start.index, L.end.index, p.index, q.index, interval);
-
+        /* store point if it is within a hemisphere */
+        if(distance_p(p, m) <= radius) {
             Vector P = Vector("P", L.start, p);
-            Vector Q = Vector("Q", L.start, q);
-            Vector P1 = Vector("P1", p, L.start);
-            Vector P2 = Vector("P2", p, L.end);
-            Vector Q1 = Vector("Q1", q, L.start);
-            Vector Q2 = Vector("Q2", q, L.end);
 
-            /* skip if p and q don't straddle L */
-            if((determinant(L, P) * determinant(L, Q)) >= 0) {
-                //printf("DOES NOT STRADDLE!\n");
-                continue;
+            if(determinant(L, P) > 0) {
+                top.push_back(i);
             }
-
-            /* find intersection between E and L */
-            Vector E = Vector("E", p, q);
-            Point t = find_intersection(E, L);
-            if(t.index == -1) {
-                //printf("NO INTERSECTION!\n");
-                continue;
-            }
-
-            // /* store midpoint of <p, q> */
-            // Vector S = Vector("S", p, q);
-            // Point s = Point(S.start.x, S.start.y, -1);
-            // s.offset(S.i / 2, S.j / 2);
-            //
-            // /* store grad(f(s)) */
-            // double radius = distance_p(m, L.start);
-            // Vector G = circular_gradient(m, radius, s);
-            // G.normalize();
-            // G.i *= radius;
-            // G.j *= radius;
-            //
-            // /* find intersection point between G and circle M */
-            // Point g = Point(m);
-            // g.offset(G.i, G.j);
-            //
-            // /* check if points should be tested for ranges */
-            // if(abs(distance_p(s, p) - distance_p(s, g)) <= interval) {
-            //     //printf("CIRCLE NOT CONTAINED IN M!\n");
-            //     continue;
-            // }
-
-            /* check if the points are within the circular bijection range */
-            if((distance_p(p, m) <= radius) && (distance_p(q, m) <= radius)) {
-                //printf("INVALID!\n");
-                return false; // invalid
+            else if(determinant(L, P) < 0) {
+                bottom.push_back(i);
             }
             else {
-                //printf("NOT IN BIJECTION RANGE!\n");
+                return false; // invalid, point is on L
             }
 
-         }
+            /* iterate through test segments */
+            if(top.size() > 0 && bottom.size() > 0) {
+                for(int t : top) {
+                    for(int b : bottom) {
+                        /* check if straddling point pairs have not been checked */
+                        if(ignore[t] != b) {
+                            Vector Q = Vector("Q", points[t], points[b]);
+                            vector<int> *processed;
+
+                            /* calculate degree of Q */
+                            processed = new vector<int>;
+                            vector<int> edges_q1 = index_search(segments, processed, Q.start.index, points, n);
+                            vector<int> edges_q2 = index_search(segments, processed, Q.end.index, points, n);
+                            int degree_q = edges_q1.size() + edges_q2.size();
+
+                            /* calculate degree of L */
+                            processed = new vector<int>;
+                            vector<int> edges_l1 = index_search(segments, processed, L.start.index, points, n);
+                            vector<int> edges_l2 = index_search(segments, processed, L.end.index, points, n);
+                            int degree_l = edges_l1.size() + edges_l2.size();
+
+                            /* L is invalid if degree of Q > degree of L */
+                            if(degree_q > degree_l) {
+                                printf("INVALID!\n");
+                                return false; // invalid
+                            }
+
+                            /* add the points as ignored */
+                            ignore[t] = b;
+                            ignore[b] = t;
+                        }
+                    }
+                }
+            }
+        }
+        else {
+            //printf("NOT IN BIJECTION RANGE!\n");
+        }
+
     }
 
     return true; //valid
@@ -1451,15 +1556,134 @@ Vector circular_gradient(Point center, double radius, Point p) {
 }
 
 /* generates all shortest paths from W
+ * @param segments, all edges which form graph G
+ * @param points, the dataset of points
+ * @param n, the size of the dataset
  * @return paths, the vector of shortest paths
  */
 vector<Polygon> generate_final_paths(vector<int *> segments, Point *points, int n) {
-    vector<Polygon> paths;
-    int *segment = segments[0];
+    vector<Polygon> polygons; // all polygons created
+    Polygon path; // current path
+    unordered_map<string, int> map; // map of processed segment to polygon index
+    unordered_map<string, vector<string>> cross; // map of segment to crossing value
+    string key; // key used for storing maps
+    string value; // value used for storing maps
+    ostringstream stream; // formatting for key
+    vector<int *> seeds; // set of segments to test
+    vector<int *> set; // working set of segments during test
+    int i = 0;
+    int j = 0;
+    int k = 0;
 
-    paths.push_back(dijkstra_polygon(segments, segment, points, n));
+    /* store matrix of crossing segments */
+    if(segments.size() % 2 == 0) {
+        k = segments.size() / 2;
+    }
+    else {
+        k = (segments.size() / 2) + 1;
+    }
+    for(int *segment_a : segments) {
+        Vector A = Vector("A", points[segment_a[0]], points[segment_a[1]]);
 
-    return paths;
+        for(int *segment_b : segments) {
+            /* skip if any of the points are equal */
+            if(segment_b[0] == segment_a[0] || segment_b[1] == segment_a[1] || segment_b[0] == segment_a[1] || segment_b[1] == segment_a[0]) {
+                continue;
+            }
+            Vector B = Vector("B", points[segment_b[0]], points[segment_b[1]]);
+            Point t = find_intersection(A, B);
+            if(t.index == 0) {
+                /* create key */
+                stream.flush();
+                if(segment_a[0] < segment_a[1]) {
+                    stream << segment_a[0] << "," << segment_a[1];
+                }
+                else {
+                    stream << segment_a[1] << "," << segment_a[0];
+                }
+                key = stream.str();
+
+                /* create value */
+                stream.flush();
+                if(segment_b[0] < segment_b[1]) {
+                    stream << segment_b[0] << "," << segment_b[1];
+                }
+                else {
+                    stream << segment_b[1] << "," << segment_b[0];
+                }
+                value = stream.str();
+
+                /* store data */
+                vector<string> values;
+                unordered_map<string,vector<string>>::const_iterator item;
+
+                item = cross.find(key);
+                if (item != cross.end()) {
+                    values = cross.at(key);
+                }
+                values.push_back(value);
+                cross.insert({key, values});
+
+                item = cross.find(value);
+                if (item != cross.end()) {
+                    values = cross.at(value);
+                }
+                values.push_back(key);
+                cross.insert({value, values});
+            }
+        }
+    }
+
+    for(int *segment : segments) {
+        vector<string> values;
+        unordered_map<string,vector<string>>::const_iterator item;
+
+        /* create key */
+        stream.flush();
+        if(segment[0] < segment[1]) {
+            stream << segment[0] << "," << segment[1];
+        }
+        else {
+            stream << segment[1] << "," << segment[0];
+        }
+        key = stream.str();
+
+        /* check if there is a cross */
+        item = cross.find(key);
+        if(item != cross.end()) {
+            /* found cross */
+        }
+    }
+
+    set = segments;
+
+    for(int *segment : set) {
+        Polygon smallest = dijkstra_polygon(segments, segment, points, n);
+        if(segment[0] < segment[1]) {
+            stream << segment[0] << "," << segment[1];
+        }
+        else {
+            stream << segment[1] << "," << segment[0];
+        }
+        key = stream.str();
+
+        /* check how the polygon should be stored */
+        for(i = 0; i < polygons.size(); i++) {
+            if(polygons[i].equals(smallest)) {
+                map.insert({key, i});
+                break;
+            }
+        }
+        if(i == polygons.size()) {
+            map.insert({key, polygons.size()});
+            polygons.push_back(smallest);
+        }
+
+        /* update path */
+
+    }
+
+    return polygons;
 }
 
 /* implements a special version of Dijkstra's Algorithm

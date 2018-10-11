@@ -169,6 +169,12 @@ class Polygon {
          */
         bool contains(Point test, Point *points, int size);
 
+        /* tests if a polygon is equal
+         * @param S, the polygon to test
+         * @return true if equal, false otherwise
+         */
+        bool equals(Polygon S);
+
 };
 
 #endif
