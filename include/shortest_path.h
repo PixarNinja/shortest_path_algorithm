@@ -35,51 +35,51 @@
 
 using namespace std;
 
-vector<int *> edge_search(vector<int *> segments, int vertex, Point *points, int size);
-vector<int> breadth_first_index_search(vector<int *> segments, vector<int> *processed, vector<int> seed, Point *points, int size);
-vector<int> index_search(vector<int *> segments, vector<int> *processed, int vertex, Point *points, int size);
-int index_match(vector<int *> segments, int beginning, int end);
-int shape_search(vector<int> shape, int vertex);
+/* print functions */
+void memory_error(void);
+
+/* index matching functions */
 int edge_match(Polygon polygon, int *edge);
-int polygons_search(vector<vector<int> > polygons, int vertex);
-double find_perimeter(vector<int> shape, Point *points);
 int segment_match(vector<int *> segments, int beginning, int end);
-int duplicate_search(vector<int> shape);
-bool intersection(Vector V1, Vector V2);
-bool same_direction(Vector V1, Vector V2);
-Polygon find_shortest_path(vector<Polygon> polygons, Point *points, int size);
-int smallest_neighbour(vector<Polygon> polygons, Polygon source, int n);
+int shape_match(vector<int> shape, int vertex);
+int point_match(Point *points, int size, int vertex);
+
+/* segment matching functions */
+vector<int *> edge_search(vector<int *> segments, int vertex, Point *points, int size);
 vector<int *> disjoint_edges(Polygon A, Polygon B);
 vector<int *> shared_edges(Polygon A, Polygon B);
+
+/* point matching functions */
 vector<int> shared_points(Polygon A, Polygon B);
-void visit_polygon(int *visited, Polygon polygon, Point *points);
+
+/* edge search functions */
+vector<int> breadth_first_index_search(vector<int *> segments, vector<int> *processed, vector<int> seed, Point *points, int size);
+vector<int> index_search(vector<int *> segments, vector<int> *processed, int vertex, Point *points, int size);
+
+/* boolean check functions */
+bool intersection(Vector V1, Vector V2);
+bool same_direction(Vector V1, Vector V2);
+
+/* polygon processing functions */
 Polygon add_polygons(Polygon A, Polygon B, Point *points);
 Polygon sub_polygons(Polygon A, Polygon B, Point *points);
-int point_match(Point *points, int size, int vertex);
-double calculate_curvature(Vector T1, Vector T2, double tao);
+
+/* math calculation functions */
 double angle(Vector V1, Vector V2);
-double angle_t(double tao);
 double distance_p(Point P1, Point P2);
 double distance_v(Vector V1, Vector V2);
 double dot_product(Vector V1, Vector V2);
 Vector projection(Vector V1, Vector V2);
-void memory_error(void);
-vector<Polygon> init_w_polygons(Point *points, int size);
-vector<int *> all_w_segments(Point *points, int size);
-vector<Polygon> construct_w_polygons(Polygon base, Point *points, int size, vector<string> processed_hulls, vector<int *> crosses);
-bool test_w_segment(vector<int *> segments, Vector L, double interval, Point *points, int n);
 Vector circular_gradient(Point center, double radius, Point p);
-vector<Polygon> generate_final_paths(vector<int *> segments, Point *points, int n);
-Polygon dijkstra_polygon(vector<int *> segments, int *segment, Point *points, int n);
 Point find_intersection(Vector V1, Vector V2);
 double determinant(Vector V1, Vector V2);
-vector<Point> generate_w_points(vector<Point> w_points, Vector L, double interval);
-Point minimum_tao_distance(Vector V, Point *points, int size);
-vector<int *> remove_crossing_segments(vector<int *> segments, int s, Point *points, int size);
-vector<int *> fix_overlap(int *test, vector<int *> segments, Point *points);
 bool overlap(Vector V1, Vector V2);
-vector<Polygon> create_polygons(int *edge, vector<int *> segments, Point *points, int size);
-vector<Polygon> delete_duplicate_polygons(vector<Polygon> polygons, Point *points);
 Polygon find_convex_hull(Point *points, int size);
+
+/* shortest path algorithm functions */
+vector<int *> all_w_segments(Point *points, int size);
+bool test_w_segment(vector<int *> segments, Vector L, double interval, Point *points, int n);
+vector<Polygon> generate_final_paths(vector<int *> segments, Point *points, int n);
+Polygon dijkstra_polygon(vector<int *> segments, int *segment, Point *points, int n);
 
 #endif
