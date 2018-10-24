@@ -274,6 +274,12 @@ int main(int argc, char *argv[])
     //////////////////////////
 
     *segments = all_w_segments(points, size);
+
+    Polygon seed = seed_path(*segments, points, size);
+    vector<Polygon> visited;
+    visited.push_back(seed);
+    shortest_path = generate_path(seed, visited, *segments, points, size);
+
     /*polygons = generate_final_paths(*segments, points, size);
     printf("POLYGON CREATED:");
     for(int index : polygons[0].shape) {

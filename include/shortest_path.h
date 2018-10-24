@@ -80,6 +80,8 @@ Polygon find_convex_hull(Point *points, int size);
 vector<int *> all_w_segments(Point *points, int size);
 bool test_w_segment(vector<int *> segments, Vector L, double interval, Point *points, int n);
 vector<Polygon> generate_final_paths(vector<int *> segments, Point *points, int n);
+Polygon seed_path(vector<int *> segments, Point *points, int n);
+Polygon generate_path(Polygon w_polygons, vector<Polygon> visited, vector<int *> segments, Point *points, int n);
 Polygon dijkstra_polygon(vector<int *> segments, int *segment, Point *points, int n);
 
 #endif

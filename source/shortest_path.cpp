@@ -58,7 +58,7 @@ int edge_match(Polygon polygon, int *edge)
 }
 
 /* searches through a vector of segments for a matching segment
- * @param segments, all edges which form graph G
+ * @param segments, all edges which form the graph
  * @param beginning, the beginning index
  * @param ending, the ending index
  * @return the index of the edge or -1 if not found
@@ -102,7 +102,7 @@ int point_match(Point *points, int size, int vertex)
 }
 
 /* searches through a vector of segments for all matching segment
- * @param segments, all edges which form graph G
+ * @param segments, all edges which form the graph
  * @param vertex, the Point.index value to search for
  * @param points, the dataset of points
  * @param size, the size of the dataset
@@ -229,7 +229,7 @@ vector<int> shared_points(Polygon A, Polygon B)
 }
 
 /* uses BFS traversal to reach all edges of a seed, called recursively
- * @param segments, all edges which form graph G
+ * @param segments, all edges which form the graph
  * @param processed, the nodes that have already been visited completely
  * @param seed, the seed to traverse before processing child nodes
  * @param points, the dataset of points
@@ -277,7 +277,7 @@ vector<int> breadth_first_index_search(vector<int *> segments, vector<int> *proc
 }
 
 /* searches through a vector of segments for all recursive matching end or
- * @param segments, all edges which form graph G
+ * @param segments, all edges which form the graph
  * @param processed, the nodes that have already been visited completely
  * @param vertex, the point.index value to start from (not an index)
  * @param points, the dataset of points
@@ -1202,6 +1202,8 @@ bool test_w_segment(vector<int *> segments, Vector L, double interval, Point *po
                     for(int b : bottom) {
                         /* check if straddling point pairs have not been checked */
                         if(ignore[t] != b) {
+                            return false;
+
                             Vector Q = Vector("Q", points[t], points[b]);
                             vector<int> *processed;
 
@@ -1241,7 +1243,7 @@ bool test_w_segment(vector<int *> segments, Vector L, double interval, Point *po
 }
 
 /* generates all shortest paths from W
- * @param segments, all edges which form graph G
+ * @param segments, all edges which form the graph
  * @param points, the dataset of points
  * @param n, the size of the dataset
  * @return paths, the vector of shortest paths
@@ -1371,8 +1373,100 @@ vector<Polygon> generate_final_paths(vector<int *> segments, Point *points, int 
     return polygons;
 }
 
+/* seeds a path to begin the generate_path function */
+Polygon seed_path(vector<int *> segments, Point *points, int n) {
+    /* find the smallest edge */
+    double curr = DBL_MAX;
+    int *seed = new int [2];
+    for(int *segment : segments) {
+        double dist = distance_p(points[segment[0]], points[segment[1]]);
+        if(dist < curr) {
+            curr = dist;
+            seed[0] = segment[0];
+            seed[1] = segment[1];
+        }
+    }
+
+    return dijkstra_polygon(segments, seed, points, n);
+}
+
+/* generates a path recursively from a graph
+ * @param w_polygon, the current path
+ * @param visited, a vector of visited polygons
+ * @param w_segments, all edges which form the graph
+ * @param points, the dataset of points
+ * @param n, the size of the dataset
+ */
+Polygon generate_path(Polygon w_polygon, vector<Polygon> visited, vector<int *> segments, Point *points, int n) {
+    int i = 0;
+    bool coverage = true;
+
+    /* check if w_polygon has complete coverage */
+    for(i = 0; i < n; i++) {
+        if(shape_match(w_polygon.shape, i) == -1) {
+            coverage = false;
+            break;
+        }
+    }
+    if(coverage) {
+        return w_polygon;
+    }
+
+    /* find the seed */
+    Polygon polygon;
+    double curr = DBL_MAX;
+    int *seed = new int [2];
+    for(int *segment : w_polygon.segments) {
+        polygon = dijkstra_polygon(segments, segment, points, n);
+
+        /* ensure the polygon hasn't been visited */
+        bool equal = false;
+        for(Polygon done : visited) {
+            if(done.id == polygon.id) {
+                equal = true;
+                break; // there was an equal polygon
+            }
+        }
+
+        if(!equal && polygon.perimeter < curr) {
+            curr = polygon.perimeter;
+            seed[0] = segment[0];
+            seed[1] = segment[1];
+        }
+    }
+
+    /* record the polygon as visited */
+    visited.push_back(polygon);
+
+    /* create a new set of segments without crosses with the polygon */
+    vector<int *> pruned_segments;
+    for(int *segment : segments) {
+        bool intersect = false;
+        Vector S = Vector("S", points[segment[0]], points[segment[1]]);
+
+        for(int *edge : polygon.segments) {
+            Vector E = Vector("E", points[edge[0]], points[edge[1]]);
+
+            /* test if vectors intersect */
+            if(intersection(S, E)) {
+                intersect = true;
+                break;
+            }
+        }
+
+        /* push the segment if it didn't intersect */
+        if(!intersect) {
+            pruned_segments.push_back(segment);
+        }
+    }
+
+    /* add the polygon to w_polygon */
+    w_polygon = add_polygons(w_polygon, polygon, points);
+    exit(EXIT_FAILURE);
+}
+
 /* implements a special version of Dijkstra's Algorithm
- * @param segments, all edges which form graph G
+ * @param segments, all edges which form the graph
  * @param segment, the segment to use as a seed
  * @param points, the dataset of points
  * @param n, the size of the dataset
