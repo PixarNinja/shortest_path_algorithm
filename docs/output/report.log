@@ -1,9 +1,9 @@
-This is pdfTeX, Version 3.14159265-2.6-1.40.16 (TeX Live 2015/Debian) (preloaded format=pdflatex 2018.8.30)  18 SEP 2018 10:44
+This is pdfTeX, Version 3.14159265-2.6-1.40.16 (TeX Live 2015/Debian) (preloaded format=pdflatex 2018.8.30)  13 DEC 2018 16:22
 entering extended mode
  \write18 enabled.
  %&-line parsing enabled.
-**foundations.tex
-(./foundations.tex
+**report.tex
+(./report.tex
 LaTeX2e <2016/02/01>
 Babel <3.9q> and hyphenation patterns for 81 language(s) loaded.
 (/usr/share/texlive/texmf-dist/tex/latex/base/article.cls
@@ -1071,14 +1071,34 @@ Package: float 2001/11/08 v1.3d Float enhancements (AL)
 \@float@everytoks=\toks49
 \@floatcapt=\box63
 )
+(/usr/share/texlive/texmf-dist/tex/latex/koma-script/scrextend.sty
+Package: scrextend 2015/10/03 v3.19a KOMA-Script package (extend other classes 
+with features of KOMA-Script classes)
+
+(/usr/share/texlive/texmf-dist/tex/latex/koma-script/scrkbase.sty
+Package: scrkbase 2015/10/03 v3.19a KOMA-Script package (KOMA-Script-dependent 
+basics and keyval usage)
+
+(/usr/share/texlive/texmf-dist/tex/latex/koma-script/scrbase.sty
+Package: scrbase 2015/10/03 v3.19a KOMA-Script package (KOMA-Script-independent
+ basics and keyval usage)
+
+(/usr/share/texlive/texmf-dist/tex/latex/koma-script/scrlfile.sty
+Package: scrlfile 2015/10/03 v3.19a KOMA-Script package (loading files)
+
+Package scrlfile, 2015/10/03 v3.19a KOMA-Script package (loading files)
+                  Copyright (C) Markus Kohm
+
+)))
+LaTeX Info: Redefining \textsubscript on input line 1277.
+)
 \c@theorem=\count281
+ (./output/report.aux
 
-(./output/foundations.aux
-
-LaTeX Warning: Label `subsec*:bijection-range-method' multiply defined.
+LaTeX Warning: Label `subsec:bijection-range-method' multiply defined.
 
 )
-\openout1 = `foundations.aux'.
+\openout1 = `report.aux'.
 
 LaTeX Font Info:    Checking defaults for OML/cmm/m/it on input line 25.
 LaTeX Font Info:    ... okay on input line 25.
@@ -1214,35 +1234,26 @@ LaTeX Font Info:    Try loading font information for U+msb on input line 25.
 File: umsb.fd 2013/01/14 v3.01 AMS symbols B
 )
 \c__siunitx_mathtt_int=\count289
-LaTeX Font Info:    Try loading font information for OMS+cmr on input line 45.
+LaTeX Font Info:    Try loading font information for OMS+cmr on input line 37.
 
 (/usr/share/texlive/texmf-dist/tex/latex/base/omscmr.fd
 File: omscmr.fd 2014/09/29 v2.5h Standard LaTeX font definitions
 )
 LaTeX Font Info:    Font shape `OMS/cmr/m/n' in size <12> not available
-(Font)              Font shape `OMS/cmsy/m/n' tried instead on input line 45.
+(Font)              Font shape `OMS/cmsy/m/n' tried instead on input line 37.
  [1
 
 {/var/lib/texmf/fonts/map/pdftex/updmap/pdftex.map}]
-Underfull \hbox (badness 10000) in paragraph at lines 91--103
+Underfull \hbox (badness 10000) in paragraph at lines 115--130
 
  []
 
-[2]
-Missing character: There is no ) in font nullfont!
-Missing character: There is no ) in font nullfont!
-Missing character: There is no ) in font nullfont!
-Missing character: There is no ) in font nullfont!
-Missing character: There is no ) in font nullfont!
-Missing character: There is no ) in font nullfont!
-Missing character: There is no ) in font nullfont!
-Missing character: There is no ) in font nullfont!
 
-Underfull \hbox (badness 10000) in paragraph at lines 158--198
+Underfull \hbox (badness 10000) in paragraph at lines 115--130
 
  []
 
-[3]
+[2] [3]
 Missing character: There is no ) in font nullfont!
 Missing character: There is no ) in font nullfont!
 Missing character: There is no ) in font nullfont!
@@ -1251,65 +1262,96 @@ Missing character: There is no ) in font nullfont!
 Missing character: There is no ) in font nullfont!
 Missing character: There is no ) in font nullfont!
 Missing character: There is no ) in font nullfont!
-
-Underfull \hbox (badness 10000) in paragraph at lines 223--261
+ [4]
+Underfull \hbox (badness 10000) in paragraph at lines 257--260
 
  []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 257--260
+
+ []
+
+Missing character: There is no ) in font nullfont!
+Missing character: There is no ) in font nullfont!
+Missing character: There is no ) in font nullfont!
+Missing character: There is no ) in font nullfont!
+Missing character: There is no ) in font nullfont!
+Missing character: There is no ) in font nullfont!
+Missing character: There is no ) in font nullfont!
+Missing character: There is no ) in font nullfont!
+
+Underfull \hbox (badness 10000) in paragraph at lines 308--311
+
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 308--311
+
+ []
+
+Missing character: There is no ) in font nullfont!
+Missing character: There is no ) in font nullfont!
+Missing character: There is no ) in font nullfont!
+Missing character: There is no ) in font nullfont!
+Missing character: There is no ) in font nullfont!
+Missing character: There is no ) in font nullfont!
+Missing character: There is no ) in font nullfont!
+Missing character: There is no ) in font nullfont!
+
+LaTeX Warning: `!h' float specifier changed to `!ht'.
+
+[5] <./images/w_random.png, id=31, 453.45882pt x 340.09412pt>
+File: ./images/w_random.png Graphic file (type png)
+
+<use ./images/w_random.png>
+Package pdftex.def Info: ./images/w_random.png used on input line 388.
+(pdftex.def)             Requested size: 453.4577pt x 340.09328pt.
 
 
 LaTeX Warning: `!h' float specifier changed to `!ht'.
 
-[4]
-Missing character: There is no ) in font nullfont!
-Missing character: There is no ) in font nullfont!
-Missing character: There is no ) in font nullfont!
-Missing character: There is no ) in font nullfont!
-Missing character: There is no ) in font nullfont!
-Missing character: There is no ) in font nullfont!
-Missing character: There is no ) in font nullfont!
-Missing character: There is no ) in font nullfont!
-
-Underfull \hbox (badness 10000) in paragraph at lines 273--312
+[6] [7 <./images/w_random.png (PNG copy)>]
+Underfull \hbox (badness 10000) in paragraph at lines 439--447
 
  []
 
-[5] <./images/w_random.png, id=32, 453.45882pt x 340.09412pt>
-File: ./images/w_random.png Graphic file (type png)
-
-<use ./images/w_random.png>
-Package pdftex.def Info: ./images/w_random.png used on input line 349.
-(pdftex.def)             Requested size: 453.4577pt x 340.09328pt.
- [6 <./images/w_random.png (PNG copy)>]
-Underfull \hbox (badness 10000) in paragraph at lines 377--383
+[8]
+Underfull \hbox (badness 10000) in paragraph at lines 505--515
 
  []
 
 
-Underfull \hbox (badness 10000) in paragraph at lines 426--435
-
- []
-
-[7]
-Overfull \hbox (25.09213pt too wide) in paragraph at lines 437--440
+Overfull \hbox (25.09213pt too wide) in paragraph at lines 517--520
 []\OT1/cmr/m/n/12 Find the bi-jec-tion range of equal-ity be-tween $\OML/cmm/m/
 it/12 V[]; V[]$ \OT1/cmr/m/n/12 and $\OML/cmm/m/it/12 e$\OT1/cmr/m/n/12 , rep-r
 e-sented as $\OML/cmm/m/it/12 r\OT1/cmr/m/n/12 [\OML/cmm/m/it/12 lower; upper\O
 T1/cmr/m/n/12 ]$,
  []
 
-[8] (./output/foundations.aux)
+[9]
+Underfull \hbox (badness 10000) in paragraph at lines 571--579
+
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 604--617
+
+ []
+
+[10] [11] (./output/report.aux)
 
 LaTeX Warning: There were multiply-defined labels.
 
  ) 
 Here is how much of TeX's memory you used:
- 36893 strings out of 493029
- 882794 string characters out of 6136234
- 995197 words of memory out of 5000000
- 39824 multiletter control sequences out of 15000+600000
- 15579 words of font info for 61 fonts, out of 8000000 for 9000
+ 37522 strings out of 493029
+ 894048 string characters out of 6136234
+ 1022783 words of memory out of 5000000
+ 40439 multiletter control sequences out of 15000+600000
+ 17301 words of font info for 68 fonts, out of 8000000 for 9000
  1141 hyphenation exceptions out of 8191
- 62i,16n,77p,10383b,1139s stack positions out of 5000i,500n,10000p,200000b,80000s
+ 62i,16n,77p,10378b,1139s stack positions out of 5000i,500n,10000p,200000b,80000s
 </usr/share/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmbx12.pfb></us
 r/share/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmex10.pfb></usr/shar
 e/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmmi12.pfb></usr/share/texl
@@ -1322,10 +1364,10 @@ msfonts/cm/cmsy8.pfb></usr/share/texlive/texmf-dist/fonts/type1/public/amsfonts
 /cm/cmti12.pfb></usr/share/texlive/texmf-dist/fonts/type1/public/amsfonts/symbo
 ls/msam10.pfb></usr/share/texlive/texmf-dist/fonts/type1/public/amsfonts/symbol
 s/msbm10.pfb>
-Output written on ./output/foundations.pdf (8 pages, 205677 bytes).
+Output written on ./output/report.pdf (11 pages, 220502 bytes).
 PDF statistics:
- 83 PDF objects out of 1000 (max. 8388607)
- 59 compressed objects within 1 object stream
+ 92 PDF objects out of 1000 (max. 8388607)
+ 65 compressed objects within 1 object stream
  0 named destinations out of 1000 (max. 500000)
  18 words of extra memory for PDF output out of 10000 (max. 10000000)
 
