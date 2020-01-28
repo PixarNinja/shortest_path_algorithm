@@ -418,6 +418,36 @@ bool same_direction(Vector V1, Vector V2) {
     return false;
 }
 
+/* tests whether there are polygons inside of the given polygon
+ * @param polygon, the polygon to test
+ * @param segments, all edges which form the graph
+ * @param points, the point array of datapoints
+ * @param size, the size of the points array
+ * @return true if polygon is composite, false otherwise
+ */
+bool composite_polygon(Polygon polygon, vector<int *> segments, Point *points, int size) {
+    bool composite = false;
+    int i = 1;
+    for(; i < polygon.segments.size() - 1; i++) {
+        int prev = i - 1;
+        int curr = i;
+        int next = (i + 1) % polygon.segments.size();
+        vector<int *> edges = edge_search(segments, points[curr].index, points, size);
+        
+        /* for each edge check if it is one of prev or next */
+        for(int *edge : edges) {
+            if(edge[1] != prev && edge[1] != next) {
+                /* check if edge[1] is inside the shape */
+                if(shape_match(polygon.shape, edge[1])) {
+                    return true;
+                }
+            }
+        }
+    }
+
+    return false;
+}
+
 /* adds two polygons together to create a single polygon
  * @param A, the first polygon
  * @param B, the second polygon
@@ -426,7 +456,7 @@ bool same_direction(Vector V1, Vector V2) {
  */
 Polygon add_polygons(Polygon A, Polygon B, Point *points)
 {
-    Polygon C; //A + B
+    vector<int> shape; // A + B path
     int i = 0;
     int j = 0;
     int a1 = 0;
@@ -437,7 +467,12 @@ Polygon add_polygons(Polygon A, Polygon B, Point *points)
 
     /* print current shapes */
     printf("\nBEFORE: A = %0.2lf, B = %0.2lf\n", A.perimeter, B.perimeter);
-    C.perimeter = 0.0;
+    cout << "A: " << A.id << ", B: " << B.id << endl;
+
+    /* enumerate the cycle for each shape */
+    A.shape.push_back(A.shape[0]);
+    B.shape.push_back(B.shape[0]);
+
     for(i = 0; i < A.shape.size() - 1; i++) {
         /* find the segment that matches */
         if(((b1 = shape_match(B.shape, A.shape[i])) > -1) && ((b2 = shape_match(B.shape, A.shape[i + 1])) > -1)) {
@@ -458,8 +493,7 @@ Polygon add_polygons(Polygon A, Polygon B, Point *points)
                     printf("A: RIGHT\n");
                     i = a1;
                     while(i != a2) {
-                        C.shape.push_back(A.shape[i]);
-                        C.perimeter += distance_p(points[A.shape[i]], points[A.shape[i + 1]]);
+                        shape.push_back(A.shape[i]);
                         printf("%d->", points[A.shape[i]].index);
                         i++;
                         if(i > A.shape.size() - 2)
@@ -471,27 +505,25 @@ Polygon add_polygons(Polygon A, Polygon B, Point *points)
                     printf("A: LEFT\n");
                     i = a1;
                     while(i != a2) {
-                        C.shape.push_back(A.shape[i]);
-                        C.perimeter += distance_p(points[A.shape[i]], points[A.shape[i + 1]]);
+                        shape.push_back(A.shape[i]);
                         printf("%d->", points[A.shape[i]].index);
                         i--;
                         if(i < 0)
                             i = A.shape.size() - 2;
                     }
+                    printf("\n");
                 }
                 /* traverse B to the left */
                 printf("B: LEFT\n");
                 j = b2;
                 while(j != b1) {
-                    C.shape.push_back(B.shape[j]);
-                    C.perimeter += distance_p(points[B.shape[j]], points[B.shape[j + 1]]);
+                    shape.push_back(B.shape[j]);
                     printf("%d->", points[B.shape[j]].index);
                     j--;
                     if(j < 0)
                         j = B.shape.size() - 2;
                 }
-                C.shape.push_back(B.shape[j]);
-                C.perimeter += distance_p(points[B.shape[j]], points[B.shape[j + 1]]);
+                shape.push_back(B.shape[j]);
                 printf("%d\n", points[B.shape[j]].index);
             }
             else {
@@ -500,48 +532,48 @@ Polygon add_polygons(Polygon A, Polygon B, Point *points)
                     printf("A: RIGHT\n");
                     i = a1;
                     while(i != a2) {
-                        C.shape.push_back(A.shape[i]);
-                        C.perimeter += distance_p(points[A.shape[i]], points[A.shape[i + 1]]);
+                        shape.push_back(A.shape[i]);
                         printf("%d->", points[A.shape[i]].index);
                         i++;
                         if(i > A.shape.size() - 2)
                             i = 0;
                     }
+                    printf("\n");
                 }
                 /* traverse A to the left */
                 else {
                     printf("A: LEFT\n");
                     i = a1;
                     while(i != a2) {
-                        C.shape.push_back(A.shape[i]);
-                        C.perimeter += distance_p(points[A.shape[i]], points[A.shape[i + 1]]);
+                        shape.push_back(A.shape[i]);
                         printf("%d->", points[A.shape[i]].index);
                         i--;
                         if(i < 0)
                             i = A.shape.size() - 2;
                     }
+                    printf("\n");
                 }
                 /* traverse B to the right */
                 printf("B: RIGHT\n");
                 j = b2;
                 while(j != b1) {
-                    C.shape.push_back(B.shape[j]);
-                    C.perimeter += distance_p(points[B.shape[j]], points[B.shape[j + 1]]);
+                    shape.push_back(B.shape[j]);
                     printf("%d->", points[B.shape[j]].index);
                     j++;
                     if(j > B.shape.size() - 2)
                         j = 0;
                 }
-                C.shape.push_back(B.shape[j]);
-                C.perimeter += distance_p(points[B.shape[j]], points[B.shape[j + 1]]);
+                shape.push_back(B.shape[j]);
                 printf("%d\n", points[B.shape[j]].index);
             }
             break;
         }
     }
 
+    Polygon C = Polygon(shape, points); //A + B
+
     /* print altered shapes */
-    printf("\nNEW SHAPE: C = %0.2lf\n", C.perimeter);
+    cout << endl << "NEW SHAPE: C: " << C.id << ", " << C.perimeter << endl;
 
     return C;
 }
@@ -1345,7 +1377,8 @@ vector<Polygon> generate_final_paths(vector<int *> segments, Point *points, int 
     set = segments;
 
     for(int *segment : set) {
-        Polygon smallest = dijkstra_polygon(segments, segment, points, n);
+        vector<Polygon> ignore; //tmp
+        Polygon smallest = dijkstra_polygon(segments, segment, ignore, points, n);
         if(segment[0] < segment[1]) {
             stream << segment[0] << "," << segment[1];
         }
@@ -1387,7 +1420,8 @@ Polygon seed_path(vector<int *> segments, Point *points, int n) {
         }
     }
 
-    return dijkstra_polygon(segments, seed, points, n);
+    vector<Polygon> ignore;
+    return dijkstra_polygon(segments, seed, ignore, points, n);
 }
 
 /* generates a path recursively from a graph
@@ -1412,12 +1446,17 @@ Polygon generate_path(Polygon w_polygon, vector<Polygon> visited, vector<int *> 
         return w_polygon;
     }
 
+    for(Polygon done : visited) {
+        cout << "FORCED: " << done.id << endl;
+    }
+
     /* find the seed */
     Polygon polygon;
-    double curr = DBL_MAX;
+    Polygon smallest;
+    smallest.perimeter = DBL_MAX;
     int *seed = new int [2];
     for(int *segment : w_polygon.segments) {
-        polygon = dijkstra_polygon(segments, segment, points, n);
+        polygon = dijkstra_polygon(segments, segment, visited, points, n);
 
         /* ensure the polygon hasn't been visited */
         bool equal = false;
@@ -1428,15 +1467,16 @@ Polygon generate_path(Polygon w_polygon, vector<Polygon> visited, vector<int *> 
             }
         }
 
-        if(!equal && polygon.perimeter < curr) {
-            curr = polygon.perimeter;
+        if(!equal && polygon.perimeter < smallest.perimeter) {
+            smallest = Polygon(polygon);
             seed[0] = segment[0];
             seed[1] = segment[1];
         }
     }
 
     /* record the polygon as visited */
-    visited.push_back(polygon);
+    cout << "VISIT: " << smallest.id << ", " << smallest.perimeter << endl;
+    visited.push_back(smallest);
 
     /* create a new set of segments without crosses with the polygon */
     vector<int *> pruned_segments;
@@ -1444,7 +1484,7 @@ Polygon generate_path(Polygon w_polygon, vector<Polygon> visited, vector<int *> 
         bool intersect = false;
         Vector S = Vector("S", points[segment[0]], points[segment[1]]);
 
-        for(int *edge : polygon.segments) {
+        for(int *edge : smallest.segments) {
             Vector E = Vector("E", points[edge[0]], points[edge[1]]);
 
             /* test if vectors intersect */
@@ -1461,79 +1501,161 @@ Polygon generate_path(Polygon w_polygon, vector<Polygon> visited, vector<int *> 
     }
 
     /* add the polygon to w_polygon */
-    w_polygon = add_polygons(w_polygon, polygon, points);
-    exit(EXIT_FAILURE);
+    w_polygon = add_polygons(w_polygon, smallest, points);
+
+    /* update visited with the composite polygon */
+    visited.push_back(w_polygon);
+
+    return generate_path(w_polygon, visited, pruned_segments, points, n);
 }
 
 /* implements a special version of Dijkstra's Algorithm
  * @param segments, all edges which form the graph
  * @param segment, the segment to use as a seed
+ * @param ignore, a vector of polygons to avoid
  * @param points, the dataset of points
  * @param n, the size of the dataset
  */
-Polygon dijkstra_polygon(vector<int *> segments, int *segment, Point *points, int n) {
+Polygon dijkstra_polygon(vector<int *> segments, int *segment, vector<Polygon> ignore, Point *points, int n) {
     double *dist = new double [n]; // smallest distances
+    vector<int *> forced; // segments forced to equal DBL_MAX
     vector<int> path; // stores the path of the polygon
-    vector<int> *prev = new vector<int> [n]; // vector of sub paths
+    int *prev = new int [n]; // vector of sub paths
     vector<int> set; // working set of points
     double smallest = DBL_MAX;
-    int index = 0;
+    int index = -1;
+    int prev_index = -1;
     int i = 0;
     int j = 0;
+    bool repeat = true;
+    Polygon polygon; // returned path
 
-    for(i = 0; i < n; i++) {
-        set.push_back(i);
-        dist[i] = DBL_MAX;
+    printf("TESTING EDGE %d->%d\n", segment[0], segment[1]);
+
+    while(repeat) {
+        path.clear();
+
+        cout << "SIZE: " << ignore.size() << endl;
+        for(int *force : forced) {
+            cout << "FORCED: " << points[force[0]].index << "->" << points[force[1]].index << endl;
+        }
+
+        for(i = 0; i < n; i++) {
+            set.push_back(i);
+            dist[i] = DBL_MAX;
+        }
+        dist[segment[0]] = 0; // source to source is 0
+
+        while(set.size() > 0) {
+            smallest = DBL_MAX;
+            prev_index = index;
+            index = 0;
+
+            /* choose the point with the smallest dist value */
+            for(j = 0; j < n; j++) {
+                if(j != prev_index && dist[j] < smallest && find(set.begin(), set.end(), j) != set.end()) {
+                    /* skip if the edge is forced */
+                    bool skip = false;
+                    for(int *force : forced) {
+                        if(force[0] == prev_index && force[1] == j) {
+                            skip = true;
+                            break;
+                        }
+                    }
+                    if(skip) {
+                        continue;
+                    }
+
+                    smallest = dist[j];
+                    index = j;
+                }
+            }
+
+            /* remove index from set of points */
+            for(j = 0; j < n; j++) {
+                if(set[j] == index) {
+                    set.erase(set.begin() + j);
+                    break;
+                }
+            }
+
+            /* iterate over all neighbors of index */
+            vector<int *> edges = edge_search(segments, points[index].index, points, n);
+            for(int *edge : edges) {
+                /* skip if the prev is going directly from start to end */
+                if((edge[0] == segment[0] && edge[1] == segment[1])) {
+                    continue;
+                }
+
+                /* skip if the edge is forced */
+                bool skip = false;
+                for(int *force : forced) {
+                    if(edge[0] == force[0] && edge[1] == force[1]) {
+                        skip = true;
+                        break;
+                    }
+                }
+                if(skip) {
+                    printf("SKIPPING EDGE %d->%d\n", index, edge[1]);
+                    continue;
+                }
+
+                double alt = dist[index] + distance_p(points[index], points[edge[1]]);
+                if(alt < dist[edge[1]]) {
+                    dist[edge[1]] = alt;
+                    prev[edge[1]] = index;
+                    printf("STORING EDGE %d->%d (%0.3lf)\n", index, edge[1], alt);
+                }
+            }
+
+            printf("PASS...\n");
+        }
+
+        /* store the shortest prev from start to end */
+        i = segment[1];
+        path.push_back(i);
+        while(i != segment[0]) {
+            path.push_back(prev[i]); // store the index in the path
+            i = prev[i];
+        }
+
+        polygon = Polygon(path, points);
+        printf("FOUND POLYGON:");
+        cout << endl;
+        for(int *segment : polygon.segments) {
+            cout << "  " << segment[0] << "->" << segment[1] << endl;
+        }
+        
+        /* check if polygon is valid */
+        repeat = false;
+        /* skip polygon if it is a composite polygon */
+        if(composite_polygon(polygon, segments, points, n)) {
+            for(Polygon check : ignore) {
+                if(check.id == polygon.id) {
+                    repeat = true; // repeat if polygon should be ignored
+
+                    bool push = true;
+                    int *tmp = new int [2];
+                    tmp[0] = path[1];
+                    tmp[1] = path[0];
+                    for(int *done : forced) {
+                        if(done[0] == tmp[0] && done[1] == tmp[1]) {
+                            push = false;
+                            break;
+                        }
+                    }
+                    if(push) {
+                        cout << "NEWLY FORCED: " << tmp[0] << "->" << tmp[1] << endl;
+                        forced.push_back(tmp);
+                    }
+
+                    break;
+                }
+            }
+        }
     }
-    dist[segment[0]] = 0; // source to source is 0
 
-    while(set.size() > 0) {
-        /* choose the point with the smallest dist value */
-        for(j = 0; j < n; j++) {
-            if(dist[j] < smallest && find(set.begin(), set.end(), j) != set.end()) {
-                smallest = dist[j];
-                index = j;
-            }
-        }
-
-        /* remove points[index] from set of points */
-        for(j = 0; j < n; j++) {
-            if(set[j] == index) {
-                set.erase(set.begin() + j);
-                break;
-            }
-        }
-
-        /* iterate over all neighbors of p */
-        vector<int *> edges = edge_search(segments, points[index].index, points, n);
-        for(int *edge : edges) {
-            /* skip if the prev is going directly from start to end */
-            if(edge[0] == segment[0] && edge[1] == segment[1]) {
-                continue;
-            }
-
-            double alt = dist[index] + distance_p(points[index], points[edge[1]]);
-            if(alt < dist[edge[1]]) {
-                dist[edge[1]] = alt;
-                prev[edge[1]].push_back(index);
-            }
-        }
-        smallest = DBL_MAX;
-        index = 0;
-    }
-
-    /* store the shortest prev from start to end */
-    i = segment[1];
-    path.push_back(i);
-    while(i != segment[0]) {
-        for(j = 0; j < prev[i].size(); j++) {
-            path.push_back(prev[i][j]); // store the index in the path
-            //printf("PUSHED %d\n", points[prev[i][j]].index);
-        }
-        i = prev[i][j - 1];
-    }
-
-    Polygon polygon = Polygon(path, points);
+    cout << "RETURNING!" << endl;
 
     return polygon;
 }

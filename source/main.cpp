@@ -275,6 +275,7 @@ int main(int argc, char *argv[])
 
     *segments = all_w_segments(points, size);
 
+    //*
     Polygon seed = seed_path(*segments, points, size);
     vector<Polygon> visited;
     visited.push_back(seed);

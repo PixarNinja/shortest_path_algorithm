@@ -59,6 +59,7 @@ vector<int> index_search(vector<int *> segments, vector<int> *processed, int ver
 /* boolean check functions */
 bool intersection(Vector V1, Vector V2);
 bool same_direction(Vector V1, Vector V2);
+bool composite_polygon(Polygon polygon, vector<int *> segments, Point *points, int size);
 
 /* polygon processing functions */
 Polygon add_polygons(Polygon A, Polygon B, Point *points);
@@ -81,7 +82,7 @@ vector<int *> all_w_segments(Point *points, int size);
 bool test_w_segment(vector<int *> segments, Vector L, double interval, Point *points, int n);
 vector<Polygon> generate_final_paths(vector<int *> segments, Point *points, int n);
 Polygon seed_path(vector<int *> segments, Point *points, int n);
-Polygon generate_path(Polygon w_polygons, vector<Polygon> visited, vector<int *> segments, Point *points, int n);
-Polygon dijkstra_polygon(vector<int *> segments, int *segment, Point *points, int n);
+Polygon generate_path(Polygon w_polygon, vector<Polygon> visited, vector<int *> segments, Point *points, int n);
+Polygon dijkstra_polygon(vector<int *> segments, int *segment, vector<Polygon> ignore, Point *points, int n);
 
 #endif
